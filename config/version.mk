@@ -1,4 +1,3 @@
-#
 # ***** BEGIN LICENSE BLOCK *****
 # Version: MPL 1.1/GPL 2.0/LGPL 2.1
 #
@@ -12,15 +11,13 @@
 # for the specific language governing rights and limitations under the
 # License.
 #
-# The Original Code is mozilla.org code.
+# The Original Code is the Win32 Version System.
 #
-# The Initial Developer of the Original Code is
-# Netscape Communications Corporation.
-# Portions created by the Initial Developer are Copyright (C) 1998
+# The Initial Developer of the Original Code is Netscape Communications Corporation
+# Portions created by the Initial Developer are Copyright (C) 2002
 # the Initial Developer. All Rights Reserved.
 #
 # Contributor(s):
-#   Mark Hammond
 #
 # Alternatively, the contents of this file may be used under the terms of
 # either the GNU General Public License Version 2 or later (the "GPL"), or
@@ -36,13 +33,53 @@
 #
 # ***** END LICENSE BLOCK *****
 
-DEPTH		= .
-topsrcdir	= @top_srcdir@
-srcdir		= @srcdir@
-VPATH		= @srcdir@
+ifndef INCLUDED_VERSION_MK
+INCLUDED_VERSION_MK=1
 
-include $(DEPTH)/config/autoconf.mk
+# Windows gmake build:
+# Build default .rc file if $(RESFILE) isn't defined.
+# TODO:
+# PBI      : Private build info.  Not used currently.
+#            Guessing the best way would be to set an env var.
+# BINARY   : Binary name.  Not used currently.
+ifeq ($(MOZ_WIDGET_TOOLKIT),windows)
+ifndef RESFILE
+RCFILE=./module.rc
+RESFILE=./module.res
+_RC_STRING = -QUIET 1 -DEPTH $(DEPTH) -TOPSRCDIR $(topsrcdir) -BITS $(MOZ_BITS) -OBJDIR . -SRCDIR $(srcdir) -DISPNAME $(MOZ_APP_DISPLAYNAME) -APPVERSION $(MOZ_APP_VERSION)
+ifdef MOZILLA_OFFICIAL
+_RC_STRING += -OFFICIAL 1
+endif
+ifdef MOZ_DEBUG
+_RC_STRING += -DEBUG 1
+endif
+ifdef MODULE
+_RC_STRING += -MODNAME $(MODULE)
+endif
+ifdef PROGRAM
+_RC_STRING += -BINARY $(PROGRAM)
+else
+ifdef _PROGRAM
+_RC_STRING += -BINARY $(_PROGRAM)
+else
+ifdef SHARED_LIBRARY
+_RC_STRING += -BINARY $(SHARED_LIBRARY)
+endif
+endif
+endif
+ifdef RCINCLUDE
+_RC_STRING += -RCINCLUDE $(srcdir)/$(RCINCLUDE)
+endif
 
-DIRS = config xpcom dom
+GARBAGE += $(RESFILE) $(RCFILE)
 
-include $(topsrcdir)/config/rules.mk
+#dummy target so $(RCFILE) doesn't become the default =P
+all::
+
+$(RCFILE): $(RCINCLUDE) $(topsrcdir)/config/version_win.pl
+	$(PERL) $(topsrcdir)/config/version_win.pl $(_RC_STRING)
+
+endif  # RESFILE
+endif  # Windows
+
+endif

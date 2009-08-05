@@ -36,7 +36,7 @@
 
 # Top-level PyXPCOM makefile - build sub-dirs and install .py code.
 
-DEPTH   =../../..
+DEPTH   =..
 
 include $(DEPTH)/config/autoconf.mk
 

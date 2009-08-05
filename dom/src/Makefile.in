@@ -2,7 +2,7 @@
 
 # The Python DOM ScriptLanguage implementation.
 
-DEPTH=../../../..
+DEPTH=../..
 
 topsrcdir	= @top_srcdir@
 srcdir		= @srcdir@

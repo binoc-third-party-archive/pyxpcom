@@ -36,7 +36,7 @@
 
 # The xpcom._xpcom module
 
-DEPTH=../../../../..
+DEPTH=../../..
 
 topsrcdir	= @top_srcdir@
 srcdir		= @srcdir@
@@ -55,11 +55,7 @@ LOCAL_INCLUDES = $(MOZ_PYTHON_INCLUDES)
 
 EXTRA_LIBS += $(MOZ_PYTHON_LIBS)
 
-ifeq ($(OS_ARCH), WINNT)
-EXTRA_LIBS += $(DIST)/lib/pyxpcom.lib
-else
-EXTRA_LIBS += -lpyxpcom
-endif
+EXTRA_LIBS += $(call EXPAND_LIBNAME_PATH,pyxpcom,$(DIST)/lib)
 
 CPPSRCS= \
 	_xpcom.cpp \
