@@ -306,8 +306,7 @@ static PyObject *PyAddScriptEventListener(PyObject *self, PyObject *args)
     nsCOMPtr<nsPIDOMEventTarget> piTarget(do_QueryInterface(target));
     if (!piTarget) return PyXPCOM_BuildPyException(NS_ERROR_UNEXPECTED);
 
-    nsCOMPtr<nsIEventListenerManager> manager;
-    piTarget->GetListenerManager(PR_TRUE, getter_AddRefs(manager));
+    nsIEventListenerManager* manager = piTarget->GetListenerManager(PR_TRUE);
     if (!manager) return PyXPCOM_BuildPyException(NS_ERROR_UNEXPECTED);
 
     // avoid do_GetAtom - its not part of the XPCOM glue.
@@ -377,8 +376,7 @@ static PyObject *PyRegisterScriptEventListener(PyObject *self, PyObject *args)
     nsCOMPtr<nsPIDOMEventTarget> piTarget(do_QueryInterface(target));
     if (!piTarget) return PyXPCOM_BuildPyException(NS_ERROR_UNEXPECTED);
 
-    nsCOMPtr<nsIEventListenerManager> manager;
-    piTarget->GetListenerManager(PR_TRUE, getter_AddRefs(manager));
+    nsIEventListenerManager* manager = piTarget->GetListenerManager(PR_TRUE);
     if (!manager) return PyXPCOM_BuildPyException(NS_ERROR_UNEXPECTED);
 
     nsresult rv;
@@ -448,8 +446,7 @@ static PyObject *PyCompileScriptEventListener(PyObject *self, PyObject *args)
     nsCOMPtr<nsPIDOMEventTarget> piTarget(do_QueryInterface(target));
     if (!piTarget) return PyXPCOM_BuildPyException(NS_ERROR_UNEXPECTED);
 
-    nsCOMPtr<nsIEventListenerManager> manager;
-    piTarget->GetListenerManager(PR_TRUE, getter_AddRefs(manager));
+    nsIEventListenerManager* manager = piTarget->GetListenerManager(PR_TRUE);
     if (!manager) return PyXPCOM_BuildPyException(NS_ERROR_UNEXPECTED);
 
     nsresult rv;
