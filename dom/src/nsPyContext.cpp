@@ -933,3 +933,15 @@ nsPythonContext::HoldScriptObject(void *object)
   }
   return NS_OK;
 }
+
+void
+nsPythonContext::EnterModalState()
+{
+  // Nothing to do (I hope).
+}
+
+void
+nsPythonContext::LeaveModalState()
+{
+  // Nothing to do (I hope).
+}

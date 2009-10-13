@@ -213,6 +213,9 @@ public:
   virtual nsresult HoldScriptObject(void *object);
   virtual nsresult DropScriptObject(void *object);
 
+  virtual void EnterModalState();
+  virtual void LeaveModalState();
+
   NS_DECL_NSITIMERCALLBACK
   
   PyObject *PyObject_FromInterface(nsISupports *target,
