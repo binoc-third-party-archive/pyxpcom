@@ -607,6 +607,7 @@ Pt.h
 pthread.h
 pwd.h
 Python.h
+marshal.h
 QDOffscreen.h
 Quickdraw.h
 QuickDraw.h
