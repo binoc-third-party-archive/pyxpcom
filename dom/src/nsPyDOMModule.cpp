@@ -51,7 +51,6 @@
 #include "nsIScriptTimeoutHandler.h"
 #include "nsPIDOMEventTarget.h"
 #include "nsIArray.h"
-#include "jscntxt.h"
 #include "nsPIDOMWindow.h"
 #include "nsDOMScriptObjectHolder.h"
 
