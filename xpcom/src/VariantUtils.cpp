@@ -150,7 +150,7 @@ PyObject_FromNSString( const PRUnichar *s,
                        PRUint32 len /* = (PRUint32)-1*/)
 {
 	return PyUnicode_FromPRUnichar(s,
-	           len==((PRUint32)-1)? nsCRT::strlen(s) : len);
+	           len==((PRUint32)-1)? NS_strlen(s) : len);
 }
 
 PYXPCOM_EXPORT PRBool
@@ -556,7 +556,7 @@ static PyObject *UnpackSingleArray(Py_nsISupports *parent, void *array_ptr,
 					Py_INCREF(Py_None);
 					val = Py_None;
 				} else {
-					val = PyUnicode_FromPRUnichar( *pp, nsCRT::strlen(*pp) );
+					val = PyUnicode_FromPRUnichar( *pp, NS_strlen(*pp) );
 				}
 				break;
 				}
@@ -1717,7 +1717,7 @@ PyObject *PyXPCOM_InterfaceVariantHelper::MakeSinglePythonResult(int index)
 			ret = Py_None;
 			Py_INCREF(Py_None);
 		} else {
-			ret = PyUnicode_FromPRUnichar( us, nsCRT::strlen(us));
+			ret = PyUnicode_FromPRUnichar( us, NS_strlen(us));
 		}
 		break;
 		}
@@ -2071,7 +2071,7 @@ PyObject *PyXPCOM_GatewayVariantHelper::MakeSingleParam(int index, PythonTypeDes
 			ret = Py_None;
 			Py_INCREF(Py_None);
 		} else {
-			ret = PyUnicode_FromPRUnichar( us, nsCRT::strlen(us));
+			ret = PyUnicode_FromPRUnichar( us, NS_strlen(us));
 		}
 		break;
 		}

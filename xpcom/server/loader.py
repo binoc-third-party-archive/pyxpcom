@@ -43,19 +43,19 @@ import module
 
 import os, types
 
-def _has_good_attr(object, attr):
+def _has_good_attr(obj, attr):
     # Actually allows "None" to be specified to disable inherited attributes.
-    return getattr(object, attr, None) is not None
+    return getattr(obj, attr, None) is not None
 
 def FindCOMComponents(py_module):
     # For now, just run over all classes looking for likely candidates.
     comps = []
-    for name, object in py_module.__dict__.items():
-        if type(object)==types.ClassType and \
-           _has_good_attr(object, "_com_interfaces_") and \
-           _has_good_attr(object, "_reg_clsid_") and \
-           _has_good_attr(object, "_reg_contractid_"):
-            comps.append(object)
+    for name, obj in py_module.__dict__.items():
+        if (type(obj) == types.ClassType or isinstance(obj, object)) and \
+           _has_good_attr(obj, "_com_interfaces_") and \
+           _has_good_attr(obj, "_reg_clsid_") and \
+           _has_good_attr(obj, "_reg_contractid_"):
+            comps.append(obj)
     return comps
 
 def register_self(klass, compMgr, location, registryLocation, componentType):

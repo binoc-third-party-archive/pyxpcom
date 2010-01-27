@@ -80,6 +80,17 @@ class Module:
                                               loaderStr,
                                               componentType)
 
+            reg_categories = getattr(klass, "_reg_categories_", None)
+            if reg_categories:
+                catman = components.classes["@mozilla.org/categorymanager;1"]\
+                                       .getService(components.interfaces.nsICategoryManager);
+                for cat_info in reg_categories:
+                    if len(cat_info) > 2 and cat_info[2] and cat_info[0] == "app-startup":
+                        name = "service,%s" % reg_contractid
+                    else:
+                        name = reg_contractid
+                    catman.addCategoryEntry(cat_info[0], cat_info[1], name, 1, 1)
+
             # See if this class nominates custom register_self
             extra_func = getattr(klass, "_reg_registrar_", (None,None))[0]
             if extra_func is not None:
@@ -93,6 +104,14 @@ class Module:
                 compMgr.unregisterComponentSpec(klass._reg_clsid_, location)
             except Exception:
                 ok = 0
+
+            reg_categories = getattr(klass, "_reg_categories_", None)
+            if reg_categories:
+                catman = components.classes["@mozilla.org/categorymanager;1"]\
+                                       .getService(components.interfaces.nsICategoryManager);
+                for cat_info in reg_categories:
+                    catman.deleteCategoryEntry(cat_info[0], cat_info[1], 1)
+
             # Give the class a bash even if we failed!
             extra_func = getattr(klass, "_reg_registrar_", (None,None))[1]
             if extra_func is not None:

@@ -163,7 +163,7 @@ PyObject *PyObject_FromXPTConstant( const XPTConstDescriptor *c)
 			v = PyString_FromString(c->value.str);
 			break;
 		case TD_PWSTRING:
-			v = PyObject_FromNSString((PRUnichar *)c->value.wstr, nsCRT::strlen((PRUnichar *)c->value.wstr));
+			v = PyObject_FromNSString((PRUnichar *)c->value.wstr, NS_strlen((PRUnichar *)c->value.wstr));
 			break;
 	//    TD_INTERFACE_TYPE    = 18,
 	//    TD_INTERFACE_IS_TYPE = 19,

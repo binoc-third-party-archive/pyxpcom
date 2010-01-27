@@ -167,7 +167,7 @@ void LogMessage(const char *methodName, nsACString &text)
 {
 	char *c = ToNewCString(text);
 	LogMessage(methodName, c);
-	nsCRT::free(c);
+	NS_Free(c);
 }
 
 // A helper for the various logging routines.
