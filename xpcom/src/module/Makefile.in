@@ -81,9 +81,9 @@ IMPORT_LIBRARY		:= $(SHARED_LIBRARY:.pyd=.lib)
 # default build installs into bin and lib - remove them
 libs::
 ifeq ($(OS_ARCH),WINNT)
-	$(INSTALL) -m 555 $(SHARED_LIBRARY) $(DIST)/bin/python/xpcom
+	$(INSTALL) $(SHARED_LIBRARY) $(DIST)/bin/python/xpcom
 else
-	$(INSTALL) -m 555 $(SHARED_LIBRARY) $(DIST)/bin/python/xpcom
+	$(INSTALL) $(SHARED_LIBRARY) $(DIST)/bin/python/xpcom
 	mv $(DIST)/bin/python/xpcom/$(SHARED_LIBRARY) $(DIST)/bin/python/xpcom/_xpcom.so
 endif
 	rm -f $(DIST)/bin/$(SHARED_LIBRARY)
