@@ -43,19 +43,19 @@ import module
 
 import os, types
 
-def _has_good_attr(obj, attr):
+def _has_good_attr(object, attr):
     # Actually allows "None" to be specified to disable inherited attributes.
-    return getattr(obj, attr, None) is not None
+    return getattr(object, attr, None) is not None
 
 def FindCOMComponents(py_module):
     # For now, just run over all classes looking for likely candidates.
     comps = []
-    for name, obj in py_module.__dict__.items():
-        if (type(obj) == types.ClassType or isinstance(obj, object)) and \
-           _has_good_attr(obj, "_com_interfaces_") and \
-           _has_good_attr(obj, "_reg_clsid_") and \
-           _has_good_attr(obj, "_reg_contractid_"):
-            comps.append(obj)
+    for name, object in py_module.__dict__.items():
+        if type(object)==types.ClassType and \
+           _has_good_attr(object, "_com_interfaces_") and \
+           _has_good_attr(object, "_reg_clsid_") and \
+           _has_good_attr(object, "_reg_contractid_"):
+            comps.append(object)
     return comps
 
 def register_self(klass, compMgr, location, registryLocation, componentType):
@@ -93,6 +93,8 @@ class ModuleLoader:
 
     def _getCOMModuleForLocation(self, componentFile):
         fqn = componentFile.path
+        if fqn[-4:] in (".pyc", ".pyo"):
+            fqn = fqn[:-1]
         if not fqn.endswith(".py"):
             raise xpcom.ServerException(nsError.NS_ERROR_INVALID_ARG)
         mod = self.com_modules.get(fqn)
