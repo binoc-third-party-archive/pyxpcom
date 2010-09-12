@@ -64,9 +64,9 @@ nsPyDOMObjectLeakStats gLeakStats;
 static inline const char *
 AtomToEventHandlerName(nsIAtom *aName)
 {
-  const char *name;
-
-  aName->GetUTF8String(&name);
+  nsCAutoString str;
+  aName->ToUTF8String(str);
+  const char *name = str.get();
 
 #ifdef DEBUG
   const char *cp;
