@@ -39,7 +39,6 @@
 // is implicit in that it is automatically imported as this component
 // initializes even though it does not exist as a regular python module.
 
-#include "nsIGenericFactory.h"
 #include "nsPyRuntime.h"
 
 #include "nsPyContext.h"

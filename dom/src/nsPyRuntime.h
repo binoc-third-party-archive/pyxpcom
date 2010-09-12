@@ -35,7 +35,6 @@
  * ***** END LICENSE BLOCK ***** */
 
 #include "nsIScriptRuntime.h"
-#include "nsIGenericFactory.h"
 
 
 #define NS_SCRIPT_LANGUAGE_PYTHON_CID \
