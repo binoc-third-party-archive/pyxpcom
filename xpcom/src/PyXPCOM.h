@@ -54,6 +54,7 @@
 #include "nsIInterfaceInfoManager.h"
 #include "nsIClassInfo.h"
 #include "nsIComponentManager.h"
+#include "nsComponentManagerUtils.h" // do_CreateInstance
 #include "nsIServiceManager.h"
 #include "nsIInputStream.h"
 #include "nsIVariant.h"
