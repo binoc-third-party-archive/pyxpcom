@@ -572,8 +572,6 @@ init_xpcom() {
 	REGISTER_IID(nsIInputStream);
 	REGISTER_IID(nsIClassInfo);
 	REGISTER_IID(nsIVariant);
-	// for backward compatibility:
-	REGISTER_IID(nsIComponentManagerObsolete);
 
 	// No good reason not to expose this impl detail, and tests can use it
 	REGISTER_IID(nsIInternalPython);

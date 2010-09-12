@@ -54,7 +54,6 @@
 #include "nsIInterfaceInfoManager.h"
 #include "nsIClassInfo.h"
 #include "nsIComponentManager.h"
-#include "nsIComponentManagerObsolete.h"
 #include "nsIServiceManager.h"
 #include "nsIInputStream.h"
 #include "nsIVariant.h"
@@ -749,6 +748,4 @@ PyXPCOM_INTERFACE_DECLARE(Py_nsIInterfaceInfo, nsIInterfaceInfo, PyMethods_IInte
 PyXPCOM_INTERFACE_DECLARE(Py_nsIInputStream, nsIInputStream, PyMethods_IInputStream)
 PyXPCOM_ATTR_INTERFACE_DECLARE(Py_nsIClassInfo, nsIClassInfo, PyMethods_IClassInfo)
 PyXPCOM_ATTR_INTERFACE_DECLARE(Py_nsIVariant, nsIVariant, PyMethods_IVariant)
-// deprecated, but retained for backward compatibility:
-PyXPCOM_INTERFACE_DECLARE(Py_nsIComponentManagerObsolete, nsIComponentManagerObsolete, PyMethods_IComponentManagerObsolete)
 #endif // __PYXPCOM_H__
