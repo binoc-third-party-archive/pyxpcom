@@ -46,9 +46,23 @@
 //
 // (c) 2000, ActiveState corp.
 
+/* Allow logging in the release build */
+#ifdef MOZ_LOGGING
+#define FORCE_PR_LOG
+#endif
+
+#include "prlog.h"
+#include "prinit.h"
+#include "prerror.h"
+
 #include "PyXPCOM_std.h"
 #include <nsIModule.h>
 #include <nsIInputStream.h>
+
+static PRLogModuleInfo *nsPyxpcomLog = PR_NewLogModule("nsPyxpcomLog");
+
+#define LOG(level, args) PR_LOG(nsPyxpcomLog, level, args)
+
 
 static PRInt32 cGateways = 0;
 
@@ -190,6 +204,15 @@ PyG_Base::AutoWrapPythonInstance(PyObject *ob, const nsIID &iid, nsISupports **p
 	NS_PRECONDITION(ppret!=NULL, "null pointer when wrapping a Python instance!");
 	NS_PRECONDITION(ob && PyInstance_Check(ob), "AutoWrapPythonInstance is expecting an non-NULL instance!");
 	PRBool ok = PR_FALSE;
+	if (PR_LOG_TEST(nsPyxpcomLog, PR_LOG_DEBUG)) {
+		PyObject *r = PyObject_Repr(ob);
+		if (r!=NULL) {
+			char idstr[NSID_LENGTH];
+			iid.ToProvidedString(idstr);
+			LOG(PR_LOG_DEBUG, ("PyG_Base::AutoWrapPythonInstance: ob: '%s' to iid: %s", PyString_AsString(r), idstr));
+			Py_DECREF(r);
+		}
+	}
     // XXX - todo - this static object leaks! (but Python on Windows leaks 2000+ objects as it is ;-)
 	static PyObject *func = NULL; // fetch this once and remember!
 	PyObject *obIID = NULL;
@@ -321,13 +344,12 @@ done:
 NS_IMETHODIMP
 PyG_Base::QueryInterface(REFNSIID iid, void** ppv)
 {
-#ifdef PYXPCOM_DEBUG_FULL
-	{
-		char *sziid = iid.ToString();
-		LogF("PyGatewayBase::QueryInterface: %s", sziid);
-		Allocator::Free(sziid);
+	if (PR_LOG_TEST(nsPyxpcomLog, PR_LOG_DEBUG)) {
+		char idstr[NSID_LENGTH];
+		iid.ToProvidedString(idstr);
+		LOG(PR_LOG_DEBUG, ("PyGatewayBase::QueryInterface: %s", idstr));
 	}
-#endif
+
 	NS_PRECONDITION(ppv, "NULL pointer");
 	if (ppv==nsnull)
 		return NS_ERROR_NULL_POINTER;
