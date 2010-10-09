@@ -1875,6 +1875,7 @@ PyXPCOM_GatewayVariantHelper::PyXPCOM_GatewayVariantHelper( PyG_Base *gw, int me
 	m_method_index = method_index;
 	m_python_type_desc_array = NULL;
 	m_num_type_descs = 0;
+	m_interface_info=nsnull;
 }
 
 PyXPCOM_GatewayVariantHelper::~PyXPCOM_GatewayVariantHelper()
