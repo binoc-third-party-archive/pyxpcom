@@ -70,15 +70,6 @@ def register_self(klass, compMgr, location, registryLocation, componentType):
 # a component of type self._reg_component_type_.  Responsible for returning
 # an nsIModule for the file.
 class ModuleLoader:
-    _com_interfaces_ = components.interfaces.nsIModuleLoader
-    _reg_clsid_ = "{945BFDA9-0226-485e-8AE3-9A2F68F6116A}" # Never copy these!
-    _reg_contractid_ = "@mozilla.org/module-loader/python;1"
-    _reg_desc_ = "Python module loader"
-    # Optional function which performs additional special registration
-    # Appears that no special unregistration is needed for ModuleLoaders, hence no unregister function.
-    _reg_registrar_ = (register_self,None)
-    # Custom attributes for ModuleLoader registration.
-    _reg_component_type_ = "application/x-python"
 
     def __init__(self):
         self.com_modules = {} # Keyed by module's FQN as obtained from nsIFile.path
@@ -88,8 +79,11 @@ class ModuleLoader:
     def _on_shutdown(self):
         self.com_modules.clear()
 
-    def loadModule(self, aFile):
-        return self._getCOMModuleForLocation(aFile)
+    def loadModule(self, aLocalFile):
+        return self._getCOMModuleForLocation(aLocalFile)
+
+    def loadModuleFromJAR(self, aLocalFile, path):
+        raise xpcom.ServerException(nsError.NS_ERROR_NOT_IMPLEMENTED)
 
     def _getCOMModuleForLocation(self, componentFile):
         fqn = componentFile.path

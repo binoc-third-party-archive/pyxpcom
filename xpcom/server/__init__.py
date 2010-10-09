@@ -73,12 +73,11 @@ def UnwrapObject(ob):
     return ret
 
 # Create the (Python implemented) module for the Python loader.  This
-# Python loader will then (indirectly) create other modules for any found
+# Python loader will then (indirectly) create other modules for any
 # .py file components
-def NS_GetModule( serviceManager, nsIFile ):
-    import loader, module
-    iid = _xpcom.IID_nsIModule
-    return WrapObject(module.Module([loader.ModuleLoader]), iid, bWrapClient = 0)
+def PythonModuleLoader():
+    import loader
+    return loader.ModuleLoader()
 
 def _shutdown():
     from policy import _shutdown
