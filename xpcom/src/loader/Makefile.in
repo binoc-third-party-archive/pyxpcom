@@ -63,6 +63,9 @@ CPPSRCS		=		   \
 
 include $(topsrcdir)/config/config.mk
 
+# Enable this if you want useful debugging symbols.
+CXXFLAGS += -g
+
 EXTRA_DSO_LDOPTS += $(XPCOM_GLUE_LDOPTS) \
                     $(MOZ_COMPONENT_LIBS) \
                     $(NULL)
