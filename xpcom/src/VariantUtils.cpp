@@ -2184,38 +2184,6 @@ nsresult PyXPCOM_GatewayVariantHelper::GetArrayType(PRUint8 index, PRUint8 *ret,
 	return NS_OK;
 }
 
-PRBool PyXPCOM_GatewayVariantHelper::GetIIDForINTERFACE_ID(int index, const nsIID **ppret)
-{
-	// Not sure if the IID pointed at by by this is allows to be
-	// in or out, so we will allow it.
-	nsXPTParamInfo *pi = (nsXPTParamInfo *)m_info->params+index;
-	nsXPTType typ = pi->GetType();
-	NS_ASSERTION(XPT_TDP_TAG(typ) == nsXPTType::T_IID, "INTERFACE_IS IID param isn't an IID!");
-	NS_ABORT_IF_FALSE(typ.IsPointer(), "Expecting to re-fill a pointer value.");
-	if (XPT_TDP_TAG(typ) != nsXPTType::T_IID)
-		*ppret = &NS_GET_IID(nsISupports);
-	else {
-		nsXPTCMiniVariant &ns_v = m_params[index];
-		if (pi->IsOut()) {
-			nsIID **pp = (nsIID **)ns_v.val.p;
-			if (pp && *pp)
-				*ppret = *pp;
-			else
-				*ppret = &NS_GET_IID(nsISupports);
-		} else if (pi->IsIn()) {
-			nsIID *p = (nsIID *)ns_v.val.p;
-			if (p)
-				*ppret = p;
-			else
-				*ppret = &NS_GET_IID(nsISupports);
-		} else {
-			NS_ERROR("Param is not in or out!");
-			*ppret = &NS_GET_IID(nsISupports);
-		}
-	}
-	return PR_TRUE;
-}
-
 nsIInterfaceInfo *PyXPCOM_GatewayVariantHelper::GetInterfaceInfo()
 {
 	if (!m_interface_info) {
@@ -2457,15 +2425,13 @@ nsresult PyXPCOM_GatewayVariantHelper::BackFillVariant( PyObject *val, int index
 		break;
 		}
 	  case nsXPTType::T_INTERFACE_IS: {
-		const nsIID *piid;
-		if (!GetIIDForINTERFACE_ID(pi->type.argnum, &piid))
-			BREAK_FALSE;
+		const nsIID piid = NS_GET_IID(nsISupports);
 
 		nsISupports *pnew = nsnull;
 		// Get it the "standard" way.
 		// We do allow NULL here, even tho doing so will no-doubt crash some objects.
 		// (but there will certainly be objects out there that will allow NULL :-(
-		if (!Py_nsISupports::InterfaceFromPyObject(val, *piid, &pnew, PR_TRUE))
+		if (!Py_nsISupports::InterfaceFromPyObject(val, piid, &pnew, PR_TRUE))
 			BREAK_FALSE;
 		nsISupports **pp = (nsISupports **)ns_v.val.p;
 		if (*pp && pi->IsIn()) {
