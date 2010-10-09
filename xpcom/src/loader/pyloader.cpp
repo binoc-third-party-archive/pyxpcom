@@ -20,6 +20,7 @@
  *
  * Contributor(s):
  *   Mark Hammond <mhammond@skippinet.com.au> (original author)
+ *   Todd Whiteman <twhitema@gmail.com>
  *
  * Alternatively, the contents of this file may be used under the terms of
  * either the GNU General Public License Version 2 or later (the "GPL"), or
@@ -37,72 +38,238 @@
 
 // pyloader
 //
-// Not part of the main Python _xpcom package, but a separate, thin DLL.
+// A Mozilla component loader that loads the Python xpcom components.
 //
-// The main loader and registrar for Python.  A thin DLL that is designed to live in
-// the xpcom "components" directory.  Simply locates and loads the standard
-// pyxpcom core library and transfers control to that.
+// This is really a thin C++ wrapper around a Python implemented component
+// loader. The Mozilla 2.0 xpcom component loader requires this to be a binary
+// file as some of the component interfacing is not exposed through XPCOM.
 
-#include <PyXPCOM.h>
-#include "nsITimelineService.h"
-#include "nsILocalFile.h"
+/* Allow logging in the release build */
+#ifdef MOZ_LOGGING
+#define FORCE_PR_LOG
+#endif
 
-typedef nsresult (*pfnPyXPCOM_NSGetModule)(nsIComponentManager *servMgr,
-                                          nsIFile* location,
-                                          nsIModule** result);
+#include "prlog.h"
+#include "prinit.h"
+#include "prerror.h"
+
+#include "pyloader.h"
+#include "nsXPCOM.h"
 
 
-////////////////////////////////////////////////////////////
-// This is the main entry point that delegates into Python
-nsresult PyXPCOM_NSGetModule(nsIComponentManager *servMgr,
-                             nsIFile* location,
-                             nsIModule** result)
+static PRLogModuleInfo *nsPythonModuleLoaderLog =
+    PR_NewLogModule("nsPythonModuleLoader");
+
+#define LOG(level, args) PR_LOG(nsPythonModuleLoaderLog, level, args)
+
+
+// This class instance will be loaded and used for component management, it will
+// be loaded by the static XPCOM component loader at the end of this file.
+//
+// It's job is to load and return nsIModule (Python-XPCOM) objects that will
+// then be used to instantiate Python XPCOM components.
+nsPythonModuleLoader::nsPythonModuleLoader(): mPyLoader(NULL) {
+    Init();
+}
+nsPythonModuleLoader::~nsPythonModuleLoader() {}
+
+NS_IMPL_ISUPPORTS1(nsPythonModuleLoader,
+                   mozilla::ModuleLoader)
+
+nsresult
+nsPythonModuleLoader::Init()
 {
-	NS_PRECONDITION(result!=NULL, "null result pointer in PyXPCOM_NSGetModule!");
-	NS_PRECONDITION(location!=NULL, "null nsIFile pointer in PyXPCOM_NSGetModule!");
-	NS_PRECONDITION(servMgr!=NULL, "null servMgr pointer in PyXPCOM_NSGetModule!");
-	CEnterLeavePython _celp;
-	PyObject *func = NULL;
-	PyObject *obServMgr = NULL;
-	PyObject *obLocation = NULL;
-	PyObject *wrap_ret = NULL;
-	PyObject *args = NULL;
-	PyObject *mod = PyImport_ImportModule("xpcom.server");
-	if (!mod) goto done;
-	func = PyObject_GetAttrString(mod, "NS_GetModule");
-	if (func==NULL) goto done;
-	obServMgr = Py_nsISupports::PyObjectFromInterface(servMgr, NS_GET_IID(nsIComponentManager));
-	if (obServMgr==NULL) goto done;
-	obLocation = Py_nsISupports::PyObjectFromInterface(location, NS_GET_IID(nsIFile));
-	if (obLocation==NULL) goto done;
-	args = Py_BuildValue("OO", obServMgr, obLocation);
-	if (args==NULL) goto done;
-	wrap_ret = PyEval_CallObject(func, args);
-	if (wrap_ret==NULL) goto done;
-	Py_nsISupports::InterfaceFromPyObject(wrap_ret, NS_GET_IID(nsIModule), (nsISupports **)result, PR_FALSE, PR_FALSE);
+    NS_ASSERTION(NS_IsMainThread(), "nsPythonModuleLoader::Init not on main thread?");
+
+    LOG(PR_LOG_DEBUG, ("nsPythonModuleLoader::Init()"));
+
+    /* Ensure Python environment is initialized. */
+    PyXPCOM_EnsurePythonEnvironment();
+
+    CEnterLeavePython _celp;
+    PyObject *func = NULL;
+    /* Setup the Python modules and variables that will be needed later. */
+    mPyLoadModuleName = PyString_FromString("loadModule");
+    PyObject *mod = PyImport_ImportModule("xpcom.server");
+    if (!mPyLoadModuleName) goto done;
+    if (!mod) goto done;
+    func = PyObject_GetAttrString(mod, "PythonModuleLoader");
+    if (func==NULL) goto done;
+    mPyLoader = PyEval_CallObject(func, NULL);
 done:
-	nsresult nr = NS_OK;
-	if (PyErr_Occurred()) {
-		PyXPCOM_LogError("Obtaining the module object from Python failed.\n");
-		nr = PyXPCOM_SetCOMErrorFromPyException();
-	}
-	Py_XDECREF(func);
-	Py_XDECREF(obServMgr);
-	Py_XDECREF(obLocation);
-	Py_XDECREF(wrap_ret);
-	Py_XDECREF(mod);
-	Py_XDECREF(args);
-	return nr;
+    nsresult nr = (mPyLoader != NULL);
+    if (PyErr_Occurred()) {
+            PyXPCOM_LogError("Obtaining the module object from Python failed.\n");
+            nr = PyXPCOM_SetCOMErrorFromPyException();
+    }
+    Py_XDECREF(func);
+    Py_XDECREF(mod);
+
+    return nr;
 }
 
-extern "C" NS_EXPORT nsresult NSGetModule(nsIComponentManager *servMgr,
-                                          nsIFile* location,
-                                          nsIModule** result)
+const mozilla::Module*
+nsPythonModuleLoader::LoadModule(nsILocalFile* aFile)
 {
-	PyXPCOM_EnsurePythonEnvironment();
-	NS_TIMELINE_START_TIMER("PyXPCOM: PyXPCOM NSGetModule entry point");
-	nsresult rc = PyXPCOM_NSGetModule(servMgr, location, result);
-	NS_TIMELINE_STOP_TIMER("PyXPCOM: PyXPCOM NSGetModule entry point");
-	NS_TIMELINE_MARK_TIMER("PyXPCOM: PyXPCOM NSGetModule entry point");
-	return rc;
+    NS_ASSERTION(NS_IsMainThread(), "nsPythonModuleLoader::LoadModule not on main thread?");
+
+    if (PR_LOG_TEST(nsPythonModuleLoaderLog, PR_LOG_DEBUG)) {
+        nsCOMPtr<nsIFile> file(do_QueryInterface(aFile));
+        nsCAutoString filePath;
+        file->GetNativePath(filePath);
+        LOG(PR_LOG_DEBUG,
+            ("nsPythonModuleLoader::LoadModule(\"%s\")", filePath.get()));
+    }
+
+    PyObject *obLocation = NULL;
+    PyObject *obPythonModule = NULL;
+    PythonModule* entry = NULL;
+    CEnterLeavePython _celp;
+    obLocation = Py_nsISupports::PyObjectFromInterface(aFile, NS_GET_IID(nsILocalFile));
+    if (obLocation==NULL) goto done;
+    obPythonModule = PyObject_CallMethodObjArgs(mPyLoader, mPyLoadModuleName, obLocation, NULL);
+    if (!obPythonModule) goto done;
+
+    /* entry is a Python XPCOM object, implementing the nsIModule interface. */
+    entry = new PythonModule(obPythonModule, obLocation);
+
+done:
+    if (PyErr_Occurred()) {
+        nsCOMPtr<nsIFile> file(do_QueryInterface(aFile));
+        nsCAutoString filePath;
+        file->GetNativePath(filePath);
+        PyXPCOM_LogError("Failed to load the Python module: '%s'\n", filePath.get());
+    }
+    Py_XDECREF(obLocation);
+    Py_XDECREF(obPythonModule);
+    if (!entry)
+        return NULL;
+    return entry;
 }
+
+const mozilla::Module*
+nsPythonModuleLoader::LoadModuleFromJAR(nsILocalFile* aJARFile, const nsACString &aPath)
+{
+    NS_ERROR("Python components cannot be loaded from JARs");
+    return NULL;
+}
+
+void
+nsPythonModuleLoader::UnloadLibraries()
+{
+    NS_ASSERTION(NS_IsMainThread(), "nsPythonModuleLoader::UnloadLibraries not on main thread?");
+}
+
+
+/**
+ * The module factory is the one that returns a nsIFactory object that is
+ * capable of producing Python XPCOM instances/services. This will only be
+ * called if the nsPythonModuleLoader::LoadModule method correctly loaded the
+ * Python component module (i.e. if Python successfully imported the module).
+ */
+
+/* static */ already_AddRefed<nsIFactory>
+nsPythonModuleLoader::PythonModule::GetFactory(const mozilla::Module& module,
+                                               const mozilla::Module::CIDEntry& entry)
+{
+    if (PR_LOG_TEST(nsPythonModuleLoaderLog, PR_LOG_DEBUG)) {
+        char idstr[NSID_LENGTH];
+        entry.cid->ToProvidedString(idstr);
+        LOG(PR_LOG_DEBUG, ("nsPythonModuleLoader::PythonModule::GetFactory for cid: %s", idstr));
+    }
+
+    nsresult nr;
+    PyObject *obFactory = NULL;
+    PyObject *obFnName = NULL;
+    PyObject *obClsId = Py_nsIID::PyObjectFromIID(*(entry.cid));
+    nsCOMPtr<nsIFactory> f;
+    const PythonModule& pyMod = static_cast<const PythonModule&>(module);
+
+    CEnterLeavePython _celp;
+    obFnName = PyString_FromString("getClassObject");
+    obFactory = PyObject_CallMethodObjArgs(pyMod.mPyObjModule, obFnName, Py_None, obClsId, Py_None, NULL);
+    if (obFactory!=NULL) {
+        Py_nsISupports::InterfaceFromPyObject(obFactory, NS_GET_IID(nsIFactory), getter_AddRefs(f), PR_FALSE);
+    }
+
+    if (PyErr_Occurred()) {
+        PyXPCOM_LogError("Failed to return the Python module factory");
+    }
+    Py_XDECREF(obFactory);
+    Py_XDECREF(obFnName);
+    Py_XDECREF(obClsId);
+
+    if (f) {
+        return f.forget();
+    }
+    return NULL;
+}
+
+
+
+/* Mozilla 2.0 module code - required for XPCOM component registration. */
+
+// CID d96ff456-06dd-4b9c-aabf-af346a576776
+#define PYXPCOM_LOADER_CID { 0xd96ff456, 0x06dd, 0x4b9c, \
+                        { 0xaa, 0xbf, 0xaf, 0x34, 0x6a, 0x57, 0x67, 0x76 } }
+
+#define PYXPCOM_LOADER_CONTRACTID "@mozilla.org/module-loader/python;1"
+
+static nsresult PyxpcomModuleLoader(nsISupports* aOuter, REFNSIID aIID, void** aResult)
+{
+    nsresult rv;
+
+    *aResult = nsnull;
+    if (aOuter)
+        return NS_ERROR_NO_AGGREGATION;
+    nsPythonModuleLoader* inst;
+    inst = new nsPythonModuleLoader();
+    if (NULL == inst) {
+        rv = NS_ERROR_OUT_OF_MEMORY;
+        return rv;
+    }
+    NS_ADDREF(inst);
+    rv = inst->QueryInterface(aIID, aResult);
+    NS_RELEASE(inst);
+    return NS_OK;
+}
+
+
+NS_DEFINE_NAMED_CID(PYXPCOM_LOADER_CID);
+
+// Table of ClassIDs (CIDs) which are implemented by this module. CIDs should be
+// completely unique UUIDs. Each entry has the form:
+//   { CID, service, factoryproc, constructorproc }
+// where factoryproc is usually NULL.
+static const mozilla::Module::CIDEntry pyxpcomLoaderClassIds[2] = {
+    { &kPYXPCOM_LOADER_CID, false, NULL, PyxpcomModuleLoader },
+    { NULL }
+};
+
+// Table which maps contract IDs to CIDs. A contract is a string which
+// identifies a particular set of functionality. In some cases an extension
+// component may override the contract ID of a builtin gecko component to modify
+// or extend functionality.
+static const mozilla::Module::ContractIDEntry pyxpcomLoaderContracts[2] = {
+    { PYXPCOM_LOADER_CONTRACTID, &kPYXPCOM_LOADER_CID },
+    { NULL }
+};
+
+// Category entries are category/key/value triples which are used to register
+// contract ID as content handlers or to observe certain notifications.
+//
+// This is how Python registers itself as a XPCOM module loader.
+static const mozilla::Module::CategoryEntry pyxpcomLoaderCategories[2] = {
+    { "module-loader", "py", PYXPCOM_LOADER_CONTRACTID },
+    { NULL }
+};
+
+static const mozilla::Module PyxpcomNSModule = {
+    mozilla::Module::kVersion,
+    pyxpcomLoaderClassIds,
+    pyxpcomLoaderContracts,
+    pyxpcomLoaderCategories
+};
+
+// Export the NSModule name, so Mozilla can properly find and load us.
+NS_EXPORT const mozilla::Module * NSModule = &PyxpcomNSModule;
