@@ -1496,7 +1496,6 @@ PRBool PyXPCOM_InterfaceVariantHelper::FillInVariant(const PythonTypeDescriptor 
 				BREAK_FALSE;
 			}
 			int array_type = td.array_type;
-			int type_tag = array_type&XPT_TDP_TAGMASK;
 
 			PRUint32 element_size = GetArrayElementSize(array_type);
 			int seq_length = PySequence_Length(val);
