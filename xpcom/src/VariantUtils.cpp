@@ -2200,21 +2200,21 @@ nsIInterfaceInfo *PyXPCOM_GatewayVariantHelper::GetInterfaceInfo()
 
 nsresult PyXPCOM_GatewayVariantHelper::BackFillVariant( PyObject *val, int index)
 {
-	nsXPTParamInfo *pi = (nsXPTParamInfo *)m_info->params+index;
-	NS_ABORT_IF_FALSE(pi->IsOut() || pi->IsDipper(), "The value must be marked as [out] (or a dipper) to be back-filled!");
-	NS_ABORT_IF_FALSE(!pi->IsShared(), "Don't know how to back-fill a shared out param");
+	const nsXPTParamInfo& pi = m_info->params[index];
+	NS_ABORT_IF_FALSE(pi.IsOut() || pi.IsDipper(), "The value must be marked as [out] (or a dipper) to be back-filled!");
+	NS_ABORT_IF_FALSE(!pi.IsShared(), "Don't know how to back-fill a shared out param");
 	nsXPTCMiniVariant &ns_v = m_params[index];
 
-	nsXPTType typ = pi->GetType();
+	nsXPTType typ = pi.GetType();
 	PyObject* val_use = NULL;
 
 	// Ignore out params backed by a NULL pointer. The caller isn't
 	// interested in them, see:
 	// https://bugzilla.mozilla.org/show_bug.cgi?id=495441
-	if (pi->IsOut() && !ns_v.val.p) return NS_OK;
+	if (pi.IsOut() && !ns_v.val.p) return NS_OK;
 
-	NS_ABORT_IF_FALSE(pi->IsDipper() || ns_v.val.p, "No space for result!");
-	if (!pi->IsDipper() && !ns_v.val.p) return NS_ERROR_INVALID_POINTER;
+	NS_ABORT_IF_FALSE(pi.IsDipper() || ns_v.val.p, "No space for result!");
+	if (!pi.IsDipper() && !ns_v.val.p) return NS_ERROR_INVALID_POINTER;
 
 	PRBool rc = PR_TRUE;
 	switch (XPT_TDP_TAG(typ)) {
@@ -2293,7 +2293,7 @@ nsresult PyXPCOM_GatewayVariantHelper::BackFillVariant( PyObject *val, int index
 			BREAK_FALSE;
 		nsIID **pp = (nsIID **)ns_v.val.p;
 		// If there is an existing [in] IID, free it.
-		if (*pp && pi->IsIn())
+		if (*pp && pi.IsIn())
 			nsMemory::Free(*pp);
 		*pp = (nsIID *)nsMemory::Alloc(sizeof(nsIID));
 		if (*pp==NULL) {
@@ -2354,7 +2354,7 @@ nsresult PyXPCOM_GatewayVariantHelper::BackFillVariant( PyObject *val, int index
 	  case nsXPTType::T_CHAR_STR: {
 		// If it is an existing string, free it.
 		char **pp = (char **)ns_v.val.p;
-		if (*pp && pi->IsIn())
+		if (*pp && pi.IsIn())
 			nsMemory::Free(*pp);
 		*pp = nsnull;
 
@@ -2383,7 +2383,7 @@ nsresult PyXPCOM_GatewayVariantHelper::BackFillVariant( PyObject *val, int index
 	  case nsXPTType::T_WCHAR_STR: {
 		// If it is an existing string, free it.
 		PRUnichar **pp = (PRUnichar **)ns_v.val.p;
-		if (*pp && pi->IsIn())
+		if (*pp && pi.IsIn())
 			nsMemory::Free(*pp);
 		*pp = nsnull;
 		if (val == Py_None)
@@ -2404,7 +2404,7 @@ nsresult PyXPCOM_GatewayVariantHelper::BackFillVariant( PyObject *val, int index
 		nsIID *iid;
 		nsIInterfaceInfo *ii = GetInterfaceInfo();
 		if (ii)
-			ii->GetIIDForParam(m_method_index, pi, &iid);
+			ii->GetIIDForParam(m_method_index, &pi, &iid);
 
 		// Get it the "standard" way.
 		// We do allow NULL here, even tho doing so will no-doubt crash some objects.
@@ -2415,7 +2415,7 @@ nsresult PyXPCOM_GatewayVariantHelper::BackFillVariant( PyObject *val, int index
 		if (!ok)
 			BREAK_FALSE;
 		nsISupports **pp = (nsISupports **)ns_v.val.p;
-		if (*pp && pi->IsIn()) {
+		if (*pp && pi.IsIn()) {
 			Py_BEGIN_ALLOW_THREADS; // MUST release thread-lock, incase a Python COM object that re-acquires.
 			(*pp)->Release();
 			Py_END_ALLOW_THREADS;
@@ -2434,7 +2434,7 @@ nsresult PyXPCOM_GatewayVariantHelper::BackFillVariant( PyObject *val, int index
 		if (!Py_nsISupports::InterfaceFromPyObject(val, piid, &pnew, PR_TRUE))
 			BREAK_FALSE;
 		nsISupports **pp = (nsISupports **)ns_v.val.p;
-		if (*pp && pi->IsIn()) {
+		if (*pp && pi.IsIn()) {
 			Py_BEGIN_ALLOW_THREADS; // MUST release thread-lock, incase a Python COM object that re-acquires.
 			(*pp)->Release();
 			Py_END_ALLOW_THREADS;
@@ -2472,14 +2472,14 @@ nsresult PyXPCOM_GatewayVariantHelper::BackFillVariant( PyObject *val, int index
 			// It we have an "inout" param, but an "in" count, then
 			// it is probably a buffer the caller expects us to 
 			// fill in-place!
-			bBackFill = pi->IsIn();
+			bBackFill = pi.IsIn();
 		}
 		if (bBackFill) {
 			memcpy(*(char **)ns_v.val.p, sz, nch);
 		} else {
 			// If we have an existing string, free it!
 			char **pp = (char **)ns_v.val.p;
-			if (*pp && pi->IsIn())
+			if (*pp && pi.IsIn())
 				nsMemory::Free(*pp);
 			*pp = nsnull;
 			if (sz==nsnull) // None specified.
@@ -2528,14 +2528,14 @@ nsresult PyXPCOM_GatewayVariantHelper::BackFillVariant( PyObject *val, int index
 			// It we have an "inout" param, but an "in" count, then
 			// it is probably a buffer the caller expects us to 
 			// fill in-place!
-			bBackFill = pi->IsIn();
+			bBackFill = pi.IsIn();
 		}
 		if (bBackFill) {
 			memcpy(*(PRUnichar **)ns_v.val.p, sz, nbytes);
 		} else {
 			// If it is an existing string, free it.
 			PRUnichar **pp = (PRUnichar **)ns_v.val.p;
-			if (*pp && pi->IsIn())
+			if (*pp && pi.IsIn())
 				nsMemory::Free(*pp);
 			*pp = sz;
 			sz = nsnull;
@@ -2580,7 +2580,7 @@ nsresult PyXPCOM_GatewayVariantHelper::BackFillVariant( PyObject *val, int index
 			// It we have an "inout" param, but an "in" count, then
 			// it is probably a buffer the caller expects us to 
 			// fill in-place!
-			bBackFill = pi->IsIn();
+			bBackFill = pi.IsIn();
 		}
 		if (bBackFill)
 			rc = FillSingleArray(*(void **)ns_v.val.p, val,
@@ -2589,7 +2589,7 @@ nsresult PyXPCOM_GatewayVariantHelper::BackFillVariant( PyObject *val, int index
 		else {
 			// If it is an existing array, free it.
 			void **pp = (void **)ns_v.val.p;
-			if (*pp && pi->IsIn()) {
+			if (*pp && pi.IsIn()) {
 				FreeSingleArray(*pp, existing_size, array_type);
 				nsMemory::Free(*pp);
 			}
