@@ -162,6 +162,7 @@ Py_nsISupports::InterfaceFromPyISupports(PyObject *ob,
                                          const nsIID &iid, 
                                          nsISupports **ppv)
 {
+	*ppv = NULL;
 	nsISupports *pis;
 	PRBool rc = PR_FALSE;
 	if ( !Check(ob) )
@@ -213,6 +214,14 @@ Py_nsISupports::InterfaceFromPyObject(PyObject *ob,
 					   PRBool bNoneOK,
 					   PRBool bTryAutoWrap /* = PR_TRUE */)
 {
+	//PyObject *r = PyObject_Repr(ob);
+	//if (r!=NULL) {
+	//	char idstr[NSID_LENGTH];
+	//	iid.ToProvidedString(idstr);
+	//	printf("Py_nsISupports::InterfaceFromPyObject: ob: '%s' to iid: %s\n", PyString_AsString(r), idstr);
+	//	Py_DECREF(r);
+	//}
+
 	if ( ob == NULL )
 	{
 		// don't overwrite an error message
