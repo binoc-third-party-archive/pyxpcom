@@ -43,6 +43,7 @@ VPATH		= @srcdir@
 
 include $(DEPTH)/config/autoconf.mk
 
-DIRS = config xpcom dom
+#DIRS = config xpcom dom 	# Dom is disabled for now - it's broken.
+DIRS = config xpcom
 
 include $(topsrcdir)/config/rules.mk
