@@ -2400,17 +2400,32 @@ nsresult PyXPCOM_GatewayVariantHelper::BackFillVariant( PyObject *val, int index
 	  case nsXPTType::T_INTERFACE:  {
 		nsISupports *pnew = nsnull;
 		// Find out what IID we are declared to use.
-		nsIID *iid;
+		nsIID iid;
 		nsIInterfaceInfo *ii = GetInterfaceInfo();
-		if (ii)
-			ii->GetIIDForParam(m_method_index, &pi, &iid);
+		if (ii) {
+			nsresult nr = ii->GetIIDForParamNoAlloc(m_method_index, &pi, &iid);
+			if (!NS_SUCCEEDED(nr)) {
+				char *iface_name;
+				ii->GetName(&iface_name);
+				const nsXPTMethodInfo *method_info;
+				ii->GetMethodInfo(m_method_index, &method_info);
+				if (method_info) {
+					const char *method_name;
+					method_name = method_info->GetName();
+					PyErr_Format(PyExc_TypeError, "Unable to get IID for iface: %s, method: %s", iface_name, method_name);
+				} else {
+					PyErr_Format(PyExc_TypeError, "Unable to get IID for a method in iface: %s", iface_name);
+				}
+				BREAK_FALSE;
+			}
+		} else {
+			iid = NS_GET_IID(nsISupports);
+		}
 
 		// Get it the "standard" way.
 		// We do allow NULL here, even tho doing so will no-doubt crash some objects.
 		// (but there will certainly be objects out there that will allow NULL :-(
-		nsIID iid_use = iid ? *iid : NS_GET_IID(nsISupports);
-		PRBool ok = Py_nsISupports::InterfaceFromPyObject(val, iid_use, &pnew, PR_TRUE);
-		nsMemory::Free(iid);
+		PRBool ok = Py_nsISupports::InterfaceFromPyObject(val, iid, &pnew, PR_TRUE);
 		if (!ok)
 			BREAK_FALSE;
 		nsISupports **pp = (nsISupports **)ns_v.val.p;
