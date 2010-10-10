@@ -306,12 +306,11 @@ static PyObject *PyGetIIDForParam(PyObject *self, PyObject *args)
 	if (!__GetMethodInfoHelper(pii, mi, pi, &pmi))
 		return NULL;
 	const nsXPTParamInfo& param_info = pmi->GetParam((PRUint8)pi);
-	nsIID *piid;
-	nsresult n = pii->GetIIDForParam(mi, &param_info, &piid);
-	if (NS_FAILED(n) || piid==nsnull)
+	nsIID piid;
+	nsresult n = pii->GetIIDForParamNoAlloc(mi, &param_info, &piid);
+	if (NS_FAILED(n))
 		return PyXPCOM_BuildPyException(n);
-	PyObject *rc = Py_nsIID::PyObjectFromIID(*piid);
-	nsMemory::Free((void*)piid);
+	PyObject *rc = Py_nsIID::PyObjectFromIID(piid);
 	return rc;
 }
 

@@ -2105,15 +2105,14 @@ PyObject *PyXPCOM_GatewayVariantHelper::MakeSingleParam(int index, PythonTypeDes
 			ret = PyList_New(0);
 		} else {
 			PRUint8 array_type;
-			nsIID *piid;
+			nsIID piid;
 			nsresult ns = GetArrayType(index, &array_type, &piid);
 			if (NS_FAILED(ns)) {
 				PyXPCOM_BuildPyException(ns);
 				break;
 			}
 			PRUint32 seq_size = GetSizeIs(index, PR_FALSE);
-			ret = UnpackSingleArray(NULL, t, seq_size, array_type&XPT_TDP_TAGMASK, piid);
-			nsMemory::Free(piid);
+			ret = UnpackSingleArray(NULL, t, seq_size, array_type&XPT_TDP_TAGMASK, &piid);
 		}
 		break;
 		}
@@ -2153,7 +2152,7 @@ PyObject *PyXPCOM_GatewayVariantHelper::MakeSingleParam(int index, PythonTypeDes
 }
 
 // NOTE: Caller must free iid when no longer needed.
-nsresult PyXPCOM_GatewayVariantHelper::GetArrayType(PRUint8 index, PRUint8 *ret, nsIID **iid)
+nsresult PyXPCOM_GatewayVariantHelper::GetArrayType(PRUint8 index, PRUint8 *ret, nsIID *iid)
 {
 	nsCOMPtr<nsIInterfaceInfoManager> iim(do_GetService(
 	                     NS_INTERFACEINFOMANAGER_SERVICE_CONTRACTID));
@@ -2174,10 +2173,13 @@ nsresult PyXPCOM_GatewayVariantHelper::GetArrayType(PRUint8 index, PRUint8 *ret,
 		if (XPT_TDP_TAG(datumType)==nsXPTType::T_INTERFACE ||
 		    XPT_TDP_TAG(datumType)==nsXPTType::T_INTERFACE_IS ||
 		    XPT_TDP_TAG(datumType)==nsXPTType::T_ARRAY)
-			ii->GetIIDForParam(m_method_index, &param_info, iid);
-		else
-			*iid = (nsIID*) nsMemory::Clone(&NS_GET_IID(nsISupports),
-			                                sizeof(nsIID));
+		{
+			rc = ii->GetIIDForParamNoAlloc(m_method_index, &param_info, iid);
+			if (NS_FAILED(rc))
+				return rc;
+		} else {
+			*iid = NS_GET_IID(nsISupports);
+		}
 	}
 	*ret = datumType.flags;
 	return NS_OK;
@@ -2567,12 +2569,10 @@ nsresult PyXPCOM_GatewayVariantHelper::BackFillVariant( PyObject *val, int index
 		// If it is an existing array of the correct size, keep it.
 		PRUint32 sequence_size = 0;
 		PRUint8 array_type;
-		nsIID iid, *piid;
-		nsresult ns = GetArrayType(index, &array_type, &piid);
+		nsIID iid;
+		nsresult ns = GetArrayType(index, &array_type, &iid);
 		if (NS_FAILED(ns))
 			return ns;
-		iid = *piid;
-		nsMemory::Free(piid);
 		PRUint32 element_size = GetArrayElementSize(array_type);
 		if (val != Py_None) {
 			if (!PySequence_Check(val)) {
