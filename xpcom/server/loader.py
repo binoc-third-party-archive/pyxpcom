@@ -48,8 +48,29 @@ def _has_good_attr(object, attr):
     return getattr(object, attr, None) is not None
 
 def FindCOMComponents(py_module):
-    # For now, just run over all classes looking for likely candidates.
     comps = []
+
+    # Check for the static list of Python XPCOM classes (faster).
+    pyxpcom_classes = getattr(py_module, "PYXPCOM_CLASSES", None)
+    if pyxpcom_classes is not None:
+        # Should be a list of the available XPCOM classes.
+        if isinstance(pyxpcom_classes, (tuple, list)):
+            for py_class in pyxpcom_classes:
+                if _has_good_attr(py_class, "_com_interfaces_") and \
+                   _has_good_attr(py_class, "_reg_clsid_") and \
+                   _has_good_attr(py_class, "_reg_contractid_"):
+                    comps.append(py_class)
+                else:
+                    sys.stderr.write("PYXPCOM_CLASSES item %r does not contain"
+                                     "proper pyxpcom attributes. File: %s" % (
+                                     py_class, py_module.__file__))
+            return comps
+        else:
+            sys.stderr.write("PYXPCOM_CLASSES should be a list object, "
+                             "not %s. File: %s" % (type(pyxpcom_classes),
+                                                   py_module.__file__))
+
+    # Else, run over all top-level objects looking for likely candidates.
     for name, object in py_module.__dict__.items():
         if type(object)==types.ClassType and \
            _has_good_attr(object, "_com_interfaces_") and \
@@ -96,7 +117,7 @@ class ModuleLoader:
             except:
                 import traceback
                 traceback.print_exc()
-            
+
         fqn = componentFile.path
         if fqn[-4:] in (".pyc", ".pyo"):
             fqn = fqn[:-1]
