@@ -43,9 +43,9 @@ import xpcom.shutdown
 
 import module
 
-def _has_good_attr(object, attr):
+def _has_good_attr(obj, attr):
     # Actually allows "None" to be specified to disable inherited attributes.
-    return getattr(object, attr, None) is not None
+    return getattr(obj, attr, None) is not None
 
 def FindCOMComponents(py_module):
     comps = []
@@ -66,17 +66,17 @@ def FindCOMComponents(py_module):
                                      py_class, py_module.__file__))
             return comps
         else:
-            sys.stderr.write("PYXPCOM_CLASSES should be a list object, "
+            sys.stderr.write("PYXPCOM_CLASSES should be a list, "
                              "not %s. File: %s" % (type(pyxpcom_classes),
                                                    py_module.__file__))
 
     # Else, run over all top-level objects looking for likely candidates.
-    for name, object in py_module.__dict__.items():
-        if type(object)==types.ClassType and \
-           _has_good_attr(object, "_com_interfaces_") and \
-           _has_good_attr(object, "_reg_clsid_") and \
-           _has_good_attr(object, "_reg_contractid_"):
-            comps.append(object)
+    for name, obj in py_module.__dict__.items():
+        if type(obj)==types.ClassType and \
+           _has_good_attr(obj, "_com_interfaces_") and \
+           _has_good_attr(obj, "_reg_clsid_") and \
+           _has_good_attr(obj, "_reg_contractid_"):
+            comps.append(obj)
     return comps
 
 def register_self(klass, compMgr, location, registryLocation, componentType):
