@@ -35,13 +35,13 @@
 #
 # ***** END LICENSE BLOCK *****
 
+import os, sys, types
+
 import xpcom
-from xpcom import components, nsError
+from xpcom import components, nsError, verbose
 import xpcom.shutdown
 
 import module
-
-import os, types
 
 def _has_good_attr(object, attr):
     # Actually allows "None" to be specified to disable inherited attributes.
@@ -71,7 +71,10 @@ def register_self(klass, compMgr, location, registryLocation, componentType):
 # an nsIModule for the file.
 class ModuleLoader:
 
+    _platform_names = None
+
     def __init__(self):
+        self._registred_pylib_paths = 0
         self.com_modules = {} # Keyed by module's FQN as obtained from nsIFile.path
         self.moduleFactory = module.Module
         xpcom.shutdown.register(self._on_shutdown)
@@ -86,6 +89,14 @@ class ModuleLoader:
         raise xpcom.ServerException(nsError.NS_ERROR_NOT_IMPLEMENTED)
 
     def _getCOMModuleForLocation(self, componentFile):
+        if not self._registred_pylib_paths:
+            self._registred_pylib_paths = 1
+            try:
+                self._setupPythonPaths()
+            except:
+                import traceback
+                traceback.print_exc()
+            
         fqn = componentFile.path
         if fqn[-4:] in (".pyc", ".pyo"):
             fqn = fqn[:-1]
@@ -109,3 +120,54 @@ class ModuleLoader:
         
         self.com_modules[fqn] = mod
         return mod
+
+    def _getExtenionDirectories(self):
+        directorySvc =  components.classes["@mozilla.org/file/directory_service;1"].\
+                            getService(components.interfaces.nsIProperties)
+        enum = directorySvc.get("XREExtDL", components.interfaces.nsISimpleEnumerator)
+        extensionDirs = []
+        while enum.hasMoreElements():
+            nsifile = enum.getNext().QueryInterface(components.interfaces.nsIFile)
+            extensionDirs.append(nsifile)
+        return extensionDirs
+
+    def _getPossiblePlatformNames(self):
+        if self._platform_names is None:
+            xulRuntimeSvc = components.classes["@mozilla.org/xre/app-info;1"]. \
+                                getService(components.interfaces.nsIXULRuntime)
+            os_name = xulRuntimeSvc.OS
+            abi_name = xulRuntimeSvc.XPCOMABI
+            self._platform_names = [
+                "%s_%s" % (os_name, abi_name),
+                "%s_%s" % (os_name, abi_name.split("-", 1)[0]),
+                os_name,
+            ]
+        return self._platform_names
+
+    ##
+    # Register all the extension pylib paths.
+    #
+    def _setupPythonPaths(self):
+        """Add 'pylib' directies for the application and each extension to
+        Python's sys.path."""
+
+        from os.path import join, exists, dirname
+
+        # Extension directories.
+        for extDir in self._getExtenionDirectories():
+            pylibPath = join(extDir.path, "pylib")
+            if exists(pylibPath) and pylibPath not in sys.path:
+                if verbose:
+                    print "pyXPCOMExtensionHelper:: Adding pylib to sys.path:" \
+                          " %r" % (pylibPath, )
+                sys.path.append(pylibPath)
+
+            platformPylibPath = join(extDir.path, "platform")
+            if exists(platformPylibPath):
+                for platform_name in self._getPossiblePlatformNames():
+                    pylibPath = join(platformPylibPath, platform_name, "pylib")
+                    if exists(pylibPath) and pylibPath not in sys.path:
+                        if verbose:
+                            print "pyXPCOMExtensionHelper:: Adding pylib to sys.path:" \
+                                  " %r" % (pylibPath, )
+                        sys.path.append(pylibPath)
