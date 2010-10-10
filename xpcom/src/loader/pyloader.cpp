@@ -193,6 +193,7 @@ nsPythonModuleLoader::PythonModule::GetFactory(const mozilla::Module& module,
     }
 
     if (PyErr_Occurred()) {
+        PyXPCOM_SetCOMErrorFromPyException();
         PyXPCOM_LogError("Failed to return the Python module factory");
     }
     Py_XDECREF(obFactory);
