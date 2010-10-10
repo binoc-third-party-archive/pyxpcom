@@ -202,7 +202,8 @@ void *PyG_Base::ThisAsIID( const nsIID &iid )
 PyG_Base::AutoWrapPythonInstance(PyObject *ob, const nsIID &iid, nsISupports **ppret)
 {
 	NS_PRECONDITION(ppret!=NULL, "null pointer when wrapping a Python instance!");
-	NS_PRECONDITION(ob && PyInstance_Check(ob), "AutoWrapPythonInstance is expecting an non-NULL instance!");
+	NS_PRECONDITION(ob && PyObject_HasAttrString(ob, "__class__"),
+			"AutoWrapPythonInstance is expecting a non-NULL instance!");
 	PRBool ok = PR_FALSE;
 	if (PR_LOG_TEST(nsPyxpcomLog, PR_LOG_DEBUG)) {
 		PyObject *r = PyObject_Repr(ob);
