@@ -65,6 +65,12 @@ CPPSRCS= \
 include $(topsrcdir)/config/config.mk
 include $(topsrcdir)/config/rules.mk
 
+#ifdef XP_WIN
+DEFINES += -DMOZ_NO_MOZALLOC
+XPCOM_GLUE_LDOPTS=$(LIBXUL_DIST)/lib/$(LIB_PREFIX)xpcomglue_s_nomozalloc.$(LIB_SUFFIX)
+XPCOM_GLUE_LDOPTS+=$(XPCOM_FROZEN_LDOPTS)
+#endif
+
 ifeq ($(OS_ARCH),Darwin)
 # Don't use the EXTRA_DSO_LDOPTS from rules.mk, it breaks the python module
   EXTRA_DSO_LDOPTS = -bundle $(XPCOM_GLUE_LDOPTS) \
