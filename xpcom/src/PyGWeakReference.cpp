@@ -70,28 +70,8 @@ PyXPCOM_GatewayWeakReference::~PyXPCOM_GatewayWeakReference()
 	m_pBase = NULL;
 }
 
-nsrefcnt
-PyXPCOM_GatewayWeakReference::AddRef(void)
-{
-	nsrefcnt cnt = (nsrefcnt) PR_AtomicIncrement((PRInt32*)&mRefCnt);
-#ifdef NS_BUILD_REFCNT_LOGGING
-	NS_LOG_ADDREF(this, cnt, refcntLogRepr, sizeof(*this));
-#endif
-	return cnt;
-}
-
-nsrefcnt
-PyXPCOM_GatewayWeakReference::Release(void)
-{
-	nsrefcnt cnt = (nsrefcnt) PR_AtomicDecrement((PRInt32*)&mRefCnt);
-#ifdef NS_BUILD_REFCNT_LOGGING
-	NS_LOG_RELEASE(this, cnt, refcntLogRepr);
-#endif
-	if ( cnt == 0 )
-		delete this;
-	return cnt;
-}
-
+NS_IMPL_THREADSAFE_ADDREF(PyXPCOM_GatewayWeakReference)
+NS_IMPL_THREADSAFE_RELEASE(PyXPCOM_GatewayWeakReference)
 NS_IMPL_THREADSAFE_QUERY_INTERFACE1(PyXPCOM_GatewayWeakReference, nsIWeakReference)
 
 NS_IMETHODIMP

@@ -183,6 +183,9 @@ PyG_Base::~PyG_Base()
 	}
 }
 
+NS_IMPL_THREADSAFE_ADDREF(PyG_Base)
+NS_IMPL_THREADSAFE_RELEASE(PyG_Base)
+
 // Get the correct interface pointer for this object given the IID.
 void *PyG_Base::ThisAsIID( const nsIID &iid )
 {
@@ -420,31 +423,6 @@ PyG_Base::QueryInterface(REFNSIID iid, void** ppv)
 	if ( !supports )
 		return NS_ERROR_NO_INTERFACE;
 	return NS_OK;
-}
-
-nsrefcnt
-PyG_Base::AddRef(void)
-{
-	nsrefcnt cnt = (nsrefcnt) PR_AtomicIncrement((PRInt32*)&mRefCnt);
-#ifdef NS_BUILD_REFCNT_LOGGING
-	// If we have no pBaseObject, then we need to ignore them
-	if (m_pBaseObject == NULL)
-		NS_LOG_ADDREF(this, cnt, refcntLogRepr, sizeof(*this));
-#endif
-	return cnt;
-}
-
-nsrefcnt
-PyG_Base::Release(void)
-{
-	nsrefcnt cnt = (nsrefcnt) PR_AtomicDecrement((PRInt32*)&mRefCnt);
-#ifdef NS_BUILD_REFCNT_LOGGING
-	if (m_pBaseObject == NULL)
-		NS_LOG_RELEASE(this, cnt, refcntLogRepr);
-#endif
-	if ( cnt == 0 )
-		delete this;
-	return cnt;
 }
 
 NS_IMETHODIMP
