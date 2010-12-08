@@ -77,16 +77,18 @@ NS_IMPL_THREADSAFE_QUERY_INTERFACE1(PyXPCOM_GatewayWeakReference, nsIWeakReferen
 NS_IMETHODIMP
 PyXPCOM_GatewayWeakReference::QueryReferent(REFNSIID iid, void * *ret)
 {
-	{ 
-	// Temp scope for lock.  We can't hold the lock during
-	// a QI, as this may itself need the lock.
-	// Make sure our object isn't dieing right now on another thread.
-	CEnterLeaveXPCOMFramework _celf;
-	if (m_pBase == NULL)
-		return NS_ERROR_NULL_POINTER;
-	m_pBase->AddRef(); // Can't die while we have a ref.
+	{
+		// Temp scope for lock. We can't hold the lock during a QI, as
+		// this may itself need the lock, so we add a keepalive
+		// reference to prevent the object dieing whilst we query it.
+		CEnterLeaveXPCOMFramework _celf;
+		if (m_pBase == NULL)
+			return NS_ERROR_NULL_POINTER;
+		// Add a keepalive reference - can't die while we have a ref.
+		m_pBase->AddRef();
 	} // end of lock scope - lock unlocked.
 	nsresult nr = m_pBase->QueryInterface(iid, ret);
+	// Can now release our additional keepalive reference we added.
 	m_pBase->Release();
 	return nr;
 }

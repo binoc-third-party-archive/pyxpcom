@@ -184,7 +184,36 @@ PyG_Base::~PyG_Base()
 }
 
 NS_IMPL_THREADSAFE_ADDREF(PyG_Base)
-NS_IMPL_THREADSAFE_RELEASE(PyG_Base)
+
+nsrefcnt
+PyG_Base::Release(void)
+{
+	nsrefcnt cnt;
+	{ 
+		// Temp scope for lock. Ensures some other thread isn't doing a
+		// QueryReferent on our weak reference at the same time.
+		CEnterLeaveXPCOMFramework _celf;
+		cnt = (nsrefcnt) PR_AtomicDecrement((PRInt32*)&mRefCnt);
+		if ( cnt == 0 && m_pWeakRef ) {
+			// We must null out the WeakReference now, otherwise
+			// another thread may come along and try to use it, i.e.
+			// between the time we release the lock and before we
+			// delete the object (which == ka-BOOM!). See Komodo bug
+			// http://bugs.activestate.com/show_bug.cgi?id=88165
+			PyXPCOM_GatewayWeakReference *p = (PyXPCOM_GatewayWeakReference *)(nsISupports *)m_pWeakRef;
+			p->m_pBase = nsnull;
+			m_pWeakRef = nsnull;
+		}
+	}
+#ifdef NS_BUILD_REFCNT_LOGGING
+	if (m_pBaseObject == NULL)
+		NS_LOG_RELEASE(this, cnt, refcntLogRepr);
+#endif
+	if ( cnt == 0 )
+		delete this;
+	return cnt;
+}
+
 
 // Get the correct interface pointer for this object given the IID.
 void *PyG_Base::ThisAsIID( const nsIID &iid )
