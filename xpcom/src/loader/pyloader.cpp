@@ -273,4 +273,7 @@ static const mozilla::Module PyxpcomNSModule = {
 };
 
 // Export the NSModule name, so Mozilla can properly find and load us.
+extern "C" {
 NS_EXPORT const mozilla::Module * NSModule = &PyxpcomNSModule;
+}
+
