@@ -1830,7 +1830,6 @@ case "$target" in
     	CXXFLAGS="$CXXFLAGS -mieee"
     ;;
     i*86)
-    	USE_ELF_DYNSTR_GC=1
         MOZ_ENABLE_OLD_ABI_COMPAT_WRAPPERS=1
     ;;
     mips*)
