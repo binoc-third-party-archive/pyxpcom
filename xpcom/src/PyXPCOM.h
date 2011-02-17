@@ -532,7 +532,7 @@ extern PYXPCOM_EXPORT PRInt32 _PyXPCOM_GetInterfaceCount(void);
 // When both are alive, each holds a pointer to the other.  When the main
 // object dies due to XPCOM reference counting, it zaps the pointer
 // in its corresponding weak reference object.  Thus, the weak-reference
-// can live beyond the XPCOM object (possibly with a NULL pointer back to the 
+// can live beyond the object (possibly with a NULL pointer back to the 
 // "real" object, but as implemented, the weak reference will never be 
 // destroyed  before the object
 class PYXPCOM_EXPORT PyXPCOM_GatewayWeakReference : public nsIWeakReference {
@@ -563,6 +563,7 @@ public:
 private:
 	nsresult BackFillVariant( PyObject *ob, int index);
 	PyObject *MakeSingleParam(int index, PythonTypeDescriptor &td);
+	PRBool GetIIDForINTERFACE_ID(int index, const nsIID **ppret);
 	nsresult GetArrayType(PRUint8 index, PRUint8 *ret, nsIID **ppiid);
 	PRUint32 GetSizeIs( int var_index, PRBool is_arg1);
 	PRBool SetSizeIs( int var_index, PRBool is_arg1, PRUint32 new_size);
