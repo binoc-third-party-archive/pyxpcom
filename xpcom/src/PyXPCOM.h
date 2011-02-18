@@ -563,6 +563,7 @@ public:
 private:
 	nsresult BackFillVariant( PyObject *ob, int index);
 	PyObject *MakeSingleParam(int index, PythonTypeDescriptor &td);
+	PRBool GetIIDForINTERFACE_ID(int index, const nsIID **ppret);
 	nsresult GetArrayType(PRUint8 index, PRUint8 *ret, nsIID *ppiid);
 	PRUint32 GetSizeIs( int var_index, PRBool is_arg1);
 	PRBool SetSizeIs( int var_index, PRBool is_arg1, PRUint32 new_size);
