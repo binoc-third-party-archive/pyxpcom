@@ -97,6 +97,20 @@ c.wstring_value = extended_unicode_string;
 if (c.wstring_value != extended_unicode_string)
 	throw("wstring_value has wrong new value");
 
+// Test NULL astring values are supported.
+// https://bugzilla.mozilla.org/show_bug.cgi?id=450784
+if (c.astring_value != 'astring')
+	throw("astring_value has wrong initial value");
+c.astring_value = 'New value';
+if (c.astring_value != 'New value')
+	throw("astring_value has wrong new value");
+c.astring_value = extended_unicode_string;
+if (c.astring_value != extended_unicode_string)
+	throw("astring_value has wrong new value");
+c.astring_value = null;
+if (c.astring_value != null)
+	throw("astring_value did not support null string");
+
 if (c.domstring_value != 'dom')
 	throw("domstring_value has wrong initial value");
 c.domstring_value = 'New value';

@@ -53,19 +53,19 @@
 // ------------------------------------------------------------------------
 // nsString utilities
 // ------------------------------------------------------------------------
-// one day we may know what they look like.
+
 inline
 PRBool
 IsNullDOMString( const nsAString& aString )
 {
-	return PR_FALSE;
+	return aString.IsVoid();
 }
 
 inline
 PRBool
 IsNullDOMString( const nsACString& aString )
 {
-	return PR_FALSE;
+	return aString.IsVoid();
 }
 
 #define PyUnicode_FromPRUnichar(src, size) \
@@ -157,7 +157,7 @@ PYXPCOM_EXPORT PRBool
 PyObject_AsNSString( PyObject *val, nsAString &aStr)
 {
 	if (val == Py_None) {
-		aStr.Truncate();
+		aStr.SetIsVoid(PR_TRUE);
 		return PR_TRUE;
 	}
 	PyObject *val_use = NULL;

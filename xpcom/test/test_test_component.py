@@ -239,6 +239,13 @@ def test_base_interface(c):
     test_string_attribute(c, "astring_value", "astring")
     test_string_attribute(c, "acstring_value", "acstring", ascii_only = True)
 
+    # Test NULL astring values are supported.
+    # https://bugzilla.mozilla.org/show_bug.cgi?id=450784
+    c.astring_value = None
+    test_string_attribute(c, "astring_value", None)
+    c.astring_value = "astring"
+    test_string_attribute(c, "astring_value", "astring")
+
     test_string_attribute(c, "utf8string_value", "utf8string")
     # Test a string already encoded gets through correctly.
     test_attribute(c, "utf8string_value", "utf8string", extended_unicode_string.encode("utf8"), extended_unicode_string)
