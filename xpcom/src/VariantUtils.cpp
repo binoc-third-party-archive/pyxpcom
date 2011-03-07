@@ -2474,7 +2474,7 @@ nsresult PyXPCOM_GatewayVariantHelper::BackFillVariant( PyObject *val, int index
 		}
 	  case nsXPTType::T_INTERFACE_IS: {
 		const nsIID *piid;
-		if (!GetIIDForINTERFACE_ID(pi->type.argnum, &piid))
+		if (!GetIIDForINTERFACE_ID(pi.type.argnum, &piid))
 			BREAK_FALSE;
 
 		nsISupports *pnew = nsnull;
