@@ -47,6 +47,8 @@
 
 #include "PyXPCOM_std.h"
 #include "nsISupportsPrimitives.h"
+#include "nsThreadUtils.h"
+#include "nsProxyRelease.h"
 
 static PRInt32 cInterfaces=0;
 static PyObject *g_obFuncMakeInterfaceCount = NULL; // XXX - never released!!!
@@ -108,7 +110,10 @@ Py_nsISupports::SafeRelease(Py_nsISupports *ob)
 	if (ob->m_obj)
 	{
 		Py_BEGIN_ALLOW_THREADS;
-		ob->m_obj = nsnull;
+		// XPCOM instances need to be released on the main thread.
+		nsCOMPtr<nsIThread> mMainThread;
+		NS_GetMainThread(getter_AddRefs(mMainThread));
+		NS_ProxyRelease(mMainThread, ob->m_obj);
 		Py_END_ALLOW_THREADS;
 	}
 }
