@@ -292,8 +292,6 @@ class Component(_XPCOMBase):
                 for key, val in contractid_info.items():
                     self.__dict__[key].update(val)
 
-        self.__dict__['_com_classinfo_'] = classinfo
-
     def _remember_interface_info(self, iid):
         # XXX - there is no good reason to cache this only in each instance
         # It should be cached at the module level, so we don't need to
