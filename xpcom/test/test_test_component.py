@@ -406,7 +406,7 @@ def test_derived_interface(c, test_flat = 0):
     test_method(c.CopyVariant, (1,), 1)
     test_method(c.CopyVariant, (1.0,), 1.0)
     test_method(c.CopyVariant, (-1,), -1)
-    test_method(c.CopyVariant, (sys.maxint+1,), sys.maxint+1)
+    test_method(c.CopyVariant, ((1 << 31) - 1,), (1 << 31) - 1)
     test_method(c.CopyVariant, ("foo",), "foo")
     test_method(c.CopyVariant, (u"foo",), u"foo")
     test_method(c.CopyVariant, (c,), c)
