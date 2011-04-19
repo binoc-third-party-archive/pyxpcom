@@ -52,6 +52,9 @@ XPIDLSRCS	= py_test_component.idl
 
 include $(topsrcdir)/config/config.mk
 
-EXTRA_COMPONENTS = py_test_component.py
+EXTRA_COMPONENTS = \
+		py_test_component.manifest \
+		py_test_component.py \
+		$(NULL)
 
 include $(topsrcdir)/config/rules.mk
