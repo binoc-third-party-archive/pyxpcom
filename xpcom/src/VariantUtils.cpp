@@ -1686,8 +1686,13 @@ PyObject *PyXPCOM_InterfaceVariantHelper::MakeSinglePythonResult(int index)
 		ret = PyUnicode_FromPRUnichar( ((PRUnichar *)ns_v.ptr), 1 );
 		break;
 //	  case nsXPTType::T_VOID:
-	  case nsXPTType::T_IID: 
-		ret = Py_nsIID::PyObjectFromIID( **((nsIID **)ns_v.ptr) );
+	  case nsXPTType::T_IID:
+		// guard against null IIDs
+		if (*((nsIID**)ns_v.ptr) == NULL) {
+			ret = Py_None;
+			Py_INCREF(Py_None);
+		} else
+			ret = Py_nsIID::PyObjectFromIID( **((nsIID **)ns_v.ptr) );
 		break;
 	  case nsXPTType::T_ASTRING:
 	  case nsXPTType::T_DOMSTRING: {
