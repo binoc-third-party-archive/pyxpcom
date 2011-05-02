@@ -97,6 +97,7 @@ def register_self(klass, compMgr, location, registryLocation, componentType):
 # an nsIModule for the file.
 class ModuleLoader:
 
+    _com_interfaces_ = components.interfaces.nsIObserver
     _platform_names = None
 
     def __init__(self):
@@ -104,6 +105,20 @@ class ModuleLoader:
         self.com_modules = {} # Keyed by module's FQN as obtained from nsIFile.path
         self.moduleFactory = module.Module
         xpcom.shutdown.register(self._on_shutdown)
+        # Register to be notified when the profile/extensions are ready.
+        from xpcom import _xpcom
+        svc = _xpcom.GetServiceManager().getServiceByContractID(
+                                            "@mozilla.org/observer-service;1",
+                                            components.interfaces.nsIObserverService)
+        svc.addObserver(self, "profile-after-change", 0)
+
+    def observe(self, subject, topic, data):
+        self._setupPythonPaths()
+        from xpcom import _xpcom
+        svc = _xpcom.GetServiceManager().getServiceByContractID(
+                                            "@mozilla.org/observer-service;1",
+                                            components.interfaces.nsIObserverService)
+        svc.removeObserver(self, "profile-after-change")
 
     def _on_shutdown(self):
         self.com_modules.clear()
@@ -150,11 +165,15 @@ class ModuleLoader:
     def _getExtenionDirectories(self):
         directorySvc =  components.classes["@mozilla.org/file/directory_service;1"].\
                             getService(components.interfaces.nsIProperties)
-        enum = directorySvc.get("XREExtDL", components.interfaces.nsISimpleEnumerator)
         extensionDirs = []
-        while enum.hasMoreElements():
-            nsifile = enum.getNext().QueryInterface(components.interfaces.nsIFile)
-            extensionDirs.append(nsifile)
+        try:
+            enum = directorySvc.get("XREExtDL", components.interfaces.nsISimpleEnumerator)
+            while enum.hasMoreElements():
+                nsifile = enum.getNext().QueryInterface(components.interfaces.nsIFile)
+                extensionDirs.append(nsifile)
+        except:
+            # Ignore if the directory is not available.
+            sys.stderr.write("ModuleLoader: could not fetch extension directories.\n")
         return extensionDirs
 
     def _getPossiblePlatformNames(self):
