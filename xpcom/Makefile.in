@@ -83,6 +83,8 @@ PYSRCS_XPCOMTOOLS = \
 	tracer_demo.py \
 	$(NULL)
 
+EXTRA_COMPONENTS = pyxpcom.manifest
+
 PYSRCS_XPCOM       := $(addprefix $(srcdir)/,$(PYSRCS_XPCOM))
 PYSRCS_XPCOMCLIENT := $(addprefix $(srcdir)/client/,$(PYSRCS_XPCOMCLIENT))
 PYSRCS_XPCOMSERVER := $(addprefix $(srcdir)/server/,$(PYSRCS_XPCOMSERVER))
@@ -97,6 +99,7 @@ libs::
 	$(INSTALL) $(PYSRCS_XPCOMTOOLS) $(DIST)/bin/python/xpcom/tools
 
 install::
+	$(SYSINSTALL) $(IFLAGS1) $(PYSRCS_XPCOM) $(DISTDIR)$(pyexecdir)/xpcom
 	$(SYSINSTALL) $(IFLAGS1) $(PYSRCS_XPCOM) $(DISTDIR)$(pyexecdir)/xpcom
 	$(SYSINSTALL) $(IFLAGS1) $(PYSRCS_XPCOMCLIENT) $(DISTDIR)$(pyexecdir)/xpcom/client
 	$(SYSINSTALL) $(IFLAGS1) $(PYSRCS_XPCOMSERVER) $(DISTDIR)$(pyexecdir)/xpcom/server
