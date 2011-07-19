@@ -58,6 +58,7 @@
 #include "PyXPCOM_std.h"
 #include <nsIModule.h>
 #include <nsIInputStream.h>
+#include <nsIWeakReferenceUtils.h>
 
 static PRLogModuleInfo *nsPyxpcomLog = PR_NewLogModule("nsPyxpcomLog");
 
@@ -745,7 +746,30 @@ PYXPCOM_EXPORT void AddDefaultGateway(PyObject *instance, nsISupports *gateway)
 	PyObject *real_inst = PyObject_GetAttrString(instance, "_obj_");
 	NS_ABORT_IF_FALSE(real_inst, "Could not get the '_obj_' element");
 	if (!real_inst) return;
-	if (!PyObject_HasAttrString(real_inst, PyXPCOM_szDefaultGatewayAttributeName)) {
+	// the default gateway is a weak reference; we need to make sure it's still alive if it exists
+	PRBool hasValidDefaultGateway = PR_FALSE;
+	PyObject *ob_old_weak = PyObject_GetAttrString(real_inst, PyXPCOM_szDefaultGatewayAttributeName);
+	if (ob_old_weak) {
+		nsCOMPtr<nsIWeakReference> pOldWeakReference;
+		PRBool success = Py_nsISupports::InterfaceFromPyObject(ob_old_weak,
+								       NS_GET_IID(nsIWeakReference),
+								       getter_AddRefs(pOldWeakReference),
+								       PR_FALSE,
+								       PR_FALSE);
+		Py_DECREF(ob_old_weak);
+		if (success) {
+			nsCOMPtr<nsISupports> supports = do_QueryReferent(pOldWeakReference);
+			if (supports) {
+				// the old weak reference is fine
+				NS_ASSERTION(SameCOMIdentity(supports, gateway),
+					     "A Python object has a duplicate gateway!");
+				hasValidDefaultGateway = PR_TRUE;
+			}
+		}
+	}
+	if (!hasValidDefaultGateway) {
+		// getting here means either 1) there was no existing default gateway, or
+		// 2) the existing gateway is dead
 		nsCOMPtr<nsISupportsWeakReference> swr( do_QueryInterface((nsISupportsWeakReference *)(gateway)) );
 		NS_ABORT_IF_FALSE(swr, "Our gateway failed with a weak reference query");
 		// Create the new default gateway - get a weak reference for our gateway.
