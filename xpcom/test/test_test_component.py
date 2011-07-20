@@ -140,7 +140,7 @@ def test_int_method(meth):
 def test_constant(ob, cname, val):
     v = getattr(ob, cname)
     if v != val:
-        print_error("Bad value for constant '%s' - got '%r'" % (cname, v))
+        print_error("Bad value for constant '%s' - expected '%r' got '%r'" % (cname, val, v))
     try:
         setattr(ob, cname, 0)
         print_error("The object allowed us to set the constant '%s'" % (cname,))
