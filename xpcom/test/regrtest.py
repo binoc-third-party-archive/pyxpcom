@@ -79,13 +79,6 @@ finally:
     ni = _xpcom._GetInterfaceCount()
     ng = _xpcom._GetGatewayCount()
     if ni or ng:
-        # The old 'regrtest' that was not based purely on unittest did not
-        # do this check at the end - it relied on each module doing it itself.
-        # Thus, these leaks are not new, just newly noticed :)  Likely to be
-        # something silly like module globals.
-        if ni == 6 and ng == 1:
-            print "Sadly, there are 6/1 leaks, but these appear normal and benign"
-        else:
-            print "********* WARNING - Leaving with %d/%d objects alive" % (ni,ng)
+        print "********* WARNING - Leaving with %d/%d objects alive" % (ni,ng)
     else:
-        print "yay! Our leaks have all vanished!"
+        print "Yay! No leaks detected!"
