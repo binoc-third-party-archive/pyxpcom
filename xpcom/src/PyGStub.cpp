@@ -50,10 +50,40 @@
 #include <nsIInterfaceInfoManager.h>
 
 PyXPCOM_XPTStub::PyXPCOM_XPTStub(PyObject *instance, const nsIID &iid)
-	: PyG_Base(instance, iid)
+	: PyG_Base(instance, iid),
+	  m_pNextObject(nsnull)
 {
 	if (NS_FAILED(InitStub(iid)))
 		NS_ERROR("InitStub must not fail!");
+
+	{
+		// Temp scope for lock. Ensures some other thread isn't doing a
+		// anything with our stubs at the same time.
+		CEnterLeaveXPCOMFramework _celf;
+		if (m_pBaseObject) {
+			// Put ourselves at the front of the chain (makes it
+			// easier to deal with).
+			PyXPCOM_XPTStub* stub = (PyXPCOM_XPTStub*)m_pBaseObject;
+			m_pNextObject = stub->m_pNextObject;
+			stub->m_pNextObject = this;
+		}
+	}
+}
+
+PyXPCOM_XPTStub::~PyXPCOM_XPTStub()
+{
+	// Ensures some other thread isn't doing a anything with our stub at
+	// the same time.
+	CEnterLeaveXPCOMFramework _celf;
+	if (m_pBaseObject) {
+		// Remove ourself from the m_pNextObject chain.
+		PyXPCOM_XPTStub* stub = (PyXPCOM_XPTStub*)m_pBaseObject;
+		while (stub && stub->m_pNextObject != this)
+			stub = stub->m_pNextObject;
+		if (stub) {
+			stub->m_pNextObject = this->m_pNextObject;
+		}
+	}
 }
 
 void *PyXPCOM_XPTStub::ThisAsIID(const nsIID &iid)
@@ -63,7 +93,25 @@ void *PyXPCOM_XPTStub::ThisAsIID(const nsIID &iid)
 	if (iid.Equals(NS_GET_IID(nsISupports)) || iid.Equals(m_iid)) {
 		return mXPTCStub;
 	}
-	// else
+	
+	// Check for an existing stub that implements this interface, to make
+	// QIing to the same interface return the same stub.  This makes the
+	// objects easier to use from python (no need to keep a reference to
+	// the wrapped object just to find it again).
+	{
+		// Temp scope for lock. Ensures some other thread isn't doing a
+		// anything with these stubs at the same time.
+		CEnterLeaveXPCOMFramework _celf;
+		PyXPCOM_XPTStub* next = this;
+		if (m_pBaseObject) {
+			next = (PyXPCOM_XPTStub*)m_pBaseObject;
+		}
+		for (; next; next = next->m_pNextObject) {
+			if (iid.Equals(next->m_iid)) {
+				return next->mXPTCStub;
+			}
+		}
+	}
 	return PyG_Base::ThisAsIID(iid);
 }
 

@@ -506,6 +506,11 @@ public:
 	virtual void *ThisAsIID(const nsIID &iid);
 protected:
 	PyXPCOM_XPTStub(PyObject *instance, const nsIID &iid);
+	~PyXPCOM_XPTStub();
+	
+	// This is used to make sure QIing to the same interface returns the
+	// same pointer; necessary to match xpconnect semantics.
+	PyXPCOM_XPTStub* m_pNextObject;
 private:
 };
 

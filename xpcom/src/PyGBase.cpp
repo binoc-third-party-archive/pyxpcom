@@ -252,17 +252,18 @@ PyG_Base::AutoWrapPythonInstance(PyObject *ob, const nsIID &iid, nsISupports **p
 	PyObject *obIID = NULL;
 	PyObject *wrap_ret = NULL;
 	PyObject *args = NULL;
-	if (func==NULL) { // not thread-safe, but nothing bad can happen, except an extra reference leak
-		PyObject *mod = PyImport_ImportModule("xpcom.server");
-		if (mod)
-			func = PyObject_GetAttrString(mod, "WrapObject");
-		Py_XDECREF(mod);
-		if (func==NULL) goto done;
-	}
 	// See if the instance has previously been wrapped.
 	if (CheckDefaultGateway(ob, iid, ppret)) {
 		ok = PR_TRUE; // life is good!
 	} else {
+		if (func==NULL) { // not thread-safe, but nothing bad can happen, except an extra reference leak
+			PyObject *mod = PyImport_ImportModule("xpcom.server");
+			if (mod)
+				func = PyObject_GetAttrString(mod, "WrapObject");
+			Py_XDECREF(mod);
+			if (func==NULL) goto done;
+		}
+
 		PyErr_Clear();
 
 		obIID = Py_nsIID::PyObjectFromIID(iid);
@@ -394,8 +395,8 @@ PyG_Base::QueryInterface(REFNSIID iid, void** ppv)
 	// to ensure that we live by XPCOM identity rules (other interfaces need
 	// not abide by this rule - only nsISupports.)
 	if ( (m_pBaseObject==NULL || !iid.Equals(NS_GET_IID(nsISupports)))
-	   && (*ppv=ThisAsIID(iid)) != NULL ) {
-		AddRef();
+	   && ((*ppv=ThisAsIID(iid)) != NULL )) {
+		(*(nsISupports**)ppv)->AddRef();
 		return NS_OK;
 	}
 	// If we have a "base object", then we need to delegate _every_ remaining 

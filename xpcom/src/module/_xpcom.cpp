@@ -190,6 +190,15 @@ PyXPCOMMethod_NS_InvokeByIndex(PyObject *self, PyObject *args)
 	return arg_helper.MakePythonResult();
 }
 
+/**
+ * Wrap the given Python object in a new XPCOM stub (and re-wrap it in python
+ * in order to return it)
+ * @see xpcom.server.WrapObject
+ * @param ob the Python object to wrap
+ * @param iid the IID to wrap as
+ * @param bWrapClient [default true] whether to allow extra wrapping for Python
+ * 	consumers
+ */
 static PyObject *
 PyXPCOMMethod_WrapObject(PyObject *self, PyObject *args)
 {
