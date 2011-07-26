@@ -767,7 +767,8 @@ PYXPCOM_EXPORT void AddDefaultGateway(PyObject *instance, nsISupports *gateway)
 				hasValidDefaultGateway = PR_TRUE;
 			}
 		}
-	}
+	} else
+		PyErr_Clear();
 	if (!hasValidDefaultGateway) {
 		// getting here means either 1) there was no existing default gateway, or
 		// 2) the existing gateway is dead
