@@ -79,8 +79,10 @@ def FindCOMComponents(py_module):
                _has_good_attr(obj, "_reg_clsid_") and \
                _has_good_attr(obj, "_reg_contractid_"):
                 comps.append(obj)
-        except TypeError:
+        except:
             # The issubclass call raises TypeError when the obj is not a class.
+            # Something like "Ci = xpcom.components.interfaces" will raise a
+            # COMException whenever we try to perform a getattr on it.
             pass
     return comps
 
