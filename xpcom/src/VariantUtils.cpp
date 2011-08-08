@@ -1822,10 +1822,17 @@ PyObject *PyXPCOM_InterfaceVariantHelper::MakeSinglePythonResult(int index)
 		if ( (* ((void **)ns_v.ptr)) == NULL) {
 			ret = Py_None;
 			Py_INCREF(Py_None);
+		} else {
+			PRUint8 array_type = td.array_type & XPT_TDP_TAGMASK;
+			PRUint32 seq_size = GetSizeIs(index, PR_FALSE);
+			nsIID *iid = NULL;
+			switch (array_type) {
+			  case nsXPTType::T_INTERFACE_IS:
+			  case nsXPTType::T_INTERFACE:
+				iid = &td.iid;
+			}
+			ret = UnpackSingleArray(m_parent, * ((void **)ns_v.ptr), seq_size, array_type, iid);
 		}
-		PRUint8 array_type = (PRUint8)td.array_type;
-		PRUint32 seq_size = GetSizeIs(index, PR_FALSE);
-		ret = UnpackSingleArray(m_parent, * ((void **)ns_v.ptr), seq_size, array_type&XPT_TDP_TAGMASK, NULL);
 		break;
 		}
 
@@ -2001,7 +2008,8 @@ PRBool PyXPCOM_GatewayVariantHelper::CanSetSizeIs( int var_index, PRBool is_arg1
 		m_python_type_desc_array[var_index].argnum :
 		m_python_type_desc_array[var_index].argnum2;
 	NS_ABORT_IF_FALSE(argnum < m_num_type_descs, "size_is param is invalid");
-	return XPT_PD_IS_OUT(m_python_type_desc_array[argnum].param_flags);
+	return XPT_PD_IS_OUT(m_python_type_desc_array[argnum].param_flags) ?
+		PR_TRUE : PR_FALSE;
 }
 
 PRBool PyXPCOM_GatewayVariantHelper::SetSizeIs( int var_index, PRBool is_arg1, PRUint32 new_size)

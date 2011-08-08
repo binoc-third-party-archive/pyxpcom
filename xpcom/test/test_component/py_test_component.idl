@@ -184,9 +184,9 @@ interface nsIPythonTestInterfaceExtra : nsIPythonTestInterface
                              [array, size_is(out_count)] out nsISupports out_data,
                             out PRUint32 out_count);
     void GetInterfaceArray(out PRUint32 count,
-                             [array, size_is(count)] out nsISupports data);
+                             [array, size_is(count)] out nsIPythonTestInterface data);
     void ExtendInterfaceArray(inout PRUint32 count,
-                             [array, size_is(count)] inout nsISupports data);
+                             [array, size_is(count)] inout nsIPythonTestInterface data);
 
     // Arrays of IIDs
     void CheckIIDArray(in PRUint32 count,
