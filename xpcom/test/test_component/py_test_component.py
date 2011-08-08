@@ -70,6 +70,10 @@ class PythonTestComponent:
         self.interface_value = None
         self.isupports_value = None
         self.domstring_value = "dom"
+        self.optional_number_1 = 1
+        self.optional_number_2 = 2
+        self.optional_string_1 = "string 1"
+        self.optional_string_2 = "string 2"
 
     def __del__(self):
         if verbose:
@@ -419,3 +423,24 @@ class PythonTestComponent:
     def get_domstring_value_ro( self ):
         # Result: DOMString &
         return self.domstring_value
+
+    def SetOptionalNumbers(self, number1, number2):
+        self.optional_number_1 = number1
+        self.optional_number_2 = number2
+        
+    def SetOptionalStrings(self, string1, string2):
+        self.optional_string_1 = string1
+        self.optional_string_2 = string2
+
+    def SetNumbersAndOptionalStrings(self, number1, number2, string1=None, string2=None):
+        self.optional_number_1 = number1
+        self.optional_number_2 = number2
+        self.optional_string_1 = string1
+        self.optional_string_2 = string2
+
+    def SetOptionalNumbersAndStrings(self, number1=None, number2=None, string1=None, string2=None):
+        self.optional_number_1 = number1
+        self.optional_number_2 = number2
+        self.optional_string_1 = string1
+        self.optional_string_2 = string2
+

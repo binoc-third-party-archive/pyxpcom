@@ -213,6 +213,22 @@ interface nsIPythonTestInterfaceExtra : nsIPythonTestInterface
     void AppendVariant(in nsIVariant variant, inout nsIVariant result);
     nsIVariant CopyVariant(in nsIVariant variant);
     nsIVariant SumVariants(in PRUint32 incount, [array, size_is(incount)]in nsIVariant variants);
+
+    // Testing of optional IDL arguments.
+    attribute PRint32   optional_number_1;
+    attribute PRint32   optional_number_2;
+    attribute AString   optional_string_1;
+    attribute AString   optional_string_2;
+    void SetOptionalNumbers([optional] in PRint32 number1, [optional] in PRint32 number2);
+    void SetOptionalStrings([optional] in AString string1, [optional] in AString string2);
+    void SetNumbersAndOptionalStrings(in PRint32 number1,
+                                      in PRint32 number2,
+                                      [optional] in AString string1,
+                                      [optional] in AString string2);
+    void SetOptionalNumbersAndStrings([optional] in PRint32 number1,
+                                      [optional] in PRint32 number2,
+                                      [optional] in AString string1,
+                                      [optional] in AString string2);
 };
 
 // DOM String support is a "recent" (01/2001) addition to XPCOM.  These test 

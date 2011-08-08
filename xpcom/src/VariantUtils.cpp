@@ -924,7 +924,8 @@ public:
 	PRBool have_set_auto; 
 };
 
-static int ProcessPythonTypeDescriptors(PythonTypeDescriptor *pdescs, int num)
+static void ProcessPythonTypeDescriptors(PythonTypeDescriptor *pdescs, int num,
+					 int *min_num_params, int *max_num_params)
 {
 	// Loop over the array, checking all the params marked as having an arg.
 	// If these args nominate another arg as the size_is param, then
@@ -957,12 +958,16 @@ static int ProcessPythonTypeDescriptors(PythonTypeDescriptor *pdescs, int num)
 				break;
 		}
 	}
-	int total_params_needed = 0;
-	for (i=0;i<num;i++)
-		if (XPT_PD_IS_IN(pdescs[i].param_flags) && !pdescs[i].is_auto_in && !XPT_PD_IS_DIPPER(pdescs[i].param_flags))
-			total_params_needed++;
-
-	return total_params_needed;
+	(*min_num_params) = 0;
+	(*max_num_params) = 0;
+	for (i=0;i<num;i++) {
+		if (XPT_PD_IS_IN(pdescs[i].param_flags) && !pdescs[i].is_auto_in && !XPT_PD_IS_DIPPER(pdescs[i].param_flags)) {
+			(*max_num_params)++;
+			if (!XPT_PD_IS_OPTIONAL(pdescs[i].param_flags)) {
+				(*min_num_params)++;
+			}
+		}
+	}
 }
 
 /*************************************************************************
@@ -1034,7 +1039,9 @@ PRBool PyXPCOM_InterfaceVariantHelper::Init(PyObject *obParams)
 {
 	PRBool ok = PR_FALSE;
 	int i;
-	int total_params_needed = 0;
+	int min_num_params = 0;
+	int max_num_params = 0;
+	int num_args_provided;
 	if (!PySequence_Check(obParams) || PySequence_Length(obParams)!=2) {
 		PyErr_Format(PyExc_TypeError, "Param descriptors must be a sequence of exactly length 2");
 		return PR_FALSE;
@@ -1077,12 +1084,19 @@ PRBool PyXPCOM_InterfaceVariantHelper::Init(PyObject *obParams)
 				goto done;
 		}
 	}
-	total_params_needed = ProcessPythonTypeDescriptors(m_python_type_desc_array, m_num_array);
+	ProcessPythonTypeDescriptors(m_python_type_desc_array, m_num_array,
+				     &min_num_params, &max_num_params);
 	// OK - check we got the number of args we expected.
 	// If not, its really an internal error rather than the user.
-	if (PySequence_Length(m_pyparams) != total_params_needed) {
-		PyErr_Format(PyExc_ValueError, "The type descriptions indicate %d args are needed, but %d were provided",
-			total_params_needed, PySequence_Length(m_pyparams));
+	num_args_provided = PySequence_Length(m_pyparams);
+	if ((num_args_provided < min_num_params) || (num_args_provided > max_num_params)) {
+		if (min_num_params == max_num_params) {
+			PyErr_Format(PyExc_ValueError, "The type descriptions indicate %d args are needed, but %d were provided",
+				max_num_params, num_args_provided);
+		} else {
+			PyErr_Format(PyExc_ValueError, "The type descriptions indicate between %d to %d args are needed, but %d were provided",
+				min_num_params, max_num_params, num_args_provided);
+		}
 		goto done;
 	}
 
@@ -1213,46 +1227,90 @@ PRBool PyXPCOM_InterfaceVariantHelper::FillInVariant(const PythonTypeDescriptor 
 		}
 		switch (XPT_TDP_TAG(ns_v.type)) {
 		  case nsXPTType::T_I8:
+			if (val==Py_None) {
+				ns_v.val.i8 = 0;
+				break;
+			}
 			if ((val_use=PyNumber_Int(val))==NULL) BREAK_FALSE
 			ns_v.val.i8 = (PRInt8)PyInt_AsLong(val_use);
 			break;
 		  case nsXPTType::T_I16:
+			if (val==Py_None) {
+				ns_v.val.i16 = 0;
+				break;
+			}
 			if ((val_use=PyNumber_Int(val))==NULL) BREAK_FALSE
 			ns_v.val.i16 = (PRInt16)PyInt_AsLong(val_use);
 			break;
 		  case nsXPTType::T_I32:
+			if (val==Py_None) {
+				ns_v.val.i32 = 0;
+				break;
+			}
 			if ((val_use=PyNumber_Int(val))==NULL) BREAK_FALSE
 			ns_v.val.i32 = (PRInt32)PyInt_AsLong(val_use);
 			break;
 		  case nsXPTType::T_I64:
+			if (val==Py_None) {
+				ns_v.val.i64 = 0;
+				break;
+			}
 			if ((val_use=PyNumber_Long(val))==NULL) BREAK_FALSE
 			ns_v.val.i64 = (PRInt64)PyLong_AsLongLong(val_use);
 			break;
 		  case nsXPTType::T_U8:
+			if (val==Py_None) {
+				ns_v.val.u8 = 0;
+				break;
+			}
 			if ((val_use=PyNumber_Int(val))==NULL) BREAK_FALSE
 			ns_v.val.u8 = (PRUint8)PyInt_AsLong(val_use);
 			break;
 		  case nsXPTType::T_U16:
+			if (val==Py_None) {
+				ns_v.val.u16 = 0;
+				break;
+			}
 			if ((val_use=PyNumber_Int(val))==NULL) BREAK_FALSE
 			ns_v.val.u16 = (PRUint16)PyInt_AsLong(val_use);
 			break;
 		  case nsXPTType::T_U32:
+			if (val==Py_None) {
+				ns_v.val.u32 = 0;
+				break;
+			}
 			if ((val_use=PyNumber_Int(val))==NULL) BREAK_FALSE
 			ns_v.val.u32 = (PRUint32)PyInt_AsLong(val_use);
 			break;
 		  case nsXPTType::T_U64:
+			if (val==Py_None) {
+				ns_v.val.u64 = 0;
+				break;
+			}
 			if ((val_use=PyNumber_Long(val))==NULL) BREAK_FALSE
 			ns_v.val.u64 = (PRUint64)PyLong_AsUnsignedLongLong(val_use);
 			break;
 		  case nsXPTType::T_FLOAT:
+			if (val==Py_None) {
+				ns_v.val.f = 0;
+				break;
+			}
 			if ((val_use=PyNumber_Float(val))==NULL) BREAK_FALSE
 			ns_v.val.f = (float)PyFloat_AsDouble(val_use);
 			break;
 		  case nsXPTType::T_DOUBLE:
+			if (val==Py_None) {
+				ns_v.val.d = 0;
+				break;
+			}
 			if ((val_use=PyNumber_Float(val))==NULL) BREAK_FALSE
 			ns_v.val.d = PyFloat_AsDouble(val_use);
 			break;
 		  case nsXPTType::T_BOOL:
+			if (val==Py_None) {
+				ns_v.val.b = PR_FALSE;
+				break;
+			}
 			if ((val_use=PyNumber_Int(val))==NULL) BREAK_FALSE
 			ns_v.val.b = (PRBool)PyInt_AsLong(val_use);
 			break;
@@ -1908,8 +1966,11 @@ PyObject *PyXPCOM_GatewayVariantHelper::MakePyArgs()
 		td.argnum = pi->type.argnum;
 		td.argnum2 = pi->type.argnum2;
 	}
-	int num_args = ProcessPythonTypeDescriptors(m_python_type_desc_array, m_num_type_descs);
-	PyObject *ret = PyTuple_New(num_args);
+	int min_num_params;
+	int max_num_params;
+	ProcessPythonTypeDescriptors(m_python_type_desc_array, m_num_type_descs,
+				     &min_num_params, &max_num_params);
+	PyObject *ret = PyTuple_New(max_num_params);
 	if (ret==NULL)
 		return NULL;
 	int this_arg = 0;
@@ -1921,10 +1982,14 @@ PyObject *PyXPCOM_GatewayVariantHelper::MakePyArgs()
 				Py_DECREF(ret);
 				return NULL;
 			}
-			NS_ABORT_IF_FALSE(this_arg>=0 && this_arg<num_args, "We are going off the end of the array!");
+			NS_ABORT_IF_FALSE(this_arg>=0 && this_arg<max_num_params, "We are going off the end of the array!");
 			PyTuple_SET_ITEM(ret, this_arg, sub);
 			this_arg++;
 		}
+	}
+	if (this_arg < max_num_params && this_arg >= min_num_params) {
+		// There are optional parameters - resize the tuple.
+		_PyTuple_Resize(&ret, this_arg);
 	}
 	return ret;
 }

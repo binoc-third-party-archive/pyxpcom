@@ -281,6 +281,8 @@ class Parameter:
         return XPT_PD_IS_SHARED(self.param_flags)
     def IsDipper(self):
         return XPT_PD_IS_DIPPER(self.param_flags)
+    def IsOptional(self):
+        return XPT_PD_IS_OPTIONAL(self.param_flags)
 
     def Describe_Python(self):
         name = "param%d" % (self.param_index,)
@@ -306,6 +308,8 @@ class Parameter:
 
     def Describe(self):
         parts = []
+        if self.IsOptional():
+            parts.append('optional')
         if self.IsInOut():
             parts.append('inout')
         elif self.IsIn():

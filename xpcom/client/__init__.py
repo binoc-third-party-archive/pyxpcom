@@ -74,9 +74,11 @@ def _MakeMethodCode(method):
         param_name = "Param%d" % (param_no,)
         param_default = ""
         if not param.hidden_indicator and param.IsIn() and not param.IsDipper():
-            if param.IsOut() or used_default: # If the param is "inout", provide a useful default for the "in" direction.
+            # If the param is "inout", provide a useful default for the "in" direction.
+            if param.IsOptional() or param.IsOut() or used_default:
                 param_default = " = None"
-                used_default = 1 # Once we have used one once, we must for the rest!
+                # Once we have used one once, we must for the rest!
+                used_default = 1
             param_decls.append(param_name + param_default)
             param_names.append(param_name)
 

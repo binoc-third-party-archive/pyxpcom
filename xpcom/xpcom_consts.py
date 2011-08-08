@@ -191,6 +191,7 @@ XPT_PD_OUT      = 0x40
 XPT_PD_RETVAL   = 0x20
 XPT_PD_SHARED   = 0x10
 XPT_PD_DIPPER   = 0x08
+XPT_PD_OPTIONAL = 0x04
 XPT_PD_FLAGMASK = 0xf0
 
 def XPT_PD_IS_IN(flags): return (flags & XPT_PD_IN)
@@ -198,6 +199,7 @@ def XPT_PD_IS_OUT(flags): return (flags & XPT_PD_OUT)
 def XPT_PD_IS_RETVAL(flags): return (flags & XPT_PD_RETVAL)
 def XPT_PD_IS_SHARED(flags): return (flags & XPT_PD_SHARED)
 def XPT_PD_IS_DIPPER(flags): return (flags & XPT_PD_DIPPER)
+def XPT_PD_IS_OPTIONAL(flags): return (flags & XPT_PD_OPTIONAL)
 
 XPT_MD_GETTER = 0x80
 XPT_MD_SETTER = 0x40
