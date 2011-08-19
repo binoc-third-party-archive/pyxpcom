@@ -1,6 +1,6 @@
 About
 -----
-This version of PyXPCOM is designed to work with Firefox/XULRunner v4 or v5.
+This version of PyXPCOM is designed to work with Firefox/XULRunner v6.
 
 PyXPCOM allows for communication between Python and XPCOM, such that a Python
 application can access XPCOM objects, and XPCOM can access any Python class
@@ -10,7 +10,7 @@ XPCOM or embed Gecko from a Python application.
 Requirements
 ------------
 * requires Python 2.x (most tested with Python 2.6)
-* requires Mozilla XULRunner SDK
+* requires Mozilla XULRunner SDK (version 6.0)
 * autoconf 2.13
 
 Build Steps
