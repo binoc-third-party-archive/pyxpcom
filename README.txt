@@ -35,3 +35,14 @@ the necessary files.
 You'll need to ensure that the pyxpcom.manifest is registered/loaded by
 XULRunner/Firefox by adding this file to the manifest list.
 
+Testing
+-------
+You can run/test PyXPCOM from the command line using these methods:
+
+$ cd obj/dist/bin
+$ export MOZILLA_FIVE_HOME=/path-to-firefox/dist/bin # Adjust this to your Firefox/XULrunner path
+$ export LD_LIBRARY_PATH=$MOZILLA_FIVE_HOME:`pwd`/   # Note the `pwd` for the obj/dist/bin dir
+$ export PYTHONPATH=`pwd`/python
+$ python
+>>> from xpcom import components
+>>> print components.classes["@mozilla.org/file/local;1"]
