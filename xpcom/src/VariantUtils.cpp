@@ -996,33 +996,48 @@ PyXPCOM_InterfaceVariantHelper::~PyXPCOM_InterfaceVariantHelper()
 	for (int i=0;i<m_num_array;i++) {
 		if (m_var_array) {
 			nsXPTCVariant &ns_v = m_var_array[i];
-			if (ns_v.IsValInterface()) {
-				if (ns_v.val.p) {
-					Py_BEGIN_ALLOW_THREADS; // MUST release thread-lock, incase a Python COM object that re-acquires.
-					((nsISupports *)ns_v.val.p)->Release();
-					Py_END_ALLOW_THREADS;
-				}
+			
+			if(!ns_v.DoesValNeedCleanup())
+				continue;
+			
+			uint8 type_tag = ns_v.type.TagPart(); 
+			switch (type_tag) {
+				case nsXPTType::T_INTERFACE:
+				case nsXPTType::T_INTERFACE_IS:
+					if (ns_v.val.p) {
+						Py_BEGIN_ALLOW_THREADS; // MUST release thread-lock, incase a Python COM object that re-acquires.
+						((nsISupports *)ns_v.val.p)->Release();
+						Py_END_ALLOW_THREADS;
+					}
+					break;
+				case nsXPTType::T_DOMSTRING:
+					if (ns_v.val.p) {
+						delete (const nsString *)ns_v.val.p;
+					}
+					break;
+				case nsXPTType::T_CSTRING:
+					if (ns_v.val.p) {
+						delete (const nsCString *)ns_v.val.p;
+					}
+					break;
+				case nsXPTType::T_UTF8STRING:
+					if (ns_v.val.p) {
+						delete (const nsCString *)ns_v.val.p;
+					}
+					break;
+				case nsXPTType::T_ARRAY:
+					nsXPTCVariant &ns_v = m_var_array[i];
+					if (ns_v.val.p) {
+						PRUint8 array_type = m_python_type_desc_array[i].array_type;
+						PRUint32 seq_size = GetSizeIs(i, PR_FALSE);
+						FreeSingleArray(ns_v.val.p, seq_size, array_type);
+					}
+					break;
 			}
-			if (ns_v.IsValDOMString() && ns_v.val.p) {
-				delete (const nsString *)ns_v.val.p;
-			}
-			if (ns_v.IsValCString() && ns_v.val.p) {
-				delete (const nsCString *)ns_v.val.p;
-			}
-			if (ns_v.IsValUTF8String() && ns_v.val.p) {
-				delete (const nsCString *)ns_v.val.p;
-			}
-			if (ns_v.IsValArray()) {
-				nsXPTCVariant &ns_v = m_var_array[i];
-				if (ns_v.val.p) {
-					PRUint8 array_type = m_python_type_desc_array[i].array_type;
-					PRUint32 seq_size = GetSizeIs(i, PR_FALSE);
-					FreeSingleArray(ns_v.val.p, seq_size, array_type);
-				}
-			}
+			
 			// IsOwned must be the last check of the loop, as
 			// this frees the underlying data used above (eg, by the array free process)
-			if (ns_v.IsValAllocated() && !ns_v.IsValInterface() && !ns_v.IsValDOMString()) {
+			if (type_tag == nsXPTType::T_ARRAY || type_tag == nsXPTType::T_IID) {
 				NS_ABORT_IF_FALSE(ns_v.IsPtrData(), "expecting a pointer to free");
 				nsMemory::Free(ns_v.val.p);
 			}
@@ -1367,7 +1382,7 @@ PRBool PyXPCOM_InterfaceVariantHelper::FillInVariant(const PythonTypeDescriptor 
 			}
 			ns_v.val.p = s;
 			// We created it - flag as such for cleanup.
-			ns_v.flags |= nsXPTCVariant::VAL_IS_DOMSTR;
+			ns_v.SetValNeedsCleanup();
 			
 			if (!PyObject_AsNSString(val, *s))
 				BREAK_FALSE;
@@ -1404,7 +1419,7 @@ PRBool PyXPCOM_InterfaceVariantHelper::FillInVariant(const PythonTypeDescriptor 
 				BREAK_FALSE;
 			}
 			// We created it - flag as such for cleanup.
-			ns_v.flags |= bIsUTF8 ? nsXPTCVariant::VAL_IS_UTF8STR : nsXPTCVariant::VAL_IS_CSTR;
+			ns_v.SetValNeedsCleanup();
 			break;
 			}
 		  case nsXPTType::T_CHAR_STR: {
@@ -1464,7 +1479,7 @@ PRBool PyXPCOM_InterfaceVariantHelper::FillInVariant(const PythonTypeDescriptor 
 			                       PR_TRUE))
 				BREAK_FALSE;
 			// We have added a reference - flag as such for cleanup.
-			ns_v.flags |= nsXPTCVariant::VAL_IS_IFACE;
+			ns_v.SetValNeedsCleanup();
 			break;
 			}
 		  case nsXPTType::T_INTERFACE_IS: {
@@ -1492,7 +1507,7 @@ PRBool PyXPCOM_InterfaceVariantHelper::FillInVariant(const PythonTypeDescriptor 
 			                       PR_TRUE))
 				BREAK_FALSE;
 			// We have added a reference - flag as such for cleanup.
-			ns_v.flags |= nsXPTCVariant::VAL_IS_IFACE;
+			ns_v.SetValNeedsCleanup();
 			break;
 			}
 		  case nsXPTType::T_PSTRING_SIZE_IS: {
@@ -1569,7 +1584,7 @@ PRBool PyXPCOM_InterfaceVariantHelper::FillInVariant(const PythonTypeDescriptor 
 			if (!rc) break;
 			rc = SetSizeIs(value_index, PR_FALSE, seq_length);
 			if (!rc) break;
-			ns_v.flags |= nsXPTCVariant::VAL_IS_ARRAY;
+			ns_v.SetValNeedsCleanup();
 			ns_v.val.p = this_buffer_pointer;
 			break;
 			}
@@ -1616,12 +1631,10 @@ PRBool PyXPCOM_InterfaceVariantHelper::PrepareOutVariant(const PythonTypeDescrip
 		  case nsXPTType::T_INTERFACE:
 		  case nsXPTType::T_INTERFACE_IS:
 			NS_ABORT_IF_FALSE(this_buffer_pointer==NULL, "Can't have an interface and a buffer pointer!");
-			ns_v.flags |= nsXPTCVariant::VAL_IS_IFACE;
-			ns_v.flags |= nsXPTCVariant::VAL_IS_ALLOCD;
+			ns_v.SetValNeedsCleanup();
 			break;
 		  case nsXPTType::T_ARRAY:
-			ns_v.flags |= nsXPTCVariant::VAL_IS_ARRAY;
-			ns_v.flags |= nsXPTCVariant::VAL_IS_ALLOCD;
+			ns_v.SetValNeedsCleanup();
 			// Even if ns_val.p already setup as part of "in" processing,
 			// we need to ensure setup for out.
 			NS_ABORT_IF_FALSE(ns_v.val.p==nsnull || ns_v.val.p==this_buffer_pointer, "Garbage in our pointer?");
@@ -1646,14 +1659,14 @@ PRBool PyXPCOM_InterfaceVariantHelper::PrepareOutVariant(const PythonTypeDescrip
 			// we need to ensure setup for out.
 			NS_ABORT_IF_FALSE(ns_v.val.p==nsnull || ns_v.val.p==this_buffer_pointer, "Garbage in our pointer?");
 			ns_v.val.p = this_buffer_pointer;
-			ns_v.flags |= nsXPTCVariant::VAL_IS_ALLOCD;
+			ns_v.SetValNeedsCleanup();
 			this_buffer_pointer = nsnull;
 			break;
 		  case nsXPTType::T_DOMSTRING:
 		  case nsXPTType::T_ASTRING: {
 			  NS_ABORT_IF_FALSE(ns_v.val.p==nsnull, "T_DOMTSTRINGS can't be out and have a value (ie, no in/outs are allowed!");
 			  NS_ABORT_IF_FALSE(XPT_PD_IS_DIPPER(td.param_flags) && XPT_PD_IS_IN(td.param_flags), "out DOMStrings must really be in dippers!");
-			  ns_v.flags |= nsXPTCVariant::VAL_IS_DOMSTR;
+			  ns_v.SetValNeedsCleanup();
 			  // Dippers are really treated like "in" params.
 			  ns_v.ptr = new nsString();
 			  ns_v.val.p = ns_v.ptr; // VAL_IS_* says the .p is what gets freed
@@ -1667,7 +1680,7 @@ PRBool PyXPCOM_InterfaceVariantHelper::PrepareOutVariant(const PythonTypeDescrip
 		  case nsXPTType::T_UTF8STRING: {
 			  NS_ABORT_IF_FALSE(ns_v.val.p==nsnull, "T_DOMTSTRINGS can't be out and have a value (ie, no in/outs are allowed!");
 			  NS_ABORT_IF_FALSE(XPT_PD_IS_DIPPER(td.param_flags) && XPT_PD_IS_IN(td.param_flags), "out DOMStrings must really be in dippers!");
-			  ns_v.flags |= ( XPT_TDP_TAG(ns_v.type)==nsXPTType::T_CSTRING ? nsXPTCVariant::VAL_IS_CSTR : nsXPTCVariant::VAL_IS_UTF8STR);
+			  ns_v.SetValNeedsCleanup();
 			  ns_v.ptr = new nsCString();
 			  ns_v.val.p = ns_v.ptr; // VAL_IS_* says the .p is what gets freed
 			  if (!ns_v.ptr) {
