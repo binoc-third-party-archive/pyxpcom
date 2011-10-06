@@ -215,18 +215,18 @@ interface nsIPythonTestInterfaceExtra : nsIPythonTestInterface
     nsIVariant SumVariants(in PRUint32 incount, [array, size_is(incount)]in nsIVariant variants);
 
     // Testing of optional IDL arguments.
-    attribute PRint32   optional_number_1;
-    attribute PRint32   optional_number_2;
+    attribute PRInt32   optional_number_1;
+    attribute PRInt32   optional_number_2;
     attribute AString   optional_string_1;
     attribute AString   optional_string_2;
-    void SetOptionalNumbers([optional] in PRint32 number1, [optional] in PRint32 number2);
+    void SetOptionalNumbers([optional] in PRInt32 number1, [optional] in PRInt32 number2);
     void SetOptionalStrings([optional] in AString string1, [optional] in AString string2);
-    void SetNumbersAndOptionalStrings(in PRint32 number1,
-                                      in PRint32 number2,
+    void SetNumbersAndOptionalStrings(in PRInt32 number1,
+                                      in PRInt32 number2,
                                       [optional] in AString string1,
                                       [optional] in AString string2);
-    void SetOptionalNumbersAndStrings([optional] in PRint32 number1,
-                                      [optional] in PRint32 number2,
+    void SetOptionalNumbersAndStrings([optional] in PRInt32 number1,
+                                      [optional] in PRInt32 number2,
                                       [optional] in AString string1,
                                       [optional] in AString string2);
 };
