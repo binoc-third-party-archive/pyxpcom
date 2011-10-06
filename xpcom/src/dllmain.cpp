@@ -49,7 +49,6 @@
 #include "nsDirectoryServiceDefs.h"
 #include "nsDirectoryServiceUtils.h"
 #include "nsILocalFile.h"
-#include "nsITimelineService.h"
 
 #include "nspr.h" // PR_fprintf
 
@@ -183,7 +182,6 @@ PyXPCOM_EnsurePythonEnvironment(void)
 
 	PRBool bDidInitPython = !Py_IsInitialized(); // well, I will next line, anyway :-)
 	if (bDidInitPython) {
-		NS_TIMELINE_START_TIMER("PyXPCOM: Python initializing");
 		Py_Initialize(); // NOTE: We never finalize Python!!
 #ifndef NS_DEBUG
 		Py_OptimizeFlag = 1;
@@ -191,12 +189,8 @@ PyXPCOM_EnsurePythonEnvironment(void)
 		// Must force Python to start using thread locks, as
 		// this is certainly a threaded environment we are playing in
 		PyEval_InitThreads();
-
-		NS_TIMELINE_STOP_TIMER("PyXPCOM: Python initializing");
-		NS_TIMELINE_MARK_TIMER("PyXPCOM: Python initializing");
 	}
 	// Get the Python interpreter state
-	NS_TIMELINE_START_TIMER("PyXPCOM: Python threadstate setup");
 	PyGILState_STATE state = PyGILState_Ensure();
 #ifdef MOZ_TIMELINE
 	// If the timeline service is installed, see if we can install our hooks.
@@ -254,9 +248,6 @@ PyXPCOM_EnsurePythonEnvironment(void)
 	// lock.  In that case, we want to leave it unlocked, so other threads
 	// are free to run, even if they aren't running Python code.
 	PyGILState_Release(bDidInitPython ? PyGILState_UNLOCKED : state);
-
-	NS_TIMELINE_STOP_TIMER("PyXPCOM: Python threadstate setup");
-	NS_TIMELINE_MARK_TIMER("PyXPCOM: Python threadstate setup");
 }
 
 void pyxpcom_construct(void)
