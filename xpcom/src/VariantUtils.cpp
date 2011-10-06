@@ -2427,7 +2427,7 @@ nsresult PyXPCOM_GatewayVariantHelper::BackFillVariant( PyObject *val, int index
 		nsCString *ws = (nsCString *)ns_v.val.p;
 		NS_ABORT_IF_FALSE(ws->Length() == 0, "Why does this writable string already have chars??");
 		if (val == Py_None) {
-			NS_ABORT_IF_FALSE(0, "don't handle None here yet");
+			ws->SetIsVoid(PR_TRUE);
 		} else {
 			if (!PyString_Check(val) && !PyUnicode_Check(val)) {
 				PyErr_SetString(PyExc_TypeError, "This parameter must be a string or Unicode object");
@@ -2444,7 +2444,7 @@ nsresult PyXPCOM_GatewayVariantHelper::BackFillVariant( PyObject *val, int index
 		nsCString *ws = (nsCString *)ns_v.val.p;
 		NS_ABORT_IF_FALSE(ws->Length() == 0, "Why does this writable string already have chars??");
 		if (val == Py_None) {
-			NS_ABORT_IF_FALSE(0, "don't handle None here yet");
+			ws->SetIsVoid(PR_TRUE);
 		} else {
 			if (PyString_Check(val)) {
 				val_use = val;
