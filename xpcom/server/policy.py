@@ -120,7 +120,7 @@ class DefaultClassInfo:
         self.classDescription = getattr(klass, "_reg_desc_", None)
         self.classID = getattr(klass, "_reg_clsid_", None)
         self.implementationLanguage = 3 # Python - avoid lookups just for this
-        self.flags = 0 # what to do here??
+        self.flags = getattr(klass, "_reg_flags_", 0)
         self.interfaces = None
 
     def get_classID(self):
