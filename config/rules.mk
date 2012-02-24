@@ -1668,7 +1668,7 @@ $(XPIDL_GEN_DIR)/%.h: %.idl $(XPIDL_GEN_DIR)/.done
 	$(REPORT_BUILD)
 	$(PYTHON_PATH) \
 	  -I$(LIBXUL_SDK)/sdk/bin/ply \
-	  $(LIBXUL_SDK)/sdk/bin/header.py --cachedir=$(LIBXUL_SDK)/sdk/bin $(XPIDL_FLAGS) $(_VPATH_SRCS) -d $(MDDEPDIR)/$(@F).pp -o $@
+	  $(LIBXUL_SDK)/sdk/bin/header.py --cachedir=$(CURDIR)/cache $(XPIDL_FLAGS) $(_VPATH_SRCS) -d $(MDDEPDIR)/$(@F).pp -o $@
 	@if test -n "$(findstring $*.h, $(EXPORTS))"; \
 	  then echo "*** WARNING: file $*.h generated from $*.idl overrides $(srcdir)/$*.h"; else true; fi
 
@@ -1679,7 +1679,7 @@ $(XPIDL_GEN_DIR)/%.xpt: %.idl $(XPIDL_GEN_DIR)/.done
 	$(REPORT_BUILD)
 	$(PYTHON_PATH) \
 	  -I$(LIBXUL_SDK)/sdk/bin/ply \
-	  $(LIBXUL_SDK)/sdk/bin/typelib.py --cachedir=$(LIBXUL_SDK)/sdk/bin $(XPIDL_FLAGS) $(_VPATH_SRCS) -d $(MDDEPDIR)/$(@F).pp -o $@
+	  $(LIBXUL_SDK)/sdk/bin/typelib.py --cachedir=$(CURDIR)/cache $(XPIDL_FLAGS) $(_VPATH_SRCS) -d $(MDDEPDIR)/$(@F).pp -o $@
 
 # no need to link together if XPIDLSRCS contains only XPIDL_MODULE
 ifneq ($(XPIDL_MODULE).idl,$(strip $(XPIDLSRCS)))
