@@ -352,25 +352,6 @@ static PyObject *PyGetSizeIsArgNumberForParam(PyObject *self, PyObject *args)
 	return PyInt_FromLong(ret);
 }
 
-static PyObject *PyGetLengthIsArgNumberForParam(PyObject *self, PyObject *args)
-{
-	nsIInterfaceInfo *pii = GetI(self);
-	if (pii==NULL)
-		return NULL;
-	PRUint16 mi, pi, dim;
-	if (!PyArg_ParseTuple(args, "hhh:GetLengthIsArgNumberForParam", &mi, &pi, &dim))
-		return NULL;
-	const nsXPTMethodInfo *pmi;
-	if (!__GetMethodInfoHelper(pii, mi, pi, &pmi))
-		return NULL;
-        PRUint8 ret;
-	const nsXPTParamInfo& param_info = pmi->GetParam((PRUint8)pi);
-	nsresult n = pii->GetLengthIsArgNumberForParam(mi, &param_info, dim, &ret);
-	if (NS_FAILED(n))
-		return PyXPCOM_BuildPyException(n);
-	return PyInt_FromLong(ret);
-}
-
 static PyObject *PyGetInterfaceIsArgNumberForParam(PyObject *self, PyObject *args)
 {
 	nsIInterfaceInfo *pii = GetI(self);
@@ -406,7 +387,6 @@ PyMethods_IInterfaceInfo[] =
 	{ "GetIIDForParam", PyGetIIDForParam, 1},
 	{ "GetTypeForParam", PyGetTypeForParam, 1},
 	{ "GetSizeIsArgNumberForParam", PyGetSizeIsArgNumberForParam, 1},
-	{ "GetLengthIsArgNumberForParam", PyGetLengthIsArgNumberForParam, 1},
 	{ "GetInterfaceIsArgNumberForParam", PyGetInterfaceIsArgNumberForParam, 1},
 	{NULL}
 };
@@ -419,7 +399,6 @@ PyMethods_IInterfaceInfo[] =
   NS_IMETHOD GetIIDForParam(PRUint16 methodIndex, const nsXPTParamInfo * param, nsIID * *_retval) = 0;
   NS_IMETHOD GetTypeForParam(PRUint16 methodIndex, const nsXPTParamInfo * param, PRUint16 dimension, nsXPTType *_retval) = 0;
   NS_IMETHOD GetSizeIsArgNumberForParam(PRUint16 methodIndex, const nsXPTParamInfo * param, PRUint16 dimension, PRUint8 *_retval) = 0;
-  NS_IMETHOD GetLengthIsArgNumberForParam(PRUint16 methodIndex, const nsXPTParamInfo * param, PRUint16 dimension, PRUint8 *_retval) = 0;
   NS_IMETHOD GetInterfaceIsArgNumberForParam(PRUint16 methodIndex, const nsXPTParamInfo * param, PRUint8 *_retval) = 0;
 
 */
