@@ -837,7 +837,7 @@ PyObject_FromVariant( Py_nsISupports *parent, nsIVariant *v)
 		case nsIDataType::VTYPE_DOUBLE:
 			GET_FROM_V(double, v->GetAsDouble, PyFloat_FromDouble);
 		case nsIDataType::VTYPE_BOOL:
-			GET_FROM_V(PRBool, v->GetAsBool, MyBool_FromBool);
+			GET_FROM_V(bool, v->GetAsBool, MyBool_FromBool);
 		default:
 			PyXPCOM_LogWarning("Converting variant to Python object - variant type '%d' unknown - using string.\n", dt);
 		// Fall through to the string case

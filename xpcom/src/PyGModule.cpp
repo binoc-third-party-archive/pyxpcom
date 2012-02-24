@@ -137,7 +137,7 @@ PyG_nsIModule::UnregisterSelf(nsIComponentManager* aCompMgr,
 }
 
 NS_IMETHODIMP
-PyG_nsIModule::CanUnload(nsIComponentManager *aCompMgr, PRBool *okToUnload)
+PyG_nsIModule::CanUnload(nsIComponentManager *aCompMgr, bool *okToUnload)
 {
 	NS_PRECONDITION(aCompMgr, "null pointer");
 	NS_PRECONDITION(okToUnload, "null pointer");

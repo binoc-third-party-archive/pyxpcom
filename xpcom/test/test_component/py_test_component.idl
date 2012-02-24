@@ -53,7 +53,7 @@ interface nsIPythonTestInterface : nsISupports
     const unsigned long         BigULong = 0xFFFFFFFF;
 
     // Declare every type supported as an attribute.
-    attribute boolean                   boolean_value; // PRBool
+    attribute boolean                   boolean_value; // bool
     attribute octet                     octet_value; // PRUint8
     attribute short                     short_value; // PRInt16
     attribute unsigned short            ushort_value; //  PRUint16 
@@ -178,7 +178,7 @@ interface nsIPythonTestInterfaceExtra : nsIPythonTestInterface
     // Arrays of interfaces
     void CheckInterfaceArray(in PRUint32 count,
                              [array, size_is(count)] in nsISupports data,
-                             [retval] out PRBool all_non_null);
+                             [retval] out bool all_non_null);
     void CopyInterfaceArray(in PRUint32 count,
                              [array, size_is(count)] in nsISupports data,
                              [array, size_is(out_count)] out nsISupports out_data,
@@ -191,7 +191,7 @@ interface nsIPythonTestInterfaceExtra : nsIPythonTestInterface
     // Arrays of IIDs
     void CheckIIDArray(in PRUint32 count,
                              [array, size_is(count)] in nsIIDRef data,
-                             [retval] out PRBool all_mine);
+                             [retval] out bool all_mine);
     void GetIIDArray(out PRUint32 count,
                              [array, size_is(count)] out nsIIDRef data);
     void ExtendIIDArray(inout PRUint32 count,

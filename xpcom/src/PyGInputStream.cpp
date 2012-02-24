@@ -59,7 +59,7 @@ public:
 	NS_IMETHOD Available(PRUint32 *_retval);
 	NS_IMETHOD Read(char * buf, PRUint32 count, PRUint32 *_retval);
 	NS_IMETHOD ReadSegments(nsWriteSegmentFun writer, void * closure, PRUint32 count, PRUint32 *_retval);
-	NS_IMETHOD IsNonBlocking(PRBool *aNonBlocking);
+	NS_IMETHOD IsNonBlocking(bool *aNonBlocking);
 };
 
 
@@ -134,7 +134,7 @@ PyG_nsIInputStream::ReadSegments(nsWriteSegmentFun writer, void * closure, PRUin
 }
 
 NS_IMETHODIMP
-PyG_nsIInputStream::IsNonBlocking(PRBool *aNonBlocking)
+PyG_nsIInputStream::IsNonBlocking(bool *aNonBlocking)
 {
 	NS_PRECONDITION(aNonBlocking, "null pointer");
 	CEnterLeavePython _celp;

@@ -69,7 +69,7 @@ static PyObject *PyHasMoreElements(PyObject *self, PyObject *args)
 		return NULL;
 
 	nsresult r;
-	PRBool more;
+	bool more;
 	Py_BEGIN_ALLOW_THREADS;
 	r = pI->HasMoreElements(&more);
 	Py_END_ALLOW_THREADS;
@@ -141,7 +141,7 @@ static PyObject *PyFetchBlock(PyObject *self, PyObject *args)
 	}
 	memset(fetched, 0, sizeof(nsISupports *) * n_wanted);
 	nsresult r = NS_OK;
-	PRBool more;
+	bool more;
 	Py_BEGIN_ALLOW_THREADS;
 	for (;n_fetched<n_wanted;) {
 		r = pI->HasMoreElements(&more);

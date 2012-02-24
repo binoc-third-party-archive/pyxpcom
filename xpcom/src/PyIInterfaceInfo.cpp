@@ -108,7 +108,7 @@ static PyObject *PyIsScriptable(PyObject *self, PyObject *args)
 	if (pI==NULL)
 		return NULL;
 
-	PRBool b_ret;
+	bool b_ret;
 	nsresult r;
 	Py_BEGIN_ALLOW_THREADS;
 	r = pI->IsScriptable(&b_ret);
