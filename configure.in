@@ -4257,7 +4257,7 @@ else
     MOZ_PYTHON_INCLUDES="-I$MOZ_PYTHON_PREFIX/include/python$MOZ_PYTHON_VER_DOTTED"
     dnl Check for dynamic Python lib
     dnl - A static Python is no good - multiple dynamic libraries (xpcom
-    dnl - core, xpcom loader, pydom etc) all need to share Python.
+    dnl - core, xpcom loader, etc) all need to share Python.
     dnl - Python 2.3's std --enable-shared configure option will
     dnl   create a libpython2.3.so.1.0. We should first try this
     dnl   dotted versioned .so file because this is the one that
@@ -4582,11 +4582,5 @@ xpcom/src/module/Makefile
 xpcom/components/Makefile
 xpcom/test/Makefile
 xpcom/test/test_component/Makefile
-dom/Makefile
-dom/src/Makefile
-dom/test/Makefile
-dom/test/pyxultest/Makefile
-dom/nsdom/Makefile
-dom/nsdom/test/Makefile
 ])
 
