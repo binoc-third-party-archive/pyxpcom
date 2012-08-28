@@ -61,7 +61,7 @@ static nsIInputStream *GetI(PyObject *self) {
 	return (nsIInputStream *)Py_nsISupports::GetI(self);
 }
 
-static PyObject *DoPyRead_Buffer(nsIInputStream *pI, PyObject *obBuffer, PRUint32 n)
+static PyObject *DoPyRead_Buffer(nsIInputStream *pI, PyObject *obBuffer, PRUint64 n)
 {
 	PRUint32 nread;
 	void *buf;
@@ -78,7 +78,7 @@ static PyObject *DoPyRead_Buffer(nsIInputStream *pI, PyObject *obBuffer, PRUint3
 		return NULL;
 	}
 
-	if (n==(PRUint32)-1) {
+	if (n==(PRUint64)-1) {
 		n = buf_len;
 	} else {
 		if (n > buf_len) {
@@ -95,9 +95,9 @@ static PyObject *DoPyRead_Buffer(nsIInputStream *pI, PyObject *obBuffer, PRUint3
 	return PyInt_FromLong(nread);
 }
 
-static PyObject *DoPyRead_Size(nsIInputStream *pI, PRUint32 n)
+static PyObject *DoPyRead_Size(nsIInputStream *pI, PRUint64 n)
 {
-	if (n==(PRUint32)-1) {
+	if (n==(PRUint64)-1) {
 		nsresult r;
 		Py_BEGIN_ALLOW_THREADS;
 		r = pI->Available(&n);
@@ -149,17 +149,17 @@ static PyObject *DoPyRead_Size(nsIInputStream *pI, PRUint32 n)
 static PyObject *PyRead(PyObject *self, PyObject *args)
 {
 	PyObject *obBuffer = NULL;
-	PRUint32 n = (PRUint32)-1;
+	PRUint64 n = (PRUint64)-1;
 
 	nsIInputStream *pI = GetI(self);
 	if (pI==NULL)
 		return NULL;
-	if (PyArg_ParseTuple(args, "|i", (int *)&n))
+	if (PyArg_ParseTuple(args, "|K", &n))
 		// This worked - no args, or just an int.
 		return DoPyRead_Size(pI, n);
 	// try our other supported arg format.
 	PyErr_Clear();
-	if (!PyArg_ParseTuple(args, "O|i", &obBuffer, (int *)&n)) {
+	if (!PyArg_ParseTuple(args, "O|K", &obBuffer, &n)) {
 		PyErr_Clear();
 		PyErr_SetString(PyExc_TypeError, "'read()' must be called as (buffer_ob, int_size=-1) or (int_size=-1)");
 		return NULL;

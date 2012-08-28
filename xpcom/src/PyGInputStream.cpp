@@ -56,7 +56,7 @@ public:
 	PYGATEWAY_BASE_SUPPORT(nsIInputStream, PyG_Base);
 
 	NS_IMETHOD Close(void);
-	NS_IMETHOD Available(PRUint32 *_retval);
+	NS_IMETHOD Available(PRUint64 *_retval);
 	NS_IMETHOD Read(char * buf, PRUint32 count, PRUint32 *_retval);
 	NS_IMETHOD ReadSegments(nsWriteSegmentFun writer, void * closure, PRUint32 count, PRUint32 *_retval);
 	NS_IMETHOD IsNonBlocking(bool *aNonBlocking);
@@ -77,7 +77,7 @@ PyG_nsIInputStream::Close()
 }
 
 NS_IMETHODIMP
-PyG_nsIInputStream::Available(PRUint32 *_retval)
+PyG_nsIInputStream::Available(PRUint64 *_retval)
 {
 	NS_PRECONDITION(_retval, "null pointer");
 	CEnterLeavePython _celp;
@@ -85,7 +85,7 @@ PyG_nsIInputStream::Available(PRUint32 *_retval)
 	const char *methodName = "available";
 	nsresult nr = InvokeNativeViaPolicy(methodName, &ret);
 	if (NS_SUCCEEDED(nr)) {
-		*_retval = PyInt_AsLong(ret);
+		*_retval = PyInt_AsUnsignedLongLongMask(ret);
 		if (PyErr_Occurred())
 			nr = HandleNativeGatewayError(methodName);
 		Py_XDECREF(ret);
