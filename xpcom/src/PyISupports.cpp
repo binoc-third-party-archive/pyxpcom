@@ -269,7 +269,7 @@ Py_nsISupports::InterfaceFromPyObject(PyObject *ob,
 			PyXPCOM_BuildPyException(nr);
 			return PR_FALSE;
 		}
-		NS_ASSERTION(ppv != nsnull, "PyObject_AsVariant worked but gave null!");
+		NS_ASSERTION(ppv != nullptr, "PyObject_AsVariant worked but gave null!");
 		return PR_TRUE;
 	}
 	// end of variant support.
@@ -325,7 +325,7 @@ Py_nsISupports::PyObjectFromInterface(nsISupports *pis,
 
 	if (!bIsInternalCall) {
 #ifdef NS_DEBUG
-		nsISupports *queryResult = nsnull;
+		nsISupports *queryResult = nullptr;
 		pis->QueryInterface(riid, (void **)&queryResult);
 		NS_ASSERTION(queryResult == pis, "QueryInterface needed");
 		NS_IF_RELEASE(queryResult);

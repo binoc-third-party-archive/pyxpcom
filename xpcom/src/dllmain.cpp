@@ -64,7 +64,7 @@
 #include <sys/stat.h>
 #endif
 
-static PRLock *g_lockMain = nsnull;
+static PRLock *g_lockMain = nullptr;
 
 PYXPCOM_EXPORT PyObject *PyXPCOM_Error = NULL;
 PYXPCOM_EXPORT PRBool PyXPCOM_ModuleInitialized = PR_FALSE;
@@ -84,14 +84,14 @@ PyXPCOM_INTERFACE_DEFINE(Py_nsIVariant, nsIVariant, PyMethods_IVariant)
 PYXPCOM_EXPORT void
 PyXPCOM_AcquireGlobalLock(void)
 {
-	NS_PRECONDITION(g_lockMain != nsnull, "Cant acquire a NULL lock!");
+	NS_PRECONDITION(g_lockMain != nullptr, "Cant acquire a NULL lock!");
 	PR_Lock(g_lockMain);
 }
 
 PYXPCOM_EXPORT void
 PyXPCOM_ReleaseGlobalLock(void)
 {
-	NS_PRECONDITION(g_lockMain != nsnull, "Cant release a NULL lock!");
+	NS_PRECONDITION(g_lockMain != nullptr, "Cant release a NULL lock!");
 	PR_Unlock(g_lockMain);
 }
 

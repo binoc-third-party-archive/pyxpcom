@@ -91,7 +91,7 @@ static PyObject *PyGetNext(PyObject *self, PyObject *args)
 	if (pI==NULL)
 		return NULL;
 
-	nsISupports *pRet = nsnull;
+	nsISupports *pRet = nullptr;
 	nsresult r;
 	Py_BEGIN_ALLOW_THREADS;
 	r = pI->GetNext(&pRet);
@@ -135,7 +135,7 @@ static PyObject *PyFetchBlock(PyObject *self, PyObject *args)
 	// We want to fetch with the thread-lock released,
 	// but this means we can not append to the PyList
 	nsISupports **fetched = new nsISupports*[n_wanted];
-	if (fetched==nsnull) {
+	if (fetched==nullptr) {
 		PyErr_NoMemory();
 		return NULL;
 	}

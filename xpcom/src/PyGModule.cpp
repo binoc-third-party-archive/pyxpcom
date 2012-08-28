@@ -78,7 +78,7 @@ PyG_nsIModule::GetClassObject(nsIComponentManager *aCompMgr,
                                 void** r_classObj)
 {
 	NS_PRECONDITION(r_classObj, "null pointer");
-	*r_classObj = nsnull;
+	*r_classObj = nullptr;
 	CEnterLeavePython _celp;
 	PyObject *cm = PyObject_FromNSInterface(aCompMgr, NS_GET_IID(nsIComponentManager));
 	PyObject *iid = Py_nsIID::PyObjectFromIID(aIID);

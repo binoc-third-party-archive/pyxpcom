@@ -51,7 +51,7 @@
 
 PyXPCOM_XPTStub::PyXPCOM_XPTStub(PyObject *instance, const nsIID &iid)
 	: PyG_Base(instance, iid),
-	  m_pNextObject(nsnull)
+	  m_pNextObject(nullptr)
 {
 	if (NS_FAILED(InitStub(iid)))
 		NS_ERROR("InitStub must not fail!");

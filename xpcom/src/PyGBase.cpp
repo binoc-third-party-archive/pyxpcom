@@ -83,7 +83,7 @@ static PRBool CheckDefaultGateway(PyObject *real_inst, REFNSIID iid, nsISupports
 PyG_Base::CreateNew(PyObject *pPyInstance, const nsIID &iid, void **ppResult)
 {
 	NS_PRECONDITION(ppResult && *ppResult==NULL, "NULL or uninitialized pointer");
-	if (ppResult==nsnull)
+	if (ppResult==nullptr)
 		return NS_ERROR_NULL_POINTER;
 
 	PyG_Base *ret;
@@ -94,7 +94,7 @@ PyG_Base::CreateNew(PyObject *pPyInstance, const nsIID &iid, void **ppResult)
 		ret = MakePyG_nsIInputStream(pPyInstance);
 	else
 		ret = new PyXPCOM_XPTStub(pPyInstance, iid);
-	if (ret==nsnull)
+	if (ret==nullptr)
 		return NS_ERROR_OUT_OF_MEMORY;
 	ret->AddRef(); // The first reference for the caller.
 	*ppResult = ret->ThisAsIID(iid);
@@ -144,7 +144,7 @@ PyG_Base::PyG_Base(PyObject *instance, const nsIID &iid)
 	{
 		char *iid_repr;
 		nsCOMPtr<nsIInterfaceInfoManager> iim = XPTI_GetInterfaceInfoManager();
-		if (iim!=nsnull)
+		if (iim!=nullptr)
 			iim->GetNameForIID(&iid, &iid_repr);
 		PyObject *real_instance = PyObject_GetAttrString(instance, "_obj_");
 		PyObject *real_repr = PyObject_Repr(real_instance);
@@ -179,8 +179,8 @@ PyG_Base::~PyG_Base()
 		// our weak reference at the same time
 		CEnterLeaveXPCOMFramework _celf;
 		PyXPCOM_GatewayWeakReference *p = (PyXPCOM_GatewayWeakReference *)(nsISupports *)m_pWeakRef;
-		p->m_pBase = nsnull;
-		m_pWeakRef = nsnull;
+		p->m_pBase = nullptr;
+		m_pWeakRef = nullptr;
 	}
 }
 
@@ -202,8 +202,8 @@ PyG_Base::Release(void)
 			// delete the object (which == ka-BOOM!). See Komodo bug
 			// http://bugs.activestate.com/show_bug.cgi?id=88165
 			PyXPCOM_GatewayWeakReference *p = (PyXPCOM_GatewayWeakReference *)(nsISupports *)m_pWeakRef;
-			p->m_pBase = nsnull;
-			m_pWeakRef = nsnull;
+			p->m_pBase = nullptr;
+			m_pWeakRef = nullptr;
 		}
 	}
 #ifdef NS_BUILD_REFCNT_LOGGING
@@ -386,9 +386,9 @@ PyG_Base::QueryInterface(REFNSIID iid, void** ppv)
 	}
 
 	NS_PRECONDITION(ppv, "NULL pointer");
-	if (ppv==nsnull)
+	if (ppv==nullptr)
 		return NS_ERROR_NULL_POINTER;
-	*ppv = nsnull;
+	*ppv = nullptr;
 	// If one of our native interfaces (but NOT nsISupports if we have a base)
 	// return this.
 	// It is important is that nsISupports come from the base object
@@ -462,11 +462,11 @@ PyG_Base::GetWeakReference(nsIWeakReference **ret)
 	// always delegate back to the "base" gateway for the object, as this tear-off
 	// interface may not live as long as the base.  So we recurse back to the base.
 	if (m_pBaseObject) {
-		NS_PRECONDITION(m_pWeakRef == nsnull, "Not a base object, but do have a weak-ref!");
+		NS_PRECONDITION(m_pWeakRef == nullptr, "Not a base object, but do have a weak-ref!");
 		return m_pBaseObject->GetWeakReference(ret);
 	}
 	NS_PRECONDITION(ret, "null pointer");
-	if (ret==nsnull) return NS_ERROR_INVALID_POINTER;
+	if (ret==nullptr) return NS_ERROR_INVALID_POINTER;
 	if (!m_pWeakRef) {
 		// First query for a weak reference - create it.
 		// XXX - this looks like it needs thread safety!?
@@ -546,7 +546,7 @@ static nsresult do_dispatch(
 	)
 {
 	NS_PRECONDITION(ppResult, "Must provide a result buffer");
-	*ppResult = nsnull;
+	*ppResult = nullptr;
 	// Build the Invoke arguments...
 	PyObject *args = NULL;
 	PyObject *method = NULL;
@@ -605,8 +605,8 @@ nsresult PyG_Base::InvokeNativeViaPolicyInternal(
 	if ( m_pPyObject == NULL || szMethodName == NULL )
 		return NS_ERROR_NULL_POINTER;
 
-	PyObject *temp = nsnull;
-	if (ppResult == nsnull)
+	PyObject *temp = nullptr;
+	if (ppResult == nullptr)
 		ppResult = &temp;
 	nsresult nr = do_dispatch(m_pPyObject, ppResult, szMethodName, szFormat, va);
 
@@ -682,8 +682,8 @@ PyG_Base *GetDefaultGateway(PyObject *policy)
 {
 	// NOTE: Instance is the policy, not the real instance
 	PyObject *instance = PyObject_GetAttrString(policy, "_obj_");
-	if (instance == nsnull)
-		return nsnull;
+	if (instance == nullptr)
+		return nullptr;
 	PyObject *ob_existing_weak = PyObject_GetAttrString(instance, PyXPCOM_szDefaultGatewayAttributeName);
 	Py_DECREF(instance);
 	if (ob_existing_weak != NULL) {
@@ -698,12 +698,12 @@ PyG_Base *GetDefaultGateway(PyObject *policy)
 		if (ok) {
 			nsresult nr = pWeakRef->QueryReferent( NS_GET_IID(nsIInternalPython), (void **)&pip);
 			if (NS_FAILED(nr))
-				return nsnull;
+				return nullptr;
 			return (PyG_Base *)(nsIInternalPython *)pip;
 		}
 	} else
 		PyErr_Clear();
-	return nsnull;
+	return nullptr;
 }
 
 PRBool CheckDefaultGateway(PyObject *real_inst, REFNSIID iid, nsISupports **ret_gateway)

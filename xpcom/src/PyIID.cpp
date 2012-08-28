@@ -170,15 +170,15 @@ Py_nsIID::PyTypeMethod_getattr(PyObject *self, char *name)
 {
 	Py_nsIID *me = (Py_nsIID *)self;
 	if (strcmp(name, "name")==0) {
-		char *iid_repr = nsnull;
+		char *iid_repr = nullptr;
 		nsCOMPtr<nsIInterfaceInfoManager> iim(do_GetService(
 		               NS_INTERFACEINFOMANAGER_SERVICE_CONTRACTID));
-		if (iim!=nsnull)
+		if (iim!=nullptr)
 			iim->GetNameForIID(&me->m_iid, &iid_repr);
-		if (iid_repr==nsnull)
+		if (iid_repr==nullptr)
 			iid_repr = me->m_iid.ToString();
 		PyObject *ret;
-		if (iid_repr != nsnull) {
+		if (iid_repr != nullptr) {
 			ret = PyString_FromString(iid_repr);
 			nsMemory::Free(iid_repr);
 		} else

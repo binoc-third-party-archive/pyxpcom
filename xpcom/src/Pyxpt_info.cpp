@@ -49,7 +49,7 @@
 
 PyObject *PyObject_FromXPTType( const nsXPTType *d)
 {
-	if (d==nsnull) {
+	if (d==nullptr) {
 		Py_INCREF(Py_None);
 		return Py_None;
 	}
@@ -61,7 +61,7 @@ PyObject *PyObject_FromXPTType( const nsXPTType *d)
 
 PyObject *PyObject_FromXPTTypeDescriptor( const XPTTypeDescriptor *d)
 {
-	if (d==nsnull) {
+	if (d==nullptr) {
 		Py_INCREF(Py_None);
 		return Py_None;
 	}
@@ -75,7 +75,7 @@ PyObject *PyObject_FromXPTTypeDescriptor( const XPTTypeDescriptor *d)
 
 PyObject *PyObject_FromXPTParamDescriptor( const XPTParamDescriptor *d)
 {
-	if (d==nsnull) {
+	if (d==nullptr) {
 		Py_INCREF(Py_None);
 		return Py_None;
 	}
@@ -87,7 +87,7 @@ PyObject *PyObject_FromXPTParamDescriptor( const XPTParamDescriptor *d)
 
 PyObject *PyObject_FromXPTMethodDescriptor( const XPTMethodDescriptor *d)
 {
-	if (d==nsnull) {
+	if (d==nullptr) {
 		Py_INCREF(Py_None);
 		return Py_None;
 	}
@@ -105,7 +105,7 @@ PyObject *PyObject_FromXPTMethodDescriptor( const XPTMethodDescriptor *d)
 
 PyObject *PyObject_FromXPTConstant( const XPTConstDescriptor *c)
 {
-	if (c==nsnull) {
+	if (c==nullptr) {
 		Py_INCREF(Py_None);
 		return Py_None;
 	}

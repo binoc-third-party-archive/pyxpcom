@@ -67,7 +67,7 @@ static PyObject *PyGetInterfaces(PyObject *self, PyObject *args)
 	if (pI==NULL)
 		return NULL;
 
-	nsIID** iidArray = nsnull;
+	nsIID** iidArray = nullptr;
 	PRUint32 iidCount = 0;
 	nsresult r;
 	PRUint32 i;

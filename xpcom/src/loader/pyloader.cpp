@@ -220,7 +220,7 @@ static nsresult PyxpcomModuleLoader(nsISupports* aOuter, REFNSIID aIID, void** a
 {
     nsresult rv;
 
-    *aResult = nsnull;
+    *aResult = nullptr;
     if (aOuter)
         return NS_ERROR_NO_AGGREGATION;
     nsPythonModuleLoader* inst;

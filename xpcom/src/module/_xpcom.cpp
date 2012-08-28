@@ -134,7 +134,7 @@ PyXPCOMMethod_XPTI_GetInterfaceInfoManager(PyObject *self, PyObject *args)
 		return NULL;
 	nsCOMPtr<nsIInterfaceInfoManager> im(do_GetService(
 	                      NS_INTERFACEINFOMANAGER_SERVICE_CONTRACTID));
-	if ( im == nsnull )
+	if ( im == nullptr )
 		return PyXPCOM_BuildPyException(NS_ERROR_FAILURE);
 
 	/* Return a type based on the IID (with no extra ref) */
@@ -286,7 +286,7 @@ PyXPCOMMethod_NS_ShutdownXPCOM(PyObject *self, PyObject *args)
 		return NULL;
 	nsresult nr;
 	Py_BEGIN_ALLOW_THREADS;
-	nr = NS_ShutdownXPCOM(nsnull);
+	nr = NS_ShutdownXPCOM(nullptr);
 	Py_END_ALLOW_THREADS;
 
 	// Dont raise an exception - as we are probably shutting down
@@ -355,7 +355,7 @@ PyXPCOMMethod_MakeVariant(PyObject *self, PyObject *args)
 	nsresult nr = PyObject_AsVariant(ob, getter_AddRefs(pVar));
 	if (NS_FAILED(nr))
 		return PyXPCOM_BuildPyException(nr);
-	if (pVar == nsnull) {
+	if (pVar == nullptr) {
 		NS_ERROR("PyObject_AsVariant worked but returned a NULL ptr!");
 		return PyXPCOM_BuildPyException(NS_ERROR_UNEXPECTED);
 	}
@@ -378,7 +378,7 @@ PyXPCOMMethod_GetVariantValue(PyObject *self, PyObject *args)
 				    "Object is not an nsIVariant (got %s)",
 				    ob->ob_type->tp_name);
 
-	Py_nsISupports *parent = nsnull;
+	Py_nsISupports *parent = nullptr;
 	if (obParent && obParent != Py_None) {
 		if (!Py_nsISupports::Check(obParent)) {
 			PyErr_SetString(PyExc_ValueError,
@@ -514,10 +514,10 @@ static PRBool EnsureXPCOM()
 			nsCOMPtr<nsILocalFile> ns_bin_dir;
 			NS_ConvertASCIItoUTF16 strLandmark(landmark);
 			NS_NewLocalFile(strLandmark, PR_FALSE, getter_AddRefs(ns_bin_dir));
-			nsresult rv = NS_InitXPCOM2(nsnull, ns_bin_dir, nsnull);
+			nsresult rv = NS_InitXPCOM2(nullptr, ns_bin_dir, nullptr);
 #else
 			// Elsewhere, Mozilla can find it itself (we hope!)
-			nsresult rv = NS_InitXPCOM2(nsnull, nsnull, nsnull);
+			nsresult rv = NS_InitXPCOM2(nullptr, nullptr, nullptr);
 #endif // XP_WIN
 			if (NS_FAILED(rv)) {
 				PyErr_SetString(PyExc_RuntimeError, "The XPCOM subsystem could not be initialized");

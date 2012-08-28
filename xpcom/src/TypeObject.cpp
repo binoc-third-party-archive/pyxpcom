@@ -142,9 +142,9 @@ PyXPCOM_TypeObject::Py_repr(PyObject *self)
 	char *iid_repr;
 	nsCOMPtr<nsIInterfaceInfoManager> iim(do_GetService(
 	                      NS_INTERFACEINFOMANAGER_SERVICE_CONTRACTID));
-	if (iim!=nsnull)
+	if (iim!=nullptr)
 		iim->GetNameForIID(&pis->m_iid, &iid_repr);
-	if (iid_repr==nsnull)
+	if (iid_repr==nullptr)
 		// no IIM available, or it doesn't know the name.
 		iid_repr = pis->m_iid.ToString();
 	// XXX - need some sort of buffer overflow.

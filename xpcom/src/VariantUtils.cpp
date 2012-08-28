@@ -418,7 +418,7 @@ PRBool FillSingleArray(void *array_ptr, PyObject *sequence_ob, PRUint32 sequence
 				char **pp = (char **)pthis;
 				if (*pp)
 					nsMemory::Free(*pp);
-				*pp = nsnull;
+				*pp = nullptr;
 
 				if (val == Py_None)
 					break; // Remains NULL.
@@ -447,7 +447,7 @@ PRBool FillSingleArray(void *array_ptr, PyObject *sequence_ob, PRUint32 sequence
 				PRUnichar **pp = (PRUnichar **)pthis;
 				if (*pp)
 					nsMemory::Free(*pp);
-				*pp = nsnull;
+				*pp = nullptr;
 				if (val == Py_None)
 					break; // Remains NULL.
 				if (!PyString_Check(val) && !PyUnicode_Check(val)) {
@@ -980,9 +980,9 @@ Helpers when CALLING interfaces.
 
 PyXPCOM_InterfaceVariantHelper::PyXPCOM_InterfaceVariantHelper(Py_nsISupports *parent)
 {
-	m_var_array=nsnull;
-	m_buffer_array=nsnull;
-	m_pyparams=nsnull;
+	m_var_array=nullptr;
+	m_buffer_array=nullptr;
+	m_pyparams=nullptr;
 	m_num_array = 0;
 	// Parent should never die before we do, but let's not take the chance.
 	m_parent = parent;
@@ -1209,7 +1209,7 @@ PRUint32 PyXPCOM_InterfaceVariantHelper::GetSizeIs( int var_index, PRBool is_arg
 }
 
 #define MAKE_VALUE_BUFFER(size) \
-	if ((this_buffer_pointer = (void *)nsMemory::Alloc((size))) == nsnull) { \
+	if ((this_buffer_pointer = (void *)nsMemory::Alloc((size))) == nullptr) { \
 		PyErr_NoMemory(); \
 		BREAK_FALSE; \
 	}
@@ -1229,7 +1229,7 @@ PRBool PyXPCOM_InterfaceVariantHelper::FillInVariant(const PythonTypeDescriptor 
 	// *pointer* is passed rather than value.  Therefore, we have a special case
 	// - T_CHAR_STR that is "in" gets the Python string pointer passed.
 	void *&this_buffer_pointer = m_buffer_array[value_index]; // Freed at object destruction with PyMem_Free()
-	NS_ABORT_IF_FALSE(this_buffer_pointer==nsnull, "We appear to already have a buffer");
+	NS_ABORT_IF_FALSE(this_buffer_pointer==nullptr, "We appear to already have a buffer");
 	int cb_this_buffer_pointer = 0;
 	if (XPT_PD_IS_IN(td.param_flags)) {
 		NS_ABORT_IF_FALSE(!td.is_auto_in, "Param is 'auto-in', but we are filling it normally!");
@@ -1424,7 +1424,7 @@ PRBool PyXPCOM_InterfaceVariantHelper::FillInVariant(const PythonTypeDescriptor 
 			}
 		  case nsXPTType::T_CHAR_STR: {
 			if (val==Py_None) {
-				ns_v.val.p = nsnull;
+				ns_v.val.p = nullptr;
 				break;
 			}
 			// If an "in" char *, and we have a PyString, then pass the
@@ -1452,7 +1452,7 @@ PRBool PyXPCOM_InterfaceVariantHelper::FillInVariant(const PythonTypeDescriptor 
 
 		  case nsXPTType::T_WCHAR_STR: {
 			if (val==Py_None) {
-				ns_v.val.p = nsnull;
+				ns_v.val.p = nullptr;
 				break;
 			}
 			if (!PyString_Check(val) && !PyUnicode_Check(val)) {
@@ -1512,7 +1512,7 @@ PRBool PyXPCOM_InterfaceVariantHelper::FillInVariant(const PythonTypeDescriptor 
 			}
 		  case nsXPTType::T_PSTRING_SIZE_IS: {
 			if (val==Py_None) {
-				ns_v.val.p = nsnull;
+				ns_v.val.p = nullptr;
 				break;
 			}
 			if (!PyString_Check(val) && !PyUnicode_Check(val)) {
@@ -1534,7 +1534,7 @@ PRBool PyXPCOM_InterfaceVariantHelper::FillInVariant(const PythonTypeDescriptor 
 
 		case nsXPTType::T_PWSTRING_SIZE_IS: {
 			if (val==Py_None) {
-				ns_v.val.p = nsnull;
+				ns_v.val.p = nullptr;
 				break;
 			}
 			if (!PyString_Check(val) && !PyUnicode_Check(val)) {
@@ -1557,7 +1557,7 @@ PRBool PyXPCOM_InterfaceVariantHelper::FillInVariant(const PythonTypeDescriptor 
 			}
 		case nsXPTType::T_ARRAY: {
 			if (val==Py_None) {
-				ns_v.val.p = nsnull;
+				ns_v.val.p = nullptr;
 				break;
 			}
 			if (!td.array_type) {
@@ -1637,9 +1637,9 @@ PRBool PyXPCOM_InterfaceVariantHelper::PrepareOutVariant(const PythonTypeDescrip
 			ns_v.SetValNeedsCleanup();
 			// Even if ns_val.p already setup as part of "in" processing,
 			// we need to ensure setup for out.
-			NS_ABORT_IF_FALSE(ns_v.val.p==nsnull || ns_v.val.p==this_buffer_pointer, "Garbage in our pointer?");
+			NS_ABORT_IF_FALSE(ns_v.val.p==nullptr || ns_v.val.p==this_buffer_pointer, "Garbage in our pointer?");
 			ns_v.val.p = this_buffer_pointer;
-			this_buffer_pointer = nsnull;
+			this_buffer_pointer = nullptr;
 			break;
 		  case nsXPTType::T_PWSTRING_SIZE_IS:
 		  case nsXPTType::T_PSTRING_SIZE_IS:
@@ -1657,14 +1657,14 @@ PRBool PyXPCOM_InterfaceVariantHelper::PrepareOutVariant(const PythonTypeDescrip
 			// (it may have been changed under us - we free the _new_ value.
 			// Even if ns_val.p already setup as part of "in" processing,
 			// we need to ensure setup for out.
-			NS_ABORT_IF_FALSE(ns_v.val.p==nsnull || ns_v.val.p==this_buffer_pointer, "Garbage in our pointer?");
+			NS_ABORT_IF_FALSE(ns_v.val.p==nullptr || ns_v.val.p==this_buffer_pointer, "Garbage in our pointer?");
 			ns_v.val.p = this_buffer_pointer;
 			ns_v.SetValNeedsCleanup();
-			this_buffer_pointer = nsnull;
+			this_buffer_pointer = nullptr;
 			break;
 		  case nsXPTType::T_DOMSTRING:
 		  case nsXPTType::T_ASTRING: {
-			  NS_ABORT_IF_FALSE(ns_v.val.p==nsnull, "T_DOMTSTRINGS can't be out and have a value (ie, no in/outs are allowed!");
+			  NS_ABORT_IF_FALSE(ns_v.val.p==nullptr, "T_DOMTSTRINGS can't be out and have a value (ie, no in/outs are allowed!");
 			  NS_ABORT_IF_FALSE(XPT_PD_IS_DIPPER(td.param_flags) && XPT_PD_IS_IN(td.param_flags), "out DOMStrings must really be in dippers!");
 			  ns_v.SetValNeedsCleanup();
 			  // Dippers are really treated like "in" params.
@@ -1678,7 +1678,7 @@ PRBool PyXPCOM_InterfaceVariantHelper::PrepareOutVariant(const PythonTypeDescrip
 			}
 		  case nsXPTType::T_CSTRING:
 		  case nsXPTType::T_UTF8STRING: {
-			  NS_ABORT_IF_FALSE(ns_v.val.p==nsnull, "T_DOMTSTRINGS can't be out and have a value (ie, no in/outs are allowed!");
+			  NS_ABORT_IF_FALSE(ns_v.val.p==nullptr, "T_DOMTSTRINGS can't be out and have a value (ie, no in/outs are allowed!");
 			  NS_ABORT_IF_FALSE(XPT_PD_IS_DIPPER(td.param_flags) && XPT_PD_IS_IN(td.param_flags), "out DOMStrings must really be in dippers!");
 			  ns_v.SetValNeedsCleanup();
 			  ns_v.ptr = new nsCString();
@@ -1700,7 +1700,7 @@ PRBool PyXPCOM_InterfaceVariantHelper::PrepareOutVariant(const PythonTypeDescrip
 PyObject *PyXPCOM_InterfaceVariantHelper::MakeSinglePythonResult(int index)
 {
 	nsXPTCVariant &ns_v = m_var_array[index];
-	PyObject *ret = nsnull;
+	PyObject *ret = nullptr;
 	NS_ABORT_IF_FALSE(ns_v.IsPtrData() || ns_v.IsValDOMString(), "expecting a pointer if you want a result!");
 
 	// Re-fetch the type descriptor.
@@ -1709,7 +1709,7 @@ PyObject *PyXPCOM_InterfaceVariantHelper::MakeSinglePythonResult(int index)
 	NS_ABORT_IF_FALSE(ns_v.type==td.type_flags, "variant type has changed under us!");
 
 	// If the pointer is NULL, we can get out now!
-	if (ns_v.ptr==nsnull) {
+	if (ns_v.ptr==nullptr) {
 		Py_INCREF(Py_None);
 		return Py_None;
 	}
@@ -1870,7 +1870,7 @@ PyObject *PyXPCOM_InterfaceVariantHelper::MakeSinglePythonResult(int index)
 		break;
 	  default:
 		PyErr_Format(PyExc_ValueError, "Unknown XPCOM type code (0x%x)", XPT_TDP_TAG(ns_v.type));
-		/* ret remains nsnull */
+		/* ret remains nullptr */
 		break;
 	}
 	return ret;
@@ -1957,7 +1957,7 @@ PyXPCOM_GatewayVariantHelper::PyXPCOM_GatewayVariantHelper( PyG_Base *gw, int me
 	m_method_index = method_index;
 	m_python_type_desc_array = NULL;
 	m_num_type_descs = 0;
-	m_interface_info=nsnull;
+	m_interface_info=nullptr;
 }
 
 PyXPCOM_GatewayVariantHelper::~PyXPCOM_GatewayVariantHelper()
@@ -1972,7 +1972,7 @@ PyObject *PyXPCOM_GatewayVariantHelper::MakePyArgs()
 	// pass to Python.
 	m_num_type_descs = m_info->num_args;
 	m_python_type_desc_array = new PythonTypeDescriptor[m_num_type_descs];
-	if (m_python_type_desc_array==nsnull)
+	if (m_python_type_desc_array==nullptr)
 		return PyErr_NoMemory();
 
 	// First loop to count the number of objects
@@ -2247,8 +2247,8 @@ nsresult PyXPCOM_GatewayVariantHelper::GetArrayType(PRUint8 index, PRUint8 *ret,
 {
 	nsCOMPtr<nsIInterfaceInfoManager> iim(do_GetService(
 	                     NS_INTERFACEINFOMANAGER_SERVICE_CONTRACTID));
-	NS_ABORT_IF_FALSE(iim != nsnull, "Cant get interface from IIM!");
-	if (iim==nsnull)
+	NS_ABORT_IF_FALSE(iim != nullptr, "Cant get interface from IIM!");
+	if (iim==nullptr)
 		return NS_ERROR_FAILURE;
 
 	nsCOMPtr<nsIInterfaceInfo> ii;
@@ -2480,7 +2480,7 @@ nsresult PyXPCOM_GatewayVariantHelper::BackFillVariant( PyObject *val, int index
 		char **pp = (char **)ns_v.val.p;
 		if (*pp && pi.IsIn())
 			nsMemory::Free(*pp);
-		*pp = nsnull;
+		*pp = nullptr;
 
 		if (val == Py_None)
 			break; // Remains NULL.
@@ -2509,7 +2509,7 @@ nsresult PyXPCOM_GatewayVariantHelper::BackFillVariant( PyObject *val, int index
 		PRUnichar **pp = (PRUnichar **)ns_v.val.p;
 		if (*pp && pi.IsIn())
 			nsMemory::Free(*pp);
-		*pp = nsnull;
+		*pp = nullptr;
 		if (val == Py_None)
 			break; // Remains NULL.
 		if (!PyString_Check(val) && !PyUnicode_Check(val)) {
@@ -2523,7 +2523,7 @@ nsresult PyXPCOM_GatewayVariantHelper::BackFillVariant( PyObject *val, int index
 		break;
 		}
 	  case nsXPTType::T_INTERFACE:  {
-		nsISupports *pnew = nsnull;
+		nsISupports *pnew = nullptr;
 		// Find out what IID we are declared to use.
 		nsIID iid;
 		nsIInterfaceInfo *ii = GetInterfaceInfo();
@@ -2568,7 +2568,7 @@ nsresult PyXPCOM_GatewayVariantHelper::BackFillVariant( PyObject *val, int index
 		if (!GetIIDForINTERFACE_ID(pi.type.argnum, &piid))
 			BREAK_FALSE;
 
-		nsISupports *pnew = nsnull;
+		nsISupports *pnew = nullptr;
 		// Get it the "standard" way.
 		// We do allow NULL here, even tho doing so will no-doubt crash some objects.
 		// (but there will certainly be objects out there that will allow NULL :-(
@@ -2586,7 +2586,7 @@ nsresult PyXPCOM_GatewayVariantHelper::BackFillVariant( PyObject *val, int index
 		}
 
 	  case nsXPTType::T_PSTRING_SIZE_IS: {
-		const char *sz = nsnull;
+		const char *sz = nullptr;
 		PRUint32 nch = 0;
 		if (val != Py_None) {
 			if (!PyString_Check(val) && !PyUnicode_Check(val)) {
@@ -2622,8 +2622,8 @@ nsresult PyXPCOM_GatewayVariantHelper::BackFillVariant( PyObject *val, int index
 			char **pp = (char **)ns_v.val.p;
 			if (*pp && pi.IsIn())
 				nsMemory::Free(*pp);
-			*pp = nsnull;
-			if (sz==nsnull) // None specified.
+			*pp = nullptr;
+			if (sz==nullptr) // None specified.
 				break; // Remains NULL.
 			*pp = (char *)nsMemory::Alloc(nch);
 			if (*pp==NULL) {
@@ -2641,7 +2641,7 @@ nsresult PyXPCOM_GatewayVariantHelper::BackFillVariant( PyObject *val, int index
 		}
 
 	  case nsXPTType::T_PWSTRING_SIZE_IS: {
-		PRUnichar *sz = nsnull;
+		PRUnichar *sz = nullptr;
 		PRUint32 nch = 0;
 		PRUint32 nbytes = 0;
 
@@ -2679,7 +2679,7 @@ nsresult PyXPCOM_GatewayVariantHelper::BackFillVariant( PyObject *val, int index
 			if (*pp && pi.IsIn())
 				nsMemory::Free(*pp);
 			*pp = sz;
-			sz = nsnull;
+			sz = nullptr;
 			if (bCanSetSizeIs)
 				rc = SetSizeIs(index, PR_TRUE, nch);
 			else {
@@ -2732,7 +2732,7 @@ nsresult PyXPCOM_GatewayVariantHelper::BackFillVariant( PyObject *val, int index
 				FreeSingleArray(*pp, existing_size, array_type);
 				nsMemory::Free(*pp);
 			}
-			*pp = nsnull;
+			*pp = nullptr;
 			if (val == Py_None)
 				break; // Remains NULL.
 			size_t nbytes = sequence_size * element_size;
