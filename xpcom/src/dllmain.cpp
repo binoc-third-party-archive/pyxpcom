@@ -216,7 +216,6 @@ PyXPCOM_EnsurePythonEnvironment(void)
 
 	// The exception object pyxpcom uses.
 	if (PyXPCOM_Error == NULL) {
-		PRBool rc = PR_FALSE;
 		PyObject *mod = NULL;
 
 		mod = PyImport_ImportModule("xpcom");
@@ -224,7 +223,6 @@ PyXPCOM_EnsurePythonEnvironment(void)
 			PyXPCOM_Error = PyObject_GetAttrString(mod, "Exception");
 			Py_DECREF(mod);
 		}
-		rc = (PyXPCOM_Error != NULL);
 	}
 
 	// Register our custom interfaces.

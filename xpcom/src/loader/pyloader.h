@@ -42,6 +42,10 @@
 
 #include "nsISupports.h"
 #include "nsILocalFile.h"
+/* These headers need ugly hacks to work... */
+#include "nsStringGlue.h"
+#define nsString_h___
+#include "nsZipArchive.h" /* needed for mozilla/ModuleLoader.h */
 #include "mozilla/ModuleLoader.h"
 #include "mozilla/Module.h"
 
@@ -53,9 +57,7 @@ class nsPythonModuleLoader : public mozilla::ModuleLoader
     nsPythonModuleLoader();
     ~nsPythonModuleLoader();
 
-    NS_OVERRIDE virtual const mozilla::Module* LoadModule(nsILocalFile* aFile);
-    NS_OVERRIDE virtual const mozilla::Module* LoadModuleFromJAR(nsILocalFile* aJARFile,
-                                                                 const nsACString& aPath);
+    virtual const mozilla::Module* LoadModule(mozilla::FileLocation&) MOZ_OVERRIDE;
 
     nsresult Init();
     void UnloadLibraries();

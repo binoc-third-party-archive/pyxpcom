@@ -109,9 +109,12 @@ done:
 }
 
 const mozilla::Module*
-nsPythonModuleLoader::LoadModule(nsILocalFile* aFile)
+nsPythonModuleLoader::LoadModule(mozilla::FileLocation& aFileLocation)
 {
     NS_ASSERTION(NS_IsMainThread(), "nsPythonModuleLoader::LoadModule not on main thread?");
+
+    /* XXX temp hack */
+    nsCOMPtr<nsIFile> aFile;
 
     if (PR_LOG_TEST(nsPythonModuleLoaderLog, PR_LOG_DEBUG)) {
         nsCOMPtr<nsIFile> file(do_QueryInterface(aFile));
@@ -145,13 +148,6 @@ done:
     if (!entry)
         return NULL;
     return entry;
-}
-
-const mozilla::Module*
-nsPythonModuleLoader::LoadModuleFromJAR(nsILocalFile* aJARFile, const nsACString &aPath)
-{
-    NS_ERROR("Python components cannot be loaded from JARs");
-    return NULL;
 }
 
 void

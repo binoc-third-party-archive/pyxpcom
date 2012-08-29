@@ -82,8 +82,6 @@ static const char *LOGGER_ERROR = "error";
 static const char *LOGGER_DEBUG = "debug";
 #endif
 
-extern PRBool pyxpcom_initialized = PR_FALSE;
-
 // Our "normal" error logger - calls back to the logging module.
 void DoLogMessage(const char *methodName, const char *pszMessageText)
 {

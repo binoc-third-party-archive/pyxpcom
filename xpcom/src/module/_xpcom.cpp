@@ -65,7 +65,6 @@
 #endif
 
 #include "nsIEventTarget.h"
-#include "nsIProxyObjectManager.h"
 
 #define LOADER_LINKS_WITH_PYTHON
 
@@ -294,57 +293,6 @@ PyXPCOMMethod_NS_ShutdownXPCOM(PyObject *self, PyObject *args)
 	return PyInt_FromLong(nr);
 }
 
-// A hack to work around their magic constants!
-static PyObject *
-PyXPCOMMethod_GetProxyForObject(PyObject *self, PyObject *args)
-{
-	PyObject *obTarget, *obIID, *obOb;
-	int flags;
-	if (!PyArg_ParseTuple(args, "OOOi", &obTarget, &obIID, &obOb, &flags))
-		return NULL;
-	nsIID iid;
-	if (!Py_nsIID::IIDFromPyObject(obIID, &iid))
-		return NULL;
-	nsCOMPtr<nsISupports> pob;
-	if (!Py_nsISupports::InterfaceFromPyObject(obOb, iid, getter_AddRefs(pob), PR_FALSE))
-		return NULL;
-	nsIEventTarget *pTarget = NULL;
-	nsIEventTarget *pTargetRelease = NULL;
-
-	if (PyInt_Check(obTarget) || PyLong_Check(obTarget)) {
-		pTarget = (nsIEventTarget *)PyLong_AsVoidPtr(obTarget);
-	} else {
-		if (!Py_nsISupports::InterfaceFromPyObject(obTarget, NS_GET_IID(nsIEventTarget), (nsISupports **)&pTarget, PR_TRUE))
-			return NULL;
-		pTargetRelease = pTarget;
-	}
-
-	nsresult rv_proxy;
-	nsCOMPtr<nsISupports> presult;
-	Py_BEGIN_ALLOW_THREADS;
-	nsCOMPtr<nsIProxyObjectManager> proxyMgr = 
-	         do_GetService("@mozilla.org/xpcomproxy;1", &rv_proxy);
-
-	if ( NS_SUCCEEDED(rv_proxy) ) {
-		rv_proxy = proxyMgr->GetProxyForObject(pTarget,
-				iid,
-				pob,
-				flags,
-				getter_AddRefs(presult));
-	}
-	if (pTargetRelease)
-		pTargetRelease->Release();
-	Py_END_ALLOW_THREADS;
-
-	PyObject *result;
-	if (NS_SUCCEEDED(rv_proxy) ) {
-		result = Py_nsISupports::PyObjectFromInterface(presult, iid);
-	} else {
-		result = PyXPCOM_BuildPyException(rv_proxy);
-	}
-	return result;
-}
-
 static PyObject *
 PyXPCOMMethod_MakeVariant(PyObject *self, PyObject *args)
 {
@@ -453,8 +401,6 @@ static struct PyMethodDef xpcom_methods[]=
 	{"UnwrapObject", PyXPCOMMethod_UnwrapObject, 1},
 	{"_GetInterfaceCount", PyXPCOMMethod_GetInterfaceCount, 1},
 	{"_GetGatewayCount", PyXPCOMMethod_GetGatewayCount, 1},
-	{"getProxyForObject", PyXPCOMMethod_GetProxyForObject, 1},
-	{"GetProxyForObject", PyXPCOMMethod_GetProxyForObject, 1},
 	{"GetSpecialDirectory", PyGetSpecialDirectory, 1},
 	{"AllocateBuffer", AllocateBuffer, 1},
 	{"LogConsoleMessage", LogConsoleMessage, 1, "Write a message to the xpcom console service"},
@@ -584,10 +530,6 @@ init_xpcom() {
 
 	// No good reason not to expose this impl detail, and tests can use it
 	REGISTER_IID(nsIInternalPython);
-    // We have special support for proxies - may as well add their constants!
-    REGISTER_INT(NS_PROXY_SYNC);
-    REGISTER_INT(NS_PROXY_ASYNC);
-    REGISTER_INT(NS_PROXY_ALWAYS);
     // Build flags that may be useful.
     PyObject *ob = PyBool_FromLong(
 #ifdef NS_DEBUG

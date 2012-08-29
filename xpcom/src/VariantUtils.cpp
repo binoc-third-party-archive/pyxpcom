@@ -310,8 +310,9 @@ PRBool FillSingleArray(void *array_ptr, PyObject *sequence_ob, PRUint32 sequence
 		if (PyUnicode_Check(sequence_ob)) {
 			release_seq = PR_TRUE;
 			sequence_ob = PyObject_Str(sequence_ob);
-		} else
+		} else {
 			release_seq = PR_FALSE;
+		}
 		if (!sequence_ob) // presumably a memory error, or Unicode encoding error.
 			return PR_FALSE;
 		memcpy(pthis, PyString_AS_STRING(sequence_ob), sequence_size);
