@@ -78,7 +78,7 @@ static void HandleLogError(const char *pszMessageText)
 
 static const char *LOGGER_WARNING = "warning";
 static const char *LOGGER_ERROR = "error";
-#ifdef NS_DEBUG
+#ifdef DEBUG
 static const char *LOGGER_DEBUG = "debug";
 #endif
 
