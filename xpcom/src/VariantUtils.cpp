@@ -1702,7 +1702,7 @@ PyObject *PyXPCOM_InterfaceVariantHelper::MakeSinglePythonResult(int index)
 {
 	nsXPTCVariant &ns_v = m_var_array[index];
 	PyObject *ret = nullptr;
-	NS_ABORT_IF_FALSE(ns_v.IsPtrData() || ns_v.IsValDOMString(), "expecting a pointer if you want a result!");
+	NS_ABORT_IF_FALSE(ns_v.IsPtrData(), "expecting a pointer if you want a result!");
 
 	// Re-fetch the type descriptor.
 	PythonTypeDescriptor &td = m_python_type_desc_array[index];
@@ -2284,7 +2284,6 @@ PRBool PyXPCOM_GatewayVariantHelper::GetIIDForINTERFACE_ID(int index, const nsII
 	nsXPTParamInfo *pi = (nsXPTParamInfo *)m_info->params+index;
 	nsXPTType typ = pi->GetType();
 	NS_ASSERTION(XPT_TDP_TAG(typ) == nsXPTType::T_IID, "INTERFACE_IS IID param isn't an IID!");
-	NS_ABORT_IF_FALSE(typ.IsPointer(), "Expecting to re-fill a pointer value.");
 	if (XPT_TDP_TAG(typ) != nsXPTType::T_IID)
 		*ppret = &NS_GET_IID(nsISupports);
 	else {

@@ -55,6 +55,7 @@
 
 #include "pyloader.h"
 #include "nsXPCOM.h"
+#include "nsThreadUtils.h"
 
 
 static PRLogModuleInfo *nsPythonModuleLoaderLog =
