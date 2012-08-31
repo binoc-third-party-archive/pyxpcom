@@ -1652,7 +1652,7 @@ PRBool PyXPCOM_InterfaceVariantHelper::PrepareOutVariant(const PythonTypeDescrip
 		  case nsXPTType::T_DOMSTRING:
 		  case nsXPTType::T_ASTRING: {
 			  NS_ABORT_IF_FALSE(ns_v.val.p==nullptr, "T_DOMTSTRINGS can't be out and have a value (ie, no in/outs are allowed!");
-			  NS_ABORT_IF_FALSE(XPT_PD_IS_DIPPER(td.param_flags) && XPT_PD_IS_IN(td.param_flags), "out DOMStrings must really be in dippers!");
+			  NS_ABORT_IF_FALSE(XPT_PD_IS_DIPPER(td.param_flags), "out DOMStrings must really be in dippers!");
 			  ns_v.SetValNeedsCleanup();
 			  // Dippers are really treated like "in" params.
 			  ns_v.ptr = new nsString();
@@ -1666,7 +1666,7 @@ PRBool PyXPCOM_InterfaceVariantHelper::PrepareOutVariant(const PythonTypeDescrip
 		  case nsXPTType::T_CSTRING:
 		  case nsXPTType::T_UTF8STRING: {
 			  NS_ABORT_IF_FALSE(ns_v.val.p==nullptr, "T_DOMTSTRINGS can't be out and have a value (ie, no in/outs are allowed!");
-			  NS_ABORT_IF_FALSE(XPT_PD_IS_DIPPER(td.param_flags) && XPT_PD_IS_IN(td.param_flags), "out DOMStrings must really be in dippers!");
+			  NS_ABORT_IF_FALSE(XPT_PD_IS_DIPPER(td.param_flags), "out DOMStrings must really be in dippers!");
 			  ns_v.SetValNeedsCleanup();
 			  ns_v.ptr = new nsCString();
 			  ns_v.val.p = ns_v.ptr; // VAL_IS_* says the .p is what gets freed
