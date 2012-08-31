@@ -62,6 +62,8 @@
 #define WIN32_LEAN_AND_MEAN
 #endif
 #include "windows.h"
+#elif defined(XP_UNIX)
+#include "prenv.h"
 #endif
 
 #include "nsIEventTarget.h"
@@ -457,14 +459,25 @@ static PRBool EnsureXPCOM()
 				end--;
 			if (end > landmark) *end = '\0';
 
-			nsCOMPtr<nsILocalFile> ns_bin_dir;
+			nsCOMPtr<nsIFile> ns_bin_dir;
 			NS_ConvertASCIItoUTF16 strLandmark(landmark);
 			NS_NewLocalFile(strLandmark, PR_FALSE, getter_AddRefs(ns_bin_dir));
 			nsresult rv = NS_InitXPCOM2(nullptr, ns_bin_dir, nullptr);
-#else
-			// Elsewhere, Mozilla can find it itself (we hope!)
-			nsresult rv = NS_InitXPCOM2(nullptr, nullptr, nullptr);
-#endif // XP_WIN
+#elif defined(XP_UNIX)
+			// Elsewhere, try to check MOZILLA_FIVE_HOME
+			char* ns_bin_path = PR_GetEnv("MOZILLA_FIVE_HOME");
+			nsCOMPtr<nsIFile> ns_bin_dir;
+			if (ns_bin_path && *ns_bin_path) {
+				nsresult rv;
+				rv = NS_NewNativeLocalFile(nsDependentCString(ns_bin_path),
+							   PR_FALSE,
+							   getter_AddRefs(ns_bin_dir));
+				if (NS_FAILED(rv)) {
+					ns_bin_dir = nullptr;
+				}
+			}
+			nsresult rv = NS_InitXPCOM2(nullptr, ns_bin_dir, nullptr);
+#endif
 			if (NS_FAILED(rv)) {
 				PyErr_SetString(PyExc_RuntimeError, "The XPCOM subsystem could not be initialized");
 				return PR_FALSE;
