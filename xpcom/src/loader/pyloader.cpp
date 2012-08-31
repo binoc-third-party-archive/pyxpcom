@@ -114,11 +114,21 @@ nsPythonModuleLoader::LoadModule(mozilla::FileLocation& aFileLocation)
 {
     NS_ASSERTION(NS_IsMainThread(), "nsPythonModuleLoader::LoadModule not on main thread?");
 
+
+    if (aFileLocation.IsZip()) {
+        NS_ERROR("Python components cannot be loaded from JARs");
+        return NULL;
+    }
+
     /* XXX temp hack */
-    nsCOMPtr<nsIFile> aFile;
+    nsCOMPtr<nsIFile> file;
+    #if 0
+        file = aFileLocation.GetBaseFile();
+    #else
+        file = *reinterpret_cast<nsIFile**>(&aFileLocation);
+    #endif
 
     if (PR_LOG_TEST(nsPythonModuleLoaderLog, PR_LOG_DEBUG)) {
-        nsCOMPtr<nsIFile> file(do_QueryInterface(aFile));
         nsCAutoString filePath;
         file->GetNativePath(filePath);
         LOG(PR_LOG_DEBUG,
@@ -129,7 +139,7 @@ nsPythonModuleLoader::LoadModule(mozilla::FileLocation& aFileLocation)
     PyObject *obPythonModule = NULL;
     PythonModule* entry = NULL;
     CEnterLeavePython _celp;
-    obLocation = Py_nsISupports::PyObjectFromInterface(aFile, NS_GET_IID(nsILocalFile));
+    obLocation = Py_nsISupports::PyObjectFromInterface(file, NS_GET_IID(nsIFile));
     if (obLocation==NULL) goto done;
     obPythonModule = PyObject_CallMethodObjArgs(mPyLoader, mPyLoadModuleName, obLocation, NULL);
     if (!obPythonModule) goto done;
@@ -139,10 +149,10 @@ nsPythonModuleLoader::LoadModule(mozilla::FileLocation& aFileLocation)
 
 done:
     if (PyErr_Occurred()) {
-        nsCOMPtr<nsIFile> file(do_QueryInterface(aFile));
-        nsCAutoString filePath;
-        file->GetNativePath(filePath);
-        PyXPCOM_LogError("Failed to load the Python module: '%s'\n", filePath.get());
+        nsAutoString filePath;
+        file->GetPath(filePath);
+        PyXPCOM_LogError("Failed to load the Python module: '%s'\n",
+                         NS_ConvertUTF16toUTF8(filePath).get());
     }
     Py_XDECREF(obLocation);
     Py_XDECREF(obPythonModule);
