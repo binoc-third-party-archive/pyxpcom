@@ -54,20 +54,6 @@
 // nsString utilities
 // ------------------------------------------------------------------------
 
-inline
-PRBool
-IsNullDOMString( const nsAString& aString )
-{
-	return aString.IsVoid();
-}
-
-inline
-PRBool
-IsNullDOMString( const nsACString& aString )
-{
-	return aString.IsVoid();
-}
-
 #define PyUnicode_FromPRUnichar(src, size) \
 	PyUnicode_DecodeUTF16((char*)(src),sizeof(PRUnichar)*(size),NULL,NULL)
 
@@ -107,7 +93,7 @@ PYXPCOM_EXPORT PyObject *
 PyObject_FromNSString( const nsACString &s, PRBool bAssumeUTF8 /*= PR_FALSE */)
 {
 	PyObject *ret;
-	if (IsNullDOMString(s)) {
+	if (s.IsVoid()) {
 		ret = Py_None;
 		Py_INCREF(Py_None);
 	} else {
@@ -135,7 +121,7 @@ PYXPCOM_EXPORT PyObject *
 PyObject_FromNSString( const nsAString &s )
 {
 	PyObject *ret;
-	if (IsNullDOMString(s)) {
+	if (s.IsVoid()) {
 		ret = Py_None;
 		Py_INCREF(Py_None);
 	} else {
