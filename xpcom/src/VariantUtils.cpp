@@ -67,11 +67,14 @@ PyUnicode_AsPRUnichar(PyObject *obj, PRUnichar **dest_out, PRUint32 *size_out)
 	PyObject *s;
 	PRUnichar *dest;
 
+	NS_ASSERTION(dest_out,
+		     "PyUnicode_AsPRUnichar: dest_out was null");
+
 	s = PyUnicode_AsUTF16String(obj);
 	if (!s)
 		return -1;
-	size = (PyString_GET_SIZE(s) - 2) / sizeof(PRUnichar);
-	dest = (PRUnichar *)nsMemory::Alloc(sizeof(PRUnichar) * (size + 1));
+	size = (PyString_GET_SIZE(s) - 2) / sizeof(PRUnichar); // remove BOM
+	dest = (PRUnichar *)moz_malloc(sizeof(PRUnichar) * (size + 1));
 	if (!dest) {
 		PyErr_NoMemory();
 		Py_DECREF(s);
