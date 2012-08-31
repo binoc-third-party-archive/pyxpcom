@@ -104,17 +104,8 @@ PyObject_FromNSString( const nsACString &s, PRBool bAssumeUTF8 /*= PR_FALSE */)
 			const nsCString temp(s);
 			ret = PyUnicode_DecodeUTF8(temp.get(), temp.Length(), NULL);
 		} else {
-			nsAString::size_type len = s.Length();
-			ret = PyString_FromStringAndSize(NULL, len);
-			if (!ret)
-				return NULL;
-			// Need "CopyAsciiTo"!?  Worse - since libxul,
-			// nsACString appears to have no const_iterator!
-			char* dest = PyString_AS_STRING(ret);
-			nsAString::size_type i;
-			for (i=0;i<len;i++)
-				dest[i] = s[i];
-			// Python string pre-terminated when created - so done!
+			NS_ConvertASCIItoUTF16 temp(s);
+			ret = PyUnicode_FromPRUnichar(temp.get(), temp.Length());
 		}
 	}
 	return ret;
