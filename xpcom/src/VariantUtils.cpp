@@ -140,30 +140,30 @@ PyObject_AsNSString( PyObject *val, nsAString &aStr)
 		aStr.SetIsVoid(PR_TRUE);
 		return PR_TRUE;
 	}
-	PyObject *val_use = NULL;
-	PRBool ok = PR_TRUE;
 	if (!PyString_Check(val) && !PyUnicode_Check(val)) {
 		PyErr_SetString(PyExc_TypeError, "This parameter must be a string or Unicode object");
-		ok = PR_FALSE;
+		return PR_FALSE;
 	}
-	if (ok && (val_use = PyUnicode_FromObject(val))==NULL)
-		ok = PR_FALSE;
-	if (ok) {
-		if (PyUnicode_GET_SIZE(val_use) == 0) {
-			aStr.Truncate();
-		}
-		else {
-			PRUint32 nch;
-			PRUnichar *tempo;
-			// can we do this without the copy?
-			if (PyUnicode_AsPRUnichar(val_use, &tempo, &nch) < 0)
-				return PR_FALSE;
-			aStr.Assign(tempo, nch);
-			nsMemory::Free(tempo);
-		}
+	PyObject *val_use = NULL;
+	if (!(val_use = PyUnicode_FromObject(val)))
+		return PR_FALSE;
+	if (PyUnicode_GET_SIZE(val_use) == 0) {
+		aStr.Truncate();
 	}
-	Py_XDECREF(val_use);
-	return ok;
+	else {
+		PyObject *s = PyUnicode_AsUTF16String(val_use);
+		if (!s) {
+			Py_DECREF(val_use);
+			return PR_FALSE;
+		}
+		// Skip the BOM at the start of the string
+		// (see PyUnicode_AsPRUnichar)
+		aStr.Assign(reinterpret_cast<PRUnichar*>(PyString_AS_STRING(s)) + 1,
+			    (PyString_GET_SIZE(s) / sizeof(PRUnichar)) - 1);
+		Py_DECREF(s);
+	}
+	Py_DECREF(val_use);
+	return PR_TRUE;
 }
 
 // Array utilities
