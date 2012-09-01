@@ -264,7 +264,8 @@ void FreeSingleArray(void *array_ptr, PRUint32 sequence_size, PRUint8 array_type
 
 		// And a warning should new type codes appear, as they may need deallocation.
 		default:
-			PyXPCOM_LogWarning("Deallocating unknown type %d (0x%x) - possible memory leak\n");
+			PyXPCOM_LogWarning("Deallocating unknown type %d (0x%x) - possible memory leak\n",
+					   array_type & XPT_TDP_TAGMASK, array_type & XPT_TDP_TAGMASK);
 			break;
 	}
 }
