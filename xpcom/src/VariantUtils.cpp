@@ -234,14 +234,14 @@ void FreeSingleArray(void *array_ptr, PRUint32 sequence_size, PRUint8 array_type
 		case nsXPTType::T_CHAR_STR:
 		case nsXPTType::T_WCHAR_STR:
 			for (i=0; i<sequence_size; i++)
-				if (p[i]) nsMemory::Free(p[i]);
+				if (p[i]) NS_Free(p[i]);
 			break;
 		case nsXPTType::T_INTERFACE:
 		case nsXPTType::T_INTERFACE_IS:
 			for (i=0; i<sequence_size; i++)
 				if (p[i]) {
 					Py_BEGIN_ALLOW_THREADS; // MUST release thread-lock, incase a Python COM object that re-acquires.
-					((nsISupports *)p[i])->Release();
+					reinterpret_cast<nsISupports *>(p[i])->Release();
 					Py_END_ALLOW_THREADS;
 				}
 			break;
