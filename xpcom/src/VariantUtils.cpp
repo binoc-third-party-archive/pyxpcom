@@ -49,6 +49,7 @@
 // (c) 2000, ActiveState corp.
 
 #include "PyXPCOM_std.h"
+static mozilla::fallible_t fallible;
 
 // ------------------------------------------------------------------------
 // nsString utilities
@@ -618,7 +619,7 @@ static PRUint16 BestVariantTypeForPyObject( PyObject *ob, BVFTResult *pdata)
 	if (Py_nsISupports::InterfaceFromPyObject(ob, NS_GET_IID(nsISupports),
 						  getter_AddRefs(ps), PR_TRUE))
 	{
-		pdata->pis = ps.forget();
+		ps.forget(&pdata->pis);
 		pdata->iid = NS_GET_IID(nsISupports);
 		return nsIDataType::VTYPE_INTERFACE_IS;
 	} else
@@ -699,13 +700,10 @@ PyObject_AsVariant( PyObject *ob, nsIVariant **aRet)
 			int seq_length = PySequence_Length(ob);
 			int i;
 
-			nsIVariant** buf = new nsIVariant*[seq_length];  //  Create variant array.
-			if (!buf) {
-				nr = NS_ERROR_OUT_OF_MEMORY;
-				break;
-			}
+			nsIVariant** buf = ::new (fallible) nsIVariant*[seq_length];
+			NS_ENSURE_TRUE(buf, NS_ERROR_OUT_OF_MEMORY);
 			memset(buf, 0, sizeof(nsIVariant *) * seq_length);
-			for (i=0;NS_SUCCEEDED(nr) && i<seq_length;i++) {
+			for (i = 0; NS_SUCCEEDED(nr) && i < seq_length; i++) {
 				PyObject *sub = PySequence_GetItem(ob, i);
 				if (!sub) {
 					nr = PyXPCOM_SetCOMErrorFromPyException();
@@ -720,10 +718,7 @@ PyObject_AsVariant( PyObject *ob, nsIVariant **aRet)
 				                   seq_length, buf);
 			}
 			// Clean things up.
-			for (i=0;i<seq_length;i++) {
-				NS_IF_RELEASE(buf[i]);
-			}
-			delete [] buf;
+			NS_FREE_XPCOM_ISUPPORTS_POINTER_ARRAY(seq_length, buf);
 			break;
 		}
 		case nsIDataType::VTYPE_EMPTY:
@@ -742,7 +737,7 @@ PyObject_AsVariant( PyObject *ob, nsIVariant **aRet)
 	}
 	if (NS_FAILED(nr))
 		return nr;
-	return v->QueryInterface(NS_GET_IID(nsIVariant), (void **)aRet);
+	return CallQueryInterface(v, aRet);
 }
 
 static PyObject *MyBool_FromBool(PRBool v)
