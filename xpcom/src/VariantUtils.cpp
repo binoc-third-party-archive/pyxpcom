@@ -711,7 +711,7 @@ PyObject_AsVariant( PyObject *ob, nsIVariant **aRet)
 					nr = PyXPCOM_SetCOMErrorFromPyException();
 					break;
 				}
-				nr = PyObject_AsVariant(sub, buf+i);
+				nr = PyObject_AsVariant(sub, &buf[i]);
 				Py_DECREF(sub);
 			}
 			if (NS_SUCCEEDED(nr)) {
