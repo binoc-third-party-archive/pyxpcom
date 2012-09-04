@@ -579,16 +579,21 @@ static PyObject *UnpackSingleArray(Py_nsISupports *parent, void *array_ptr,
 // ------------------------------------------------------------------------
 // nsIVariant utilities
 // ------------------------------------------------------------------------
+/**
+ * A result type for BestVariantType
+ */
 struct BVFTResult {
 	BVFTResult() {pis = NULL;iid=Py_nsIID_NULL;}
 	nsISupports *pis;
 	nsIID iid;
 };
 
-static PRUint16 BestVariantTypeForPyObject( PyObject *ob, BVFTResult *pdata = NULL) 
+static PRUint16 BestVariantTypeForPyObject( PyObject *ob, BVFTResult *pdata)
 {
-	nsISupports *ps = NULL;
+	nsCOMPtr<nsISupports> ps = NULL;
 	nsIID iid;
+	MOZ_ASSERT(ob);
+	MOZ_ASSERT(pdata);
 	// start with some fast concrete checks.
 	if (ob==Py_None)
 		return nsIDataType::VTYPE_EMPTY;
@@ -610,18 +615,16 @@ static PRUint16 BestVariantTypeForPyObject( PyObject *ob, BVFTResult *pdata = NU
 		return nsIDataType::VTYPE_EMPTY_ARRAY;
 	}
 	// Now do expensive or abstract checks.
-	if (Py_nsISupports::InterfaceFromPyObject(ob, NS_GET_IID(nsISupports), &ps, PR_TRUE)) {
-		if (pdata) {
-			pdata->pis = ps;
-			pdata->iid = NS_GET_IID(nsISupports);
-		} else
-			ps->Release();
+	if (Py_nsISupports::InterfaceFromPyObject(ob, NS_GET_IID(nsISupports),
+						  getter_AddRefs(ps), PR_TRUE))
+	{
+		pdata->pis = ps.forget();
+		pdata->iid = NS_GET_IID(nsISupports);
 		return nsIDataType::VTYPE_INTERFACE_IS;
 	} else
 		PyErr_Clear();
 	if (Py_nsIID::IIDFromPyObject(ob, &iid)) {
-		if (pdata)
-			pdata->iid = iid;
+		pdata->iid = iid;
 		return nsIDataType::VTYPE_ID;
 	} else
 		PyErr_Clear();
@@ -733,7 +736,7 @@ PyObject_AsVariant( PyObject *ob, nsIVariant **aRet)
 			PyXPCOM_LogWarning("Objects of type '%s' can not be converted to an nsIVariant", ob->ob_type->tp_name);
 			nr = NS_ERROR_UNEXPECTED;
 		default:
-			NS_ABORT_IF_FALSE(0, "BestVariantTypeForPyObject() returned a variant type not handled here!");
+			MOZ_NOT_REACHED("BestVariantTypeForPyObject() returned a variant type not handled here!");
 			PyXPCOM_LogWarning("Objects of type '%s' can not be converted to an nsIVariant", ob->ob_type->tp_name);
 			nr = NS_ERROR_UNEXPECTED;
 	}
