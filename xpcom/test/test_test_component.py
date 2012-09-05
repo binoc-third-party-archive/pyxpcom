@@ -59,8 +59,8 @@ really_big_wstring = u"This is really repetitive!" * 10000
 extended_unicode_string = u"The Euro Symbol is '\u20ac'"
 
 # Exception raised when a -ve integer is converted to an unsigned C integer
-# (via an extension module).  This changed in Python 2.2
-if sys.hexversion > 0x02010000:
+# (via an extension module).  This changed in Python 2.2, and back in 2.7
+if 0x02010000 < sys.hexversion < 0x02070000 :
     UnsignedMismatchException = TypeError
 else:
     UnsignedMismatchException = OverflowError
