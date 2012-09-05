@@ -192,7 +192,7 @@ def test_base_interface(c):
 
     test_attribute(c, "ulong_value", 6, 7)
     test_attribute(c, "ulong_value", 6, 0)
-    test_attribute(c, "ulong_value", 6, -1) # 32 bit signed.
+    test_attribute(c, "ulong_value", 6, -1, 0xFFFFFFFFL) # 32 bit signed.
     test_attribute_failure(c, "ulong_value", "boo", ValueError)
     
     test_attribute(c, "long_long_value", 7, 8)
@@ -264,7 +264,7 @@ def test_base_interface(c):
     test_attribute_failure(c, "no_attribute", "boo", AttributeError)
 
     test_attribute(c, "interface_value", None, c)
-    test_attribute_failure(c, "interface_value", 2, TypeError)
+    test_attribute_failure(c, "interface_value", 2, ValueError)
 
     test_attribute(c, "isupports_value", None, c)
 
@@ -315,14 +315,14 @@ def test_base_interface(c):
     test_constant(c, "MinusOne", -1)
     test_constant(c, "BigLong", 0x7FFFFFFF)
     test_constant(c, "BiggerLong", -1)
-    test_constant(c, "BigULong", -1)
+    test_constant(c, "BigULong", 0xFFFFFFFF)
     # Test the components.Interfaces semantics
     i = xpcom.components.interfaces.nsIPythonTestInterface
     test_constant(i, "One", 1)
     test_constant(i, "Two", 2)
     test_constant(i, "MinusOne", -1)
     test_constant(i, "BigLong", 0x7FFFFFFF)
-    test_constant(i, "BigULong", -1)
+    test_constant(i, "BigULong", 0xFFFFFFFF)
 
 def test_derived_interface(c, test_flat = 0):
     val = "Hello\0there"
@@ -512,7 +512,11 @@ def test_from_js():
         raise RuntimeError, "Can not find '%s'" % (fname,)
     # Note we _dont_ pump the test output out, as debug "xpcshell" spews
     # extra debug info that will cause our output comparison to fail.
-    data = os.popen('xpcshell "' + fname + '"').readlines()
+    exe_suffix = ".exe" if sys.platform.startswith("win") else ""
+    xpcshell = os.path.join(os.getenv("MOZILLA_FIVE_HOME"),
+                            "xpcshell%s" % (exe_suffix,))
+    xpcshell = xpcshell if os.path.exists(xpcshell) else "xpcshell"
+    data = os.popen(xpcshell + ' "' + fname + '"').readlines()
     good = 0
     for line in data:
         if line.strip() == "OK: javascript successfully tested the Python test component.":

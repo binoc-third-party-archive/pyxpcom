@@ -73,6 +73,9 @@ def get_sample_component_js():
     # This should *always* exist - no special make process.
     contractid = "@mozilla.org/jssample;1" # the JS version
     return xpcom.components.classes[contractid].createInstance()
+
+def get_sample_component_any():
+    return get_sample_component_cpp() or get_sample_component_js()
     
 class TestDumpInterfaces(unittest.TestCase):
     def testAllInterfaces(self):
@@ -119,12 +122,16 @@ class TestEnumContractIDs(unittest.TestCase):
 class TestSampleComponent(unittest.TestCase):
     def _doTestSampleComponent(self, test_flat = 0):
         """Test the standard Netscape 'sample' sample"""
+        initial_value = "initial_value"
         c = get_sample_component_cpp()
         if c is None:
-            return
+            # try the JS version instead, so that at least we test _something_
+            c = get_sample_component_js()
+            initial_value = "<default value>"
+            test_flat = False # JS doesn't implement classinfo
         if not test_flat:
             c = c.queryInterface(xpcom.components.interfaces.nsISample)
-        self.failUnlessEqual(c.value, "initial value")
+        self.failUnlessEqual(c.value, initial_value)
         c.value = "new value"
         self.failUnlessEqual(c.value, "new value")
         c.poke("poked value")
@@ -206,7 +213,9 @@ class TestRepr(unittest.TestCase):
         "Test repr() of non-Python objects"
         ob = get_sample_component_cpp()
         if ob is None:
-            return
+            ob = get_sample_component_js()
+            # the JS version doesn't implement nsIClassInfo
+            ob.QueryInterface(xpcom.components.interfaces.nsISample)
         self._doTestRepr(ob, "nsISample")
 
 class TestUnwrap(unittest.TestCase):
@@ -219,7 +228,7 @@ class TestUnwrap(unittest.TestCase):
         # can be updated should our __repr__ change :)
         self.failUnless(str(pyob).startswith("<component:py_test_component.PythonTestComponent"))
         # Test that a non-Python implemented object can NOT be unwrapped.
-        ob = get_sample_component_cpp()
+        ob = get_sample_component_any()
         if ob is None:
             return
         self.failUnlessRaises(ValueError, xpcom.server.UnwrapObject, ob)
