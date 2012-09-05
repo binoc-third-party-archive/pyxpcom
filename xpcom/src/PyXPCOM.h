@@ -64,7 +64,14 @@
 #include "nsStringAPI.h"
 
 #include "nsCRT.h"
+#if defined(__clang__)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wreturn-type-c-linkage"
+#endif /* __clang__ */
 #include "nsXPTCUtils.h"
+#if defined(__clang__)
+#pragma clang diagnostic pop
+#endif /* __clang__ */
 #include "xpt_xdr.h"
 
 #ifdef HAVE_LONG_LONG
@@ -570,7 +577,7 @@ private:
 	nsresult BackFillVariant( PyObject *ob, int index);
 	PyObject *MakeSingleParam(int index, PythonTypeDescriptor &td);
 	PRBool GetIIDForINTERFACE_ID(int index, const nsIID **ppret);
-	nsresult GetArrayType(PRUint8 index, PRUint8 *ret, nsIID *ppiid);
+	nsresult GetArrayType(PRUint8 index, XPTTypeDescriptorTags *ret, nsIID *ppiid);
 	PRUint32 GetSizeIs( int var_index, PRBool is_arg1);
 	PRBool SetSizeIs( int var_index, PRBool is_arg1, PRUint32 new_size);
 	PRBool CanSetSizeIs( int var_index, PRBool is_arg1 );

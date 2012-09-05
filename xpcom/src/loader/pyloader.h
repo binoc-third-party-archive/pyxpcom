@@ -55,7 +55,7 @@ class nsPythonModuleLoader : public mozilla::ModuleLoader
     NS_DECL_ISUPPORTS
 
     nsPythonModuleLoader();
-    ~nsPythonModuleLoader();
+    virtual ~nsPythonModuleLoader();
 
     virtual const mozilla::Module* LoadModule(mozilla::FileLocation&) MOZ_OVERRIDE;
 

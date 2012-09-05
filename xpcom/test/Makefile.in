@@ -50,5 +50,5 @@ include $(topsrcdir)/config/rules.mk
 check::
 	@echo "Running Python XPCOM tests"
 	@PYTHONPATH=$(abspath $(LIBXUL_DIST)/bin/python) \
-		$(LIBXUL_DIST)/bin/run-mozilla.sh \
+		$(LIBXUL_DIST)/bin/run-mozilla.sh $(RUN_MOZILLA_ARGS) \
 		$(MOZ_PYTHON)$(MOZ_PYTHON_DEBUG_SUFFIX) $(srcdir)/regrtest.py

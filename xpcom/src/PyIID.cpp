@@ -65,7 +65,7 @@ PYXPCOM_EXPORT PyObject *PyXPCOMMethod_IID(PyObject *self, PyObject *args)
 			void *buf = NULL;
 			int size = (*pb->bf_getreadbuffer)(obBuf, 0, &buf);
 			if (size != sizeof(nsIID) || buf==NULL) {
-				PyErr_Format(PyExc_ValueError, "A buffer object to be converted to an IID must be exactly %d bytes long", sizeof(nsIID));
+				PyErr_Format(PyExc_ValueError, "A buffer object to be converted to an IID must be exactly %zd bytes long", sizeof(nsIID));
 				return NULL;
 			}
 			nsIID iid;

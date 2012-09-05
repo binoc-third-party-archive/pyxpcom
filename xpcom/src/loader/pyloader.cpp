@@ -185,7 +185,6 @@ nsPythonModuleLoader::PythonModule::GetFactory(const mozilla::Module& module,
         LOG(PR_LOG_DEBUG, ("nsPythonModuleLoader::PythonModule::GetFactory for cid: %s", idstr));
     }
 
-    nsresult nr;
     PyObject *obFactory = NULL;
     PyObject *obFnName = NULL;
     PyObject *obClsId = Py_nsIID::PyObjectFromIID(*(entry.cid));

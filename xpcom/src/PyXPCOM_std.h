@@ -54,3 +54,8 @@
 #define BUILD_PYXPCOM
 
 #include "PyXPCOM.h"
+
+#if defined(__clang__)
+#pragma clang diagnostic ignored "-Wdeprecated-writable-strings"
+#pragma clang diagnostic ignored "-Wcast-align"
+#endif /* __clang__ */

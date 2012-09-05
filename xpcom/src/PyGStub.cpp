@@ -140,12 +140,12 @@ PyXPCOM_XPTStub::CallMethod(PRUint16 methodIndex,
 	if (obParams==NULL)
 		goto done;
 	result = PyObject_CallMethod(m_pPyObject, 
-	                                       "_CallMethod_",
-					       "OiOO",
-					       obThisObject,
-					       (int)methodIndex,
-					       obMI,
-					       obParams);
+	                             "_CallMethod_",
+	                             "OiOO",
+	                             obThisObject,
+	                             (int)methodIndex,
+	                             obMI,
+	                             obParams);
 	if (result!=NULL) {
 		rc = arg_helper.ProcessPythonResult(result);
 		// Use an xor to check failure && pyerr, or !failure && !pyerr.
