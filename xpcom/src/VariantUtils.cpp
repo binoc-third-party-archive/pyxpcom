@@ -1237,7 +1237,7 @@ PRUint32 PyXPCOM_InterfaceVariantHelper::GetSizeIs( int var_index, PRBool is_arg
 }
 
 #define MAKE_VALUE_BUFFER(size) \
-	if ((this_buffer_pointer = (void *)nsMemory::Alloc((size))) == nullptr) { \
+	if (!(this_buffer_pointer = moz_malloc(size))) { \
 		PyErr_NoMemory(); \
 		BREAK_FALSE; \
 	}
@@ -1396,17 +1396,17 @@ PRBool PyXPCOM_InterfaceVariantHelper::FillInVariant(const PythonTypeDescriptor 
 			break;
 			}
 
-		  case XPTTypeDescriptorTags::TD_PNSIID:
-			nsIID iid;
+		  case XPTTypeDescriptorTags::TD_PNSIID: {
 			MAKE_VALUE_BUFFER(sizeof(nsIID));
-			if (!Py_nsIID::IIDFromPyObject(val, &iid))
+			nsIID *iid = reinterpret_cast<nsIID*>(this_buffer_pointer);
+			if (!Py_nsIID::IIDFromPyObject(val, iid))
 				BREAK_FALSE;
-			memcpy(this_buffer_pointer, &iid, sizeof(iid));
 			ns_v.val.p = this_buffer_pointer;
 			break;
+		  }
 		  case XPTTypeDescriptorTags::TD_ASTRING:
 		  case XPTTypeDescriptorTags::TD_DOMSTRING: {
-			nsString *s = new nsString();
+			nsString *s = new (fallible) nsString();
 			if (!s) {
 				PyErr_NoMemory();
 				BREAK_FALSE;
@@ -1422,7 +1422,7 @@ PRBool PyXPCOM_InterfaceVariantHelper::FillInVariant(const PythonTypeDescriptor 
 		  case XPTTypeDescriptorTags::TD_CSTRING:
 		  case XPTTypeDescriptorTags::TD_UTF8STRING: {
 			PRBool bIsUTF8 = XPT_TDP_TAG(ns_v.type) == XPTTypeDescriptorTags::TD_UTF8STRING;
-			if (val==Py_None) {
+			if (val == Py_None) {
 				ns_v.val.p = new nsCString();
 			} else {
 				// strings are assumed to already be UTF8 encoded.
