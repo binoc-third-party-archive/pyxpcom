@@ -43,6 +43,9 @@ import sys
 
 import unittest
 
+import logging
+#logging.getLogger("xpcom").setLevel(logging.DEBUG)
+
 # A little magic to create a single "test suite" from all test_ files
 # in this dir.  A single suite makes for prettier output test :)
 def suite():
