@@ -396,14 +396,15 @@ protected:
 	PyObject *MakeSinglePythonResult(int index);
 	PRBool FillInVariant(const PythonTypeDescriptor &, int, int);
 	PRBool PrepareOutVariant(const PythonTypeDescriptor &td, int value_index);
-	PRBool SetSizeIs( int var_index, PRBool is_arg1, PRUint32 new_size);
-	PRUint32 GetSizeIs( int var_index, PRBool is_arg1);
+	PRBool SetSizeIs( int var_index, bool is_size, PRUint32 new_size);
+	PRUint32 GetSizeIs( int var_index, bool is_size);
 
 	PyObject *m_pyparams; // sequence of actual params passed (ie, not including hidden)
 	PyObject *m_typedescs; // desc of _all_ params, including hidden.
-	PythonTypeDescriptor *m_python_type_desc_array;
-	void **m_buffer_array;
-	Py_nsISupports *m_parent;
+	PythonTypeDescriptor *m_python_type_desc_array; // type descriptors for all params
+	void **m_buffer_array; // buffer for params to pass to xpcom; we allocate
+	                       // one entry per param but won't use them all
+	Py_nsISupports *m_parent; // The XPCOM interface this method is being called on
 
 };
 
@@ -578,9 +579,9 @@ private:
 	PyObject *MakeSingleParam(int index, PythonTypeDescriptor &td);
 	PRBool GetIIDForINTERFACE_ID(int index, const nsIID **ppret);
 	nsresult GetArrayType(PRUint8 index, XPTTypeDescriptorTags *ret, nsIID *ppiid);
-	PRUint32 GetSizeIs( int var_index, PRBool is_arg1);
-	PRBool SetSizeIs( int var_index, PRBool is_arg1, PRUint32 new_size);
-	PRBool CanSetSizeIs( int var_index, PRBool is_arg1 );
+	PRUint32 GetSizeIs( int var_index, bool is_size);
+	PRBool SetSizeIs( int var_index, bool is_size, PRUint32 new_size);
+	PRBool CanSetSizeIs( int var_index, bool is_size);
 	nsIInterfaceInfo *GetInterfaceInfo(); // NOTE: no ref count on result.
 
 
