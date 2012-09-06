@@ -68,8 +68,7 @@ PyUnicode_AsPRUnichar(PyObject *obj, PRUnichar **dest_out, PRUint32 *size_out)
 	PyObject *s;
 	PRUnichar *dest;
 
-	NS_ASSERTION(dest_out,
-		     "PyUnicode_AsPRUnichar: dest_out was null");
+	MOZ_ASSERT(dest_out, "PyUnicode_AsPRUnichar: dest_out was null");
 
 	s = PyUnicode_AsUTF16String(obj);
 	if (!s)
@@ -1267,6 +1266,24 @@ PRUint32 PyXPCOM_InterfaceVariantHelper::GetSizeIs( int var_index, PRBool is_arg
 		BREAK_FALSE; \
 	}
 
+#define ASSIGN_INT_STRINGIZE(x) #x
+#define ASSIGN_INT(type, field)                                         \
+	{                                                                   \
+		if (val == Py_None) {                                           \
+			ns_v.val.field = 0;                                         \
+			break;                                                      \
+		}                                                               \
+		if (!(val_use = PyNumber_Int(val))) BREAK_FALSE                 \
+		long num = PyInt_AsLong(val_use);                               \
+		if (static_cast<type>(num) != num) {                            \
+			PyErr_Format(PyExc_OverflowError,                           \
+						 "param %d (%ld) does not fit in %s",           \
+						 value_index, num, ASSIGN_INT_STRINGIZE(type)); \
+			return PR_FALSE;                                            \
+		}                                                               \
+		ns_v.val.field = static_cast<type>(num);                        \
+	}
+
 PRBool PyXPCOM_InterfaceVariantHelper::FillInVariant(const PythonTypeDescriptor &td, int value_index, int param_index)
 {
 	PRBool rc = PR_TRUE;
@@ -1298,28 +1315,13 @@ PRBool PyXPCOM_InterfaceVariantHelper::FillInVariant(const PythonTypeDescriptor 
 		// Cast this to the enum so we can get warnings about missing cases
 		switch (static_cast<XPTTypeDescriptorTags>(ns_v.type.TagPart())) {
 		  case XPTTypeDescriptorTags::TD_INT8:
-			if (val == Py_None) {
-				ns_v.val.i8 = 0;
-				break;
-			}
-			if ((val_use=PyNumber_Int(val)) == NULL) BREAK_FALSE
-			ns_v.val.i8 = static_cast<int8_t>(PyInt_AsLong(val_use));
+			ASSIGN_INT(int8_t, i8);
 			break;
 		  case XPTTypeDescriptorTags::TD_INT16:
-			if (val == Py_None) {
-				ns_v.val.i16 = 0;
-				break;
-			}
-			if ((val_use=PyNumber_Int(val)) == NULL) BREAK_FALSE
-			ns_v.val.i16 = static_cast<int16_t>(PyInt_AsLong(val_use));
+			ASSIGN_INT(int16_t, i16);
 			break;
 		  case XPTTypeDescriptorTags::TD_INT32:
-			if (val == Py_None) {
-				ns_v.val.i32 = 0;
-				break;
-			}
-			if ((val_use=PyNumber_Int(val)) == NULL) BREAK_FALSE
-			ns_v.val.i32 = static_cast<int32_t>(PyInt_AsLong(val_use));
+			ASSIGN_INT(int32_t, i32);
 			break;
 		  case XPTTypeDescriptorTags::TD_INT64:
 			if (val == Py_None) {
@@ -1330,28 +1332,13 @@ PRBool PyXPCOM_InterfaceVariantHelper::FillInVariant(const PythonTypeDescriptor 
 			ns_v.val.i64 = static_cast<int64_t>(PyLong_AsLongLong(val_use));
 			break;
 		  case XPTTypeDescriptorTags::TD_UINT8:
-			if (val == Py_None) {
-				ns_v.val.u8 = 0;
-				break;
-			}
-			if ((val_use=PyNumber_Int(val)) == NULL) BREAK_FALSE
-			ns_v.val.u8 = static_cast<uint8_t>(PyInt_AsLong(val_use));
+			ASSIGN_INT(uint8_t, u8);
 			break;
 		  case XPTTypeDescriptorTags::TD_UINT16:
-			if (val == Py_None) {
-				ns_v.val.u16 = 0;
-				break;
-			}
-			if ((val_use=PyNumber_Int(val)) == NULL) BREAK_FALSE
-			ns_v.val.u16 = static_cast<uint16_t>(PyInt_AsLong(val_use));
+			ASSIGN_INT(uint16_t, u16);
 			break;
 		  case XPTTypeDescriptorTags::TD_UINT32:
-			if (val == Py_None) {
-				ns_v.val.u32 = 0;
-				break;
-			}
-			if ((val_use=PyNumber_Int(val)) == NULL) BREAK_FALSE
-			ns_v.val.u32 = static_cast<uint32_t>(PyInt_AsLong(val_use));
+			ASSIGN_INT(uint32_t, u32);
 			break;
 		  case XPTTypeDescriptorTags::TD_UINT64:
 			if (val == Py_None) {

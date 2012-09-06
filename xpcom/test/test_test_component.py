@@ -115,7 +115,12 @@ def test_string_attribute(ob, attr_name, expected_init, is_dumb_sz = False, asci
 def test_attribute_failure(ob, attr_name, new_value, expected_exception):
     try:
         setattr(ob, attr_name, new_value)
-        print_error("*** Setting attribute '%s' to '%r' didn't yield an exception!" % (attr_name, new_value) )
+        try:
+            result = "(it seems to result in '%r')" % (getattr(ob, attr_name),)
+        except:
+            result = "(there was an error reading it back)"
+        print_error("*** Setting attribute '%s' to '%r' didn't yield an exception! %s" % (
+            attr_name, new_value, result))
     except:
         exc_typ = sys.exc_info()[0]
         exc_val = sys.exc_info()[1]
@@ -159,25 +164,24 @@ def test_base_interface(c):
     test_attribute(c, "octet_value", 2, 0)
     test_attribute(c, "octet_value", 2, 128) # octet is unsigned 8 bit
     test_attribute(c, "octet_value", 2, 255) # octet is unsigned 8 bit
-    test_attribute(c, "octet_value", 2, -1, 255) # octet is unsigned 8 bit
+    test_attribute_failure(c, "octet_value", 256, OverflowError) # can't fit into unsigned
+    test_attribute_failure(c, "octet_value", -1, OverflowError) # can't fit into unsigned
     test_attribute_failure(c, "octet_value", "boo", ValueError)
 
     test_attribute(c, "short_value", 3, 10)
     test_attribute(c, "short_value", 3, -1) # 16 bit signed
-    test_attribute(c, "short_value", 3, 0xFFFF, -1) # 16 bit signed
     test_attribute(c, "short_value", 3, 0L)
     test_attribute(c, "short_value", 3, 1L)
     test_attribute(c, "short_value", 3, -1L)
-    test_attribute(c, "short_value", 3, 0xFFFFL, -1)
+    test_attribute_failure(c, "short_value", 0xFFFF, OverflowError) # 16 bit signed
     test_attribute_failure(c, "short_value", "boo", ValueError)
 
     test_attribute(c, "ushort_value",  4, 5)
     test_attribute(c, "ushort_value",  4, 0)
-    test_attribute(c, "ushort_value",  4, -1, 0xFFFF) # 16 bit signed
     test_attribute(c, "ushort_value",  4, 0xFFFF) # 16 bit signed
     test_attribute(c, "ushort_value",  4, 0L)
     test_attribute(c, "ushort_value",  4, 1L)
-    test_attribute(c, "ushort_value",  4, -1L, 0xFFFF)
+    test_attribute_failure(c, "ushort_value",  -1, OverflowError) # 16 bit signed
     test_attribute_failure(c, "ushort_value", "boo", ValueError)
 
     test_attribute(c, "long_value",  5, 7)
@@ -192,7 +196,7 @@ def test_base_interface(c):
 
     test_attribute(c, "ulong_value", 6, 7)
     test_attribute(c, "ulong_value", 6, 0)
-    test_attribute(c, "ulong_value", 6, -1, 0xFFFFFFFFL) # 32 bit signed.
+    test_attribute_failure(c, "ulong_value", -1, OverflowError) # 32 bit signed.
     test_attribute_failure(c, "ulong_value", "boo", ValueError)
     
     test_attribute(c, "long_long_value", 7, 8)
