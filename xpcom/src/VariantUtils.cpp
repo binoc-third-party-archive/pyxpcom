@@ -1275,6 +1275,7 @@ PRUint32 PyXPCOM_InterfaceVariantHelper::GetSizeIs( int var_index, PRBool is_arg
 		}                                                               \
 		if (!(val_use = PyNumber_Int(val))) BREAK_FALSE                 \
 		long num = PyInt_AsLong(val_use);                               \
+		if (num == -1 && PyErr_Occurred()) BREAK_FALSE                  \
 		if (static_cast<type>(num) != num) {                            \
 			PyErr_Format(PyExc_OverflowError,                           \
 						 "param %d (%ld) does not fit in %s",           \
@@ -1330,6 +1331,7 @@ PRBool PyXPCOM_InterfaceVariantHelper::FillInVariant(const PythonTypeDescriptor 
 			}
 			if ((val_use=PyNumber_Long(val)) == NULL) BREAK_FALSE
 			ns_v.val.i64 = static_cast<int64_t>(PyLong_AsLongLong(val_use));
+			if (ns_v.val.i64 == -1 && PyErr_Occurred()) BREAK_FALSE
 			break;
 		  case XPTTypeDescriptorTags::TD_UINT8:
 			ASSIGN_INT(uint8_t, u8);
@@ -1347,6 +1349,7 @@ PRBool PyXPCOM_InterfaceVariantHelper::FillInVariant(const PythonTypeDescriptor 
 			}
 			if ((val_use=PyNumber_Long(val)) == NULL) BREAK_FALSE
 			ns_v.val.u64 = static_cast<uint64_t>(PyLong_AsUnsignedLongLong(val_use));
+			if (ns_v.val.u64 == (PY_LONG_LONG)-1 && PyErr_Occurred()) BREAK_FALSE
 			break;
 		  case XPTTypeDescriptorTags::TD_FLOAT:
 			if (val == Py_None) {
@@ -1644,6 +1647,8 @@ PRBool PyXPCOM_InterfaceVariantHelper::FillInVariant(const PythonTypeDescriptor 
 	}
 	return rc && !PyErr_Occurred();
 }
+#undef ASSIGN_INT
+#undef ASSIGN_INT_STRINGIZE
 
 PRBool PyXPCOM_InterfaceVariantHelper::PrepareOutVariant(const PythonTypeDescriptor &td, int value_index)
 {
