@@ -57,7 +57,6 @@ pyexecdir	= @libdir@/python$(MOZ_PYTHON_VER_DOTTED)/site-packages
 PYSRCS_XPCOM = \
 	__init__.py \
 	components.py \
-	file.py \
 	nsError.py \
 	primitives.py \
 	shutdown.py \
