@@ -49,7 +49,6 @@ LIBRARY_NAME	= _xpcom$(MOZ_PYTHON_DEBUG_SUFFIX)
 REQUIRES	= pyxpcom xpcom string $(NULL)
 FORCE_SHARED_LIB = 1 
 FORCE_USE_PIC = 1 
-USE_STATIC_LIBS = 1
 
 DLL_SUFFIX=$(MOZ_PYTHON_DLL_SUFFIX)
 LOCAL_INCLUDES = $(MOZ_PYTHON_INCLUDES)
@@ -66,9 +65,9 @@ include $(topsrcdir)/config/config.mk
 include $(topsrcdir)/config/rules.mk
 
 #ifdef XP_WIN
-DEFINES += -DMOZ_NO_MOZALLOC
-XPCOM_GLUE_LDOPTS=$(LIBXUL_DIST)/lib/$(LIB_PREFIX)xpcomglue_s_nomozalloc.$(LIB_SUFFIX)
-XPCOM_GLUE_LDOPTS+=$(XPCOM_FROZEN_LDOPTS)
+XPCOM_GLUE_LDOPTS=$(LIBXUL_DIST)/lib/$(LIB_PREFIX)xpcomglue_s.$(LIB_SUFFIX) \
+                  $(LIBXUL_DIST)/lib/$(LIB_PREFIX)mozalloc.$(LIB_SUFFIX) \
+                  $(XPCOM_FROZEN_LDOPTS)
 #endif
 
 ifeq ($(OS_ARCH),Darwin)
