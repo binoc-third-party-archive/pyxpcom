@@ -49,14 +49,14 @@ include $(topsrcdir)/config/rules.mk
 
 check::
 	@echo "Running Python XPCOM tests"
-#ifdef XP_WIN
-	# on Windows, we need to set $PATH too to find the PyXPCOM DLLs
+ifeq ($(OS_TARGET),WINNT)
+# on Windows, we need to set $PATH too to find the PyXPCOM DLLs
 	@PATH="$(PATH):$(LIBXUL_DIST)/bin" \
 		MOZILLA_FIVE_HOME="$(LIBXUL_DIST)/bin" \
 		PYTHONPATH=$(abspath $(LIBXUL_DIST)/bin/python) \
 		$(MOZ_PYTHON)$(MOZ_PYTHON_DEBUG_SUFFIX) $(srcdir)/regrtest.py
-#else
+else
 	@PYTHONPATH=$(abspath $(LIBXUL_DIST)/bin/python) \
 		$(LIBXUL_DIST)/bin/run-mozilla.sh $(RUN_MOZILLA_ARGS) \
 		$(MOZ_PYTHON)$(MOZ_PYTHON_DEBUG_SUFFIX) $(srcdir)/regrtest.py
-#endif
+endif
