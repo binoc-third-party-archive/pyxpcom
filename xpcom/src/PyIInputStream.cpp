@@ -87,36 +87,39 @@ static PyObject *DoPyRead_Buffer(nsIInputStream *pI, PyObject *obBuffer, PRUint6
 		}
 	}
 	nsresult r;
+	MOZ_ASSERT(n == static_cast<uint32_t>(n), "Reading too much");
 	Py_BEGIN_ALLOW_THREADS;
-	r = pI->Read((char *)buf, n, &nread);
+	r = pI->Read((char *)buf, static_cast<uint32_t>(n), &nread);
 	Py_END_ALLOW_THREADS;
 	if ( NS_FAILED(r) )
 		return PyXPCOM_BuildPyException(r);
 	return PyInt_FromLong(nread);
 }
 
-static PyObject *DoPyRead_Size(nsIInputStream *pI, PRUint64 n)
+static PyObject *DoPyRead_Size(nsIInputStream *pI, PY_LONG_LONG n)
 {
-	if (n==(PRUint64)-1) {
+	if (n == (PY_LONG_LONG)-1) {
 		nsresult r;
 		Py_BEGIN_ALLOW_THREADS;
-		r = pI->Available(&n);
+		r = pI->Available(reinterpret_cast<uint64_t*>(&n));
 		Py_END_ALLOW_THREADS;
 		if (NS_FAILED(r))
 			return PyXPCOM_BuildPyException(r);
+		MOZ_ASSERT(n >= 0, "Too much available");
 	}
-	if (n==0) { // mozilla will assert if we alloc zero bytes.
+	if (n == 0) { // mozilla will assert if we alloc zero bytes.
 		return PyBuffer_New(0);
 	}
-	char *buf = (char *)nsMemory::Alloc(n);
+	char *buf = (char *)moz_malloc(static_cast<size_t>(n));
 	if (buf==NULL) {
 		PyErr_NoMemory();
 		return NULL;
 	}
 	nsresult r;
 	PRUint32 nread;
+	MOZ_ASSERT(n == static_cast<uint32_t>(n), "Reading too much");
 	Py_BEGIN_ALLOW_THREADS;
-	r = pI->Read(buf, n, &nread);
+	r = pI->Read(buf, static_cast<uint32_t>(n), &nread);
 	Py_END_ALLOW_THREADS;
 	PyObject *rc = NULL;
 	if ( NS_SUCCEEDED(r) ) {
@@ -149,17 +152,17 @@ static PyObject *DoPyRead_Size(nsIInputStream *pI, PRUint64 n)
 static PyObject *PyRead(PyObject *self, PyObject *args)
 {
 	PyObject *obBuffer = NULL;
-	PRUint64 n = (PRUint64)-1;
+	PY_LONG_LONG n = (PY_LONG_LONG)-1;
 
 	nsIInputStream *pI = GetI(self);
 	if (pI==NULL)
 		return NULL;
-	if (PyArg_ParseTuple(args, "|K", &n))
+	if (PyArg_ParseTuple(args, "|L", &n))
 		// This worked - no args, or just an int.
 		return DoPyRead_Size(pI, n);
 	// try our other supported arg format.
 	PyErr_Clear();
-	if (!PyArg_ParseTuple(args, "O|K", &obBuffer, &n)) {
+	if (!PyArg_ParseTuple(args, "O|L", &obBuffer, &n)) {
 		PyErr_Clear();
 		PyErr_SetString(PyExc_TypeError, "'read()' must be called as (buffer_ob, int_size=-1) or (int_size=-1)");
 		return NULL;
