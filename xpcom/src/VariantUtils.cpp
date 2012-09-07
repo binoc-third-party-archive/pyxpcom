@@ -1281,7 +1281,7 @@ PRUint32 PyXPCOM_InterfaceVariantHelper::GetSizeIs(int var_index, bool is_size)
 	}
 
 #define ASSIGN_INT_STRINGIZE(x) #x
-#define ASSIGN_INT(type, field)                                         \
+#define ASSIGN_INT(type, field, unsigned)                               \
 	{                                                                   \
 		if (val == Py_None) {                                           \
 			ns_v.val.field = 0;                                         \
@@ -1290,7 +1290,7 @@ PRUint32 PyXPCOM_InterfaceVariantHelper::GetSizeIs(int var_index, bool is_size)
 		if (!(val_use = PyNumber_Int(val))) BREAK_FALSE                 \
 		long num = PyInt_AsLong(val_use);                               \
 		if (num == -1 && PyErr_Occurred()) BREAK_FALSE                  \
-		if (static_cast<type>(num) != num) {                            \
+		if ((unsigned && num < 0) || static_cast<type>(num) != num) {   \
 			PyErr_Format(PyExc_OverflowError,                           \
 						 "param %d (%ld) does not fit in %s",           \
 						 value_index, num, ASSIGN_INT_STRINGIZE(type)); \
@@ -1330,13 +1330,13 @@ PRBool PyXPCOM_InterfaceVariantHelper::FillInVariant(const PythonTypeDescriptor 
 		// Cast this to the enum so we can get warnings about missing cases
 		switch (static_cast<XPTTypeDescriptorTags>(ns_v.type.TagPart())) {
 		  case XPTTypeDescriptorTags::TD_INT8:
-			ASSIGN_INT(int8_t, i8);
+			ASSIGN_INT(int8_t, i8, false);
 			break;
 		  case XPTTypeDescriptorTags::TD_INT16:
-			ASSIGN_INT(int16_t, i16);
+			ASSIGN_INT(int16_t, i16, false);
 			break;
 		  case XPTTypeDescriptorTags::TD_INT32:
-			ASSIGN_INT(int32_t, i32);
+			ASSIGN_INT(int32_t, i32, false);
 			break;
 		  case XPTTypeDescriptorTags::TD_INT64:
 			if (val == Py_None) {
@@ -1348,13 +1348,13 @@ PRBool PyXPCOM_InterfaceVariantHelper::FillInVariant(const PythonTypeDescriptor 
 			if (ns_v.val.i64 == -1 && PyErr_Occurred()) BREAK_FALSE
 			break;
 		  case XPTTypeDescriptorTags::TD_UINT8:
-			ASSIGN_INT(uint8_t, u8);
+			ASSIGN_INT(uint8_t, u8, true);
 			break;
 		  case XPTTypeDescriptorTags::TD_UINT16:
-			ASSIGN_INT(uint16_t, u16);
+			ASSIGN_INT(uint16_t, u16, true);
 			break;
 		  case XPTTypeDescriptorTags::TD_UINT32:
-			ASSIGN_INT(uint32_t, u32);
+			ASSIGN_INT(uint32_t, u32, true);
 			break;
 		  case XPTTypeDescriptorTags::TD_UINT64:
 			if (val == Py_None) {
