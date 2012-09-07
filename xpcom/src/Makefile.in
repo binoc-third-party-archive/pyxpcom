@@ -84,17 +84,15 @@ include $(topsrcdir)/config/config.mk
 
 CXXFLAGS += -DPYTHON_SO=\"libpython$(MOZ_PYTHON_VER_DOTTED).so\"
 # Enable this if you want useful debugging symbols.
-#ifdef XP_WIN
-CXXFLAGS += -Zi
-#else
-CXXFLAGS += -g
-#endif
+ifeq ($(OS_TARGET),WINNT)
+	CXXFLAGS += -Zi
+else
+	CXXFLAGS += -g
+endif
 
-#ifdef XP_WIN
 XPCOM_GLUE_LDOPTS=$(LIBXUL_DIST)/lib/$(LIB_PREFIX)xpcomglue_s.$(LIB_SUFFIX) \
                   $(LIBXUL_DIST)/lib/$(LIB_PREFIX)mozalloc.$(LIB_SUFFIX) \
                   $(XPCOM_FROZEN_LDOPTS)
-#endif
 
 EXTRA_DSO_LDOPTS += $(XPCOM_GLUE_LDOPTS) \
                     $(MOZ_COMPONENT_LIBS) \
