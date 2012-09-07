@@ -1980,9 +1980,9 @@ case "$target" in
         MKCSHLIB='$(LD) -NOLOGO -DLL -OUT:$@ -PDB:$(LINK_PDBFILE) $(DSO_LDOPTS)'
         MKSHLIB_FORCE_ALL=
         MKSHLIB_UNFORCE_ALL=
-        DSO_LDOPTS=-SUBSYSTEM:WINDOWS
-        CFLAGS="$CFLAGS -W3 -Gy -Fd\$(COMPILE_PDBFILE)"
-        CXXFLAGS="$CXXFLAGS -W3 -Gy -Fd\$(COMPILE_PDBFILE)"
+        DSO_LDOPTS='-SUBSYSTEM:WINDOWS -DEBUG'
+        CFLAGS="$CFLAGS -Zi -W3 -Gy -Fd\$(COMPILE_PDBFILE)"
+        CXXFLAGS="$CXXFLAGS -Zi -W3 -Gy -Fd\$(COMPILE_PDBFILE)"
         LIBS="$LIBS kernel32.lib user32.lib gdi32.lib winmm.lib wsock32.lib advapi32.lib"
         MOZ_DEBUG_FLAGS='-Zi'
         MOZ_DEBUG_LDFLAGS='-DEBUG -DEBUGTYPE:CV'
