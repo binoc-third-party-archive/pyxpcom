@@ -53,9 +53,12 @@
 // we can use it to trigger "exports"
 #define BUILD_PYXPCOM
 
-#include "PyXPCOM.h"
-
 #if defined(__clang__)
 #pragma clang diagnostic ignored "-Wdeprecated-writable-strings"
 #pragma clang diagnostic ignored "-Wcast-align"
-#endif /* __clang__ */
+#elif defined(_MSC_VER)
+#pragma warning ( disable: 4482 ) /* nonstandard extension used: enum 'enum' used in qualified name */
+#pragma warning ( disable: 4800 ) /* 'type' : forcing value to bool 'true' or 'false' (performance warning) */
+#endif
+
+#include "PyXPCOM.h"
