@@ -103,17 +103,18 @@ PyObject *PyObject_FromXPTMethodDescriptor( const XPTMethodDescriptor *d)
 	return ret;
 }
 
-PyObject *PyObject_FromXPTConstant( const XPTConstDescriptor *c)
+PyObject *PyObject_FromXPTConstant( const XPTConstDescriptor *cd)
 {
-	if (c==nullptr) {
+	if (cd == nullptr) {
 		Py_INCREF(Py_None);
 		return Py_None;
 	}
-	PyObject *ob_type = PyObject_FromXPTTypeDescriptor(&c->type);
-	if (ob_type==NULL)
+	PyObject *ob_type = PyObject_FromXPTTypeDescriptor(&cd->type);
+	if (ob_type == NULL)
 		return NULL;
 	PyObject *v = NULL;
-	switch (c->type.prefix.flags) {
+	const nsXPTConstant *c = reinterpret_cast<const nsXPTConstant*>(cd);
+	switch (nsXPTType(c->GetType()).TagPart()) {
 		case TD_INT8:
 			v = PyInt_FromLong( c->value.i8 );
 			break;
@@ -133,7 +134,9 @@ PyObject *PyObject_FromXPTConstant( const XPTConstDescriptor *c)
 			v = PyInt_FromLong( c->value.ui16 );
 			break;
 		case TD_UINT32:
-			v = PyInt_FromLong( c->value.ui32 );
+			// uint32 might not fit in a long on 32 bit systems
+			// so we need to use long long here
+			v = PyLong_FromLongLong(c->value.ui32 );
 			break;
 		case TD_UINT64:
 			v = PyLong_FromUnsignedLongLong(c->value.ui64);
