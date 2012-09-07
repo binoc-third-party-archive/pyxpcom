@@ -56,6 +56,8 @@ EXTRA_LIBS += $(MOZ_PYTHON_LIBS)
 
 EXTRA_LIBS += $(call EXPAND_LIBNAME_PATH,pyxpcom,$(DIST)/lib)
 
+EXTRA_LIBS += $(call EXPAND_LIBNAME,mozalloc)
+
 CPPSRCS		=		   \
 		pyloader.cpp	   \
 		$(NULL)
@@ -70,7 +72,6 @@ else
 endif
 
 XPCOM_GLUE_LDOPTS=$(LIBXUL_DIST)/lib/$(LIB_PREFIX)xpcomglue_s.$(LIB_SUFFIX) \
-                  $(LIBXUL_DIST)/lib/$(LIB_PREFIX)mozalloc.$(LIB_SUFFIX) \
                   $(XPCOM_FROZEN_LDOPTS)
 
 EXTRA_DSO_LDOPTS += $(XPCOM_GLUE_LDOPTS) \
