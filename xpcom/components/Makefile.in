@@ -55,3 +55,7 @@ include $(topsrcdir)/config/config.mk
 EXTRA_COMPONENTS = pyabout.py pyabout.manifest
 
 include $(topsrcdir)/config/rules.mk
+
+libs::
+	$(PYTHON) $(MOZILLA_DIR)/config/buildlist.py \
+		$(FINAL_TARGET)/chrome.manifest "manifest components/pyabout.manifest"

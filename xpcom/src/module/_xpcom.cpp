@@ -53,6 +53,7 @@
 #include "nsIConsoleService.h"
 #include "nsDirectoryServiceDefs.h"
 #include "nsDirectoryServiceUtils.h"
+#include "nsXULAppAPI.h"
 
 #include "nsILocalFile.h"
 #include "nsTraceRefcntImpl.h"
@@ -67,6 +68,7 @@
 #endif
 
 #include "nsIEventTarget.h"
+#include "PyAppInfo.h"
 
 #define LOADER_LINKS_WITH_PYTHON
 
@@ -440,6 +442,7 @@ static PRBool EnsureXPCOM()
 		nsCOMPtr<nsIFile> file;
 		if (NS_FAILED(NS_GetSpecialDirectory(NS_GRE_DIR, getter_AddRefs(file)))) {
 			// not already initialized.
+			nsresult rv;
 #ifdef XP_WIN
 			// On Windows, we need to locate the Mozilla bin
 			// directory.  This by using locating a Moz DLL we depend
@@ -462,13 +465,12 @@ static PRBool EnsureXPCOM()
 			nsCOMPtr<nsIFile> ns_bin_dir;
 			NS_ConvertASCIItoUTF16 strLandmark(landmark);
 			NS_NewLocalFile(strLandmark, PR_FALSE, getter_AddRefs(ns_bin_dir));
-			nsresult rv = NS_InitXPCOM2(nullptr, ns_bin_dir, nullptr);
+			rv = NS_InitXPCOM2(nullptr, ns_bin_dir, nullptr);
 #elif defined(XP_UNIX)
 			// Elsewhere, try to check MOZILLA_FIVE_HOME
 			char* ns_bin_path = PR_GetEnv("MOZILLA_FIVE_HOME");
 			nsCOMPtr<nsIFile> ns_bin_dir;
 			if (ns_bin_path && *ns_bin_path) {
-				nsresult rv;
 				rv = NS_NewNativeLocalFile(nsDependentCString(ns_bin_path),
 							   PR_FALSE,
 							   getter_AddRefs(ns_bin_dir));
@@ -476,11 +478,44 @@ static PRBool EnsureXPCOM()
 					ns_bin_dir = nullptr;
 				}
 			}
-			nsresult rv = NS_InitXPCOM2(nullptr, ns_bin_dir, nullptr);
+			rv = NS_InitXPCOM2(nullptr, ns_bin_dir, nullptr);
 #endif
 			if (NS_FAILED(rv)) {
 				PyErr_SetString(PyExc_RuntimeError, "The XPCOM subsystem could not be initialized");
 				return PR_FALSE;
+			}
+
+			nsCOMPtr<nsIFile> app_dir;
+			char* app_path = PR_GetEnv("PYXPCOM_APPDIR");
+			if (app_path && *app_path) {
+				rv = NS_NewNativeLocalFile(nsDependentCString(app_path),
+				                           PR_FALSE,
+				                           getter_AddRefs(app_dir));
+				if (NS_FAILED(rv)) {
+					app_dir = nullptr;
+				}
+			}
+			PyAppInfo* appinfo = PyAppInfo::GetSingleton(app_dir);
+			nsCOMPtr<nsIComponentRegistrar> registrar;
+			rv = NS_GetComponentRegistrar(getter_AddRefs(registrar));
+			if (appinfo && registrar) {
+				const nsCID APPINFO_CID = {
+						/* cccd5dab-efc5-4d14-8ee5-7fe30e2a23ba */
+						0xcccd5dab, 0xefc5, 0x4d14,
+						{0x8e, 0xe5, 0x7f, 0xe3, 0x0e, 0x2a, 0x23, 0xba}
+					};
+				rv = registrar->RegisterFactory(APPINFO_CID,
+				                                "Python XPCOM App Info",
+				                                "@mozilla.org/xre/app-info;1",
+				                                appinfo);
+			}
+			if (app_dir) {
+				nsCOMPtr<nsIFile> app_manifest;
+				rv = app_dir->Clone(getter_AddRefs(app_manifest));
+				if (NS_SUCCEEDED(rv)) {
+					app_manifest->Append(NS_LITERAL_STRING("chrome.manifest"));
+					(void)XRE_AddManifestLocation(NS_COMPONENT_LOCATION, app_manifest);
+				}
 			}
 		}
 		// Even if xpcom was already init, we want to flag it as init!
