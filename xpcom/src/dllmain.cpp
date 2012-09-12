@@ -127,7 +127,7 @@ void AddStandardPaths()
 	           pathCBuf.get());
 #endif
 	PyObject *newStr = PyString_FromString(pathCBuf.get());
-	PyList_Insert(obPath, 0, newStr);
+	PyList_Insert(obPath, -1, newStr);
 	Py_XDECREF(newStr);
 	// And now try and get Python to process this directory as a "site dir" 
 	// - ie, look for .pth files, etc
