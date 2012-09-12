@@ -79,6 +79,9 @@ else ifeq ($(OS_ARCH),WINNT)
 else
   EXTRA_DSO_LDOPTS += $(XPCOM_GLUE_LDOPTS) \
                       $(MOZ_COMPONENT_LIBS) \
+                      $(MKSHLIB_FORCE_ALL) \
+                          $(call EXPAND_LIBNAME_PATH,mozglue,$(DIST)/lib) \
+                      $(MKSHLIB_UNFORCE_ALL) \
                       $(NULL)
 endif
 IMPORT_LIBRARY		:= $(SHARED_LIBRARY:.pyd=.lib)
