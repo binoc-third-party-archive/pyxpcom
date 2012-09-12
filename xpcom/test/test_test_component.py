@@ -58,6 +58,9 @@ really_big_string = "This is really repetitive!" * 10000
 really_big_wstring = u"This is really repetitive!" * 10000
 extended_unicode_string = u"The Euro Symbol is '\u20ac'"
 
+Cc = xpcom.components.classes
+Ci = xpcom.components.interfaces
+
 # Exception raised when a -ve integer is converted to an unsigned C integer
 # (via an extension module).  This changed in Python 2.2, and back in 2.7
 if 0x02010000 < sys.hexversion < 0x02070000 :
@@ -476,20 +479,20 @@ def test_failures():
     do_test_failures()
 
 def test_all():
-    c = xpcom.client.Component(contractid, xpcom.components.interfaces.nsIPythonTestInterface)
+    c = xpcom.client.Component(contractid, Ci.nsIPythonTestInterface)
     test_base_interface(c)
     # Now create an instance using the derived IID, and test that.
-    c = xpcom.client.Component(contractid, xpcom.components.interfaces.nsIPythonTestInterfaceExtra)
+    c = xpcom.client.Component(contractid, Ci.nsIPythonTestInterfaceExtra)
     test_base_interface(c)
     test_derived_interface(c)
     # Now create an instance and test interface flattening.
-    c = xpcom.components.classes[contractid].createInstance()
+    c = Cc[contractid].createInstance()
     test_base_interface(c)
     test_derived_interface(c, test_flat=1)
 
     # We had a bug where a "set" of an attribute before a "get" failed.
     # Don't let it happen again :)
-    c = xpcom.components.classes[contractid].createInstance()
+    c = Cc[contractid].createInstance()
     c.boolean_value = 0
     
     # This name is used in exceptions etc - make sure we got it from nsIClassInfo OK.
@@ -507,29 +510,8 @@ except ImportError:
 from pyxpcom_test_tools import getmemusage
 
 def test_from_js():
-    # Ensure we can find the js test script - same dir as this!
-    # Assume the path of sys.argv[0] is where we can find the js test code.
-    # (Running under the regression test is a little painful)
-    script_dir = os.path.split(sys.argv[0])[0]
-    fname = os.path.join( script_dir, "test_test_component.js")
-    if not os.path.isfile(fname):
-        raise RuntimeError, "Can not find '%s'" % (fname,)
-    # Note we _dont_ pump the test output out, as debug "xpcshell" spews
-    # extra debug info that will cause our output comparison to fail.
-    exe_suffix = ".exe" if sys.platform.startswith("win") else ""
-    xpcshell = os.path.join(os.getenv("MOZILLA_FIVE_HOME"),
-                            "xpcshell%s" % (exe_suffix,))
-    xpcshell = xpcshell if os.path.exists(xpcshell) else "xpcshell"
-    data = os.popen(xpcshell + ' "' + fname + '"').readlines()
-    good = 0
-    for line in data:
-        if line.strip() == "OK: javascript successfully tested the Python test component.":
-            good = 1
-    if not good:
-        print "** The javascript test appeared to fail!  Test output follows **"
-        print "".join(data)
-        print "** End of javascript test output **"
-        raise RuntimeError, "test failed"
+    c = Cc["JavaScript.TestComponent"].createInstance(Ci.nsIRunnable)
+    c.run() # throws on failure
 
 def doit(num_loops = -1):
     # Do the test lots of times - can help shake-out ref-count bugs.
