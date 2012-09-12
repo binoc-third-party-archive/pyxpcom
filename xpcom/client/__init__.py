@@ -409,14 +409,15 @@ class Component(_XPCOMBase):
             # by the first caller who actually *needs* this to work.
             self.__dict__['_tried_classinfo_'] = 0
 
-        iface_names = self.__dict__['_interface_names_'].keys()
-        try:
-            iface_names.remove("nsISupports")
-        except ValueError:
-            pass
-        iface_names.sort()
+        # We want the names from the union of _interface_infos_ (things we might
+        # know about from nsIClassInfo without QI) and _interface_names_ (which
+        # might include unscriptable interfaces), but ignore nsISupports
+        iface_names = set(i.name for i in self.__dict__['_interface_infos_'].keys())
+        iface_names.update(self.__dict__['_interface_names_'].keys())
+        if len(iface_names - set("nsISupports")) > 0:
+            iface_names.discard("nsISupports")
         
-        iface_desc = "implementing %s" % (",".join(iface_names),)
+        iface_desc = "implementing %s" % (",".join(sorted(iface_names)),)
         return iface_desc
         
     def __repr__(self):
