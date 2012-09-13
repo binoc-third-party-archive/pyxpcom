@@ -180,11 +180,13 @@ def XPT_TDP_IS_UNIQUE_POINTER(flags): return (flags & XPT_TDP_UNIQUE_POINTER)
 def XPT_TDP_IS_REFERENCE(flags): return (flags & XPT_TDP_REFERENCE)
 
 XPT_ID_SCRIPTABLE           = 0x80
-XPT_ID_FLAGMASK             = 0x80
+XPT_ID_FUNCTION             = 0x40
+XPT_ID_FLAGMASK             = 0xc0
 XPT_ID_TAGMASK              = ~XPT_ID_FLAGMASK
 def XPT_ID_TAG(id): return id & XPT_ID_TAGMASK
 
 def XPT_ID_IS_SCRIPTABLE(flags): return flags & XPT_ID_SCRIPTABLE
+def XPT_ID_IS_FUNCTION(flags): return flags & XPT_ID_FUNCTION
 
 XPT_PD_IN       = 0x80
 XPT_PD_OUT      = 0x40

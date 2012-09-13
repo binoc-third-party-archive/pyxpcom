@@ -371,6 +371,25 @@ static PyObject *PyGetInterfaceIsArgNumberForParam(PyObject *self, PyObject *arg
 	return PyInt_FromLong(ret);
 }
 
+static PyObject *PyGetIsFunction(PyObject *self, PyObject *args)
+{
+	if (args && !PyArg_ParseTuple(args, ":GetIsFunction"))
+		return NULL;
+
+	nsIInterfaceInfo *pI = GetI(self);
+	if (pI==NULL)
+		return NULL;
+
+	bool isFunction;
+	nsresult r;
+	Py_BEGIN_ALLOW_THREADS;
+	r = pI->IsFunction(&isFunction);
+	Py_END_ALLOW_THREADS;
+	if ( NS_FAILED(r) )
+		return PyXPCOM_BuildPyException(r);
+	return PyBool_FromLong(isFunction);
+}
+
 struct PyMethodDef 
 PyMethods_IInterfaceInfo[] =
 {
@@ -388,6 +407,7 @@ PyMethods_IInterfaceInfo[] =
 	{ "GetTypeForParam", PyGetTypeForParam, 1},
 	{ "GetSizeIsArgNumberForParam", PyGetSizeIsArgNumberForParam, 1},
 	{ "GetInterfaceIsArgNumberForParam", PyGetInterfaceIsArgNumberForParam, 1},
+	{ "GetIsFunction", PyGetIsFunction, METH_NOARGS},
 	{NULL}
 };
 

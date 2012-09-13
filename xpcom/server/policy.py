@@ -60,20 +60,45 @@ VARIANT_UNICODE_TYPES = xpcom_consts.VTYPE_WCHAR, xpcom_consts.VTYPE_DOMSTRING, 
                         xpcom_consts.VTYPE_ASTRING 
 
 _supports_primitives_map_ = {} # Filled on first use.
+_function_interfaces_ = [] # Filled on first use
 
 _interface_sequence_types_ = types.TupleType, types.ListType
 _string_types_ = types.StringType, types.UnicodeType
 XPTI_GetInterfaceInfoManager = _xpcom.XPTI_GetInterfaceInfoManager
 
 def _GetNominatedInterfaces(obj):
+    iim = XPTI_GetInterfaceInfoManager()
+
+    real_ret = set()
     ret = getattr(obj, "_com_interfaces_", None)
-    if ret is None: return None
+    if ret is None:
+        if type(obj) == types.FunctionType:
+            # we got a function, try [function]s
+            global _function_interfaces_
+            if not _function_interfaces_:
+                enum = iim.enumerateInterfaces()
+                while not enum.IsDone():
+                    interface_info = enum.CurrentItem(xpcom._xpcom.IID_nsIInterfaceInfo)
+                    enum.Next()
+                    try:
+                        if interface_info.isFunction():
+                            real_ret.add(interface_info.GetIID())
+                            assert interface_info.GetParent().GetIID() == IID_nsISupports
+                    except COMException, e:
+                        # this can happen if the interface failed to resolve.
+                        if e.errno != nsError.NS_ERROR_UNEXPECTED:
+                            raise
+                        logger.warning("Warning: failed to inspect interface %s for [function] flag",
+                                       interface_info.name)
+                _function_interfaces_ = list(real_ret)
+            return _function_interfaces_
+        return None
+
     # See if the user only gave one.
     if type(ret) not in _interface_sequence_types_:
         ret = [ret]
-    real_ret = []
+
     # For each interface, walk to the root of the interface tree.
-    iim = XPTI_GetInterfaceInfoManager()
     for interface in ret:
         # Allow interface name or IID.
         interface_info = None
@@ -85,15 +110,15 @@ def _GetNominatedInterfaces(obj):
         if interface_info is None:
             # Allow a real IID
             interface_info = iim.GetInfoForIID(interface)
-        real_ret.append(interface_info.GetIID())
+        real_ret.add(interface_info.GetIID())
         parent = interface_info.GetParent()
         while parent is not None:
             parent_iid = parent.GetIID()
             if parent_iid == IID_nsISupports:
                 break
-            real_ret.append(parent_iid)
+            real_ret.add(parent_iid)
             parent = parent.GetParent()
-    return real_ret
+    return list(real_ret)
 
 ##
 ## ClassInfo support
@@ -141,6 +166,7 @@ class DefaultPolicy:
         self._obj_ = instance
         self._nominated_interfaces_ = ni = _GetNominatedInterfaces(instance)
         self._iid_ = iid
+        self._is_function_ = None # looked up lazily in _CallMethod_
         if ni is None:
             raise ValueError, "The object '%r' can not be used as a COM object" % (instance,)
         # This is really only a check for the user - the same thing is
@@ -271,10 +297,17 @@ class DefaultPolicy:
             else:
                 func(*params)
             return 0
-        else:
-            # A regular method.
-            func = getattr(self._obj_, name)
-            return 0, func(*params)
+        elif callable(self._obj_):
+            if self._is_function_ is None:
+                iim = _xpcom.XPTI_GetInterfaceInfoManager()
+                interface_info = iim.GetInfoForIID(self._iid_)
+                self._is_function_ = interface_info.GetIsFunction()
+            if self._is_function_:
+                return 0, self._obj_(*params)
+
+        # A regular method.
+        func = getattr(self._obj_, name)
+        return 0, func(*params)
 
     def _doHandleException(self, func_name, exc_info):
         exc_val = exc_info[1]
