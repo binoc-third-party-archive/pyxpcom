@@ -284,7 +284,10 @@ class Component(_XPCOMBase):
                     # Interface may appear twice in the class info list, so check this here.
                     if not self.__dict__['_interface_infos_'].has_key(nominated_iid):
                         # Just invoke our QI on the object
-                        self.queryInterface(nominated_iid)
+                        try:
+                            self.queryInterface(nominated_iid)
+                        except COMException:
+                            pass # QI failed on interface listsed in CI!?
                 if real_cid is not None:
                     contractid_info = {}
                     contractid_info['_name_to_interface_iid_'] = self.__dict__['_name_to_interface_iid_']
@@ -414,7 +417,7 @@ class Component(_XPCOMBase):
         # might include unscriptable interfaces), but ignore nsISupports
         iface_names = set(i.name for i in self.__dict__['_interface_infos_'].keys())
         iface_names.update(self.__dict__['_interface_names_'].keys())
-        if len(iface_names - set("nsISupports")) > 0:
+        if len(iface_names) > 1:
             iface_names.discard("nsISupports")
         
         iface_desc = "implementing %s" % (",".join(sorted(iface_names)),)
