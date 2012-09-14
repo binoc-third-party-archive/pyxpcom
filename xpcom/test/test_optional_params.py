@@ -36,8 +36,8 @@
 # ***** END LICENSE BLOCK *****
 
 #
-# test_rewrapping.py
-# Check to make sure we always end up using the same XPCOM wrapper.
+# test_optional_params.py
+# Check that [optional] arguments work
 #
 
 from xpcom import components, COMException
