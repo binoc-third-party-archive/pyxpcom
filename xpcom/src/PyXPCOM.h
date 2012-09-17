@@ -394,10 +394,22 @@ public:
 	int m_num_array;
 protected:
 	PyObject *MakeSinglePythonResult(int index);
-	PRBool FillInVariant(const PythonTypeDescriptor &, int, int);
-	PRBool PrepareOutVariant(const PythonTypeDescriptor &td, int value_index);
-	PRBool SetSizeIs( int var_index, bool is_size, PRUint32 new_size);
-	PRUint32 GetSizeIs( int var_index, bool is_size);
+	bool FillInVariant(const PythonTypeDescriptor &, int, int);
+	bool PrepareOutVariant(const PythonTypeDescriptor &td, int value_index);
+	bool SetSizeOrLengthIs(int var_index, bool is_size, uint32_t new_size);
+	uint32_t GetSizeOrLengthIs(int var_index, bool is_size);
+	MOZ_INLINE bool SetSizeIs(int var_index, uint32_t new_size) {
+		return SetSizeOrLengthIs(var_index, true, new_size);
+	}
+	MOZ_INLINE bool SetLengthIs(int var_index, uint32_t new_size) {
+		return SetSizeOrLengthIs(var_index, false, new_size);
+	}
+	MOZ_INLINE uint32_t GetSizeIs(int var_index) {
+		return GetSizeOrLengthIs(var_index, true);
+	}
+	MOZ_INLINE uint32_t GetLengthIs(int var_index) {
+		return GetSizeOrLengthIs(var_index, false);
+	}
 
 	PyObject *m_pyparams; // sequence of actual params passed (ie, not including hidden)
 	PyObject *m_typedescs; // desc of _all_ params, including hidden.
@@ -579,9 +591,27 @@ private:
 	PyObject *MakeSingleParam(int index, PythonTypeDescriptor &td);
 	PRBool GetIIDForINTERFACE_ID(int index, const nsIID **ppret);
 	nsresult GetArrayType(PRUint8 index, XPTTypeDescriptorTags *ret, nsIID *ppiid);
-	PRUint32 GetSizeIs( int var_index, bool is_size);
-	PRBool SetSizeIs( int var_index, bool is_size, PRUint32 new_size);
-	PRBool CanSetSizeIs( int var_index, bool is_size);
+	PRUint32 GetSizeOrLengthIs( int var_index, bool is_size);
+	MOZ_INLINE uint32_t GetSizeIs(int var_index) {
+		return GetSizeOrLengthIs(var_index, true);
+	}
+	MOZ_INLINE uint32_t GetLengthIs(int var_index) {
+		return GetSizeOrLengthIs(var_index, false);
+	}
+	bool SetSizeOrLengthIs(int var_index, bool is_size, uint32_t new_size);
+	MOZ_INLINE bool SetSizeIs(int var_index, uint32_t new_size) {
+		return SetSizeOrLengthIs(var_index, true, new_size);
+	}
+	MOZ_INLINE bool SetLengthIs(int var_index, uint32_t new_size) {
+		return SetSizeOrLengthIs(var_index, false, new_size);
+	}
+	bool CanSetSizeOrLengthIs(int var_index, bool is_size);
+	MOZ_INLINE bool CanSetSizeIs(int var_index) {
+		return CanSetSizeOrLengthIs(var_index, true);
+	}
+	MOZ_INLINE bool CanSetLengthIs(int var_index) {
+		return CanSetSizeOrLengthIs(var_index, false);
+	}
 	nsIInterfaceInfo *GetInterfaceInfo(); // NOTE: no ref count on result.
 
 

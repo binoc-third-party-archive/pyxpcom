@@ -1069,7 +1069,7 @@ PyXPCOM_InterfaceVariantHelper::~PyXPCOM_InterfaceVariantHelper()
 					nsXPTCVariant &ns_v = m_var_array[i];
 					if (ns_v.val.p) {
 						PRUint8 array_type = m_python_type_desc_array[i].array_type;
-						PRUint32 seq_size = GetSizeIs(i, PR_FALSE);
+						PRUint32 seq_size = GetLengthIs(i);
 						FreeSingleArray(ns_v.val.p, seq_size, array_type);
 						// SOMETIMES the contents of the array is shared with
 						// the variant; in that case, don't free it (to avoid a
@@ -1232,7 +1232,7 @@ PRBool PyXPCOM_InterfaceVariantHelper::FillArray()
 }
 
 
-PRBool PyXPCOM_InterfaceVariantHelper::SetSizeIs( int var_index, bool is_size, PRUint32 new_size)
+bool PyXPCOM_InterfaceVariantHelper::SetSizeOrLengthIs(int var_index, bool is_size, uint32_t new_size)
 {
 	NS_ABORT_IF_FALSE(var_index < m_num_array, "var_index param is invalid");
 	uint8_t argnum = is_size ?
@@ -1263,7 +1263,7 @@ PRBool PyXPCOM_InterfaceVariantHelper::SetSizeIs( int var_index, bool is_size, P
 	return PR_TRUE;
 }
 
-PRUint32 PyXPCOM_InterfaceVariantHelper::GetSizeIs(int var_index, bool is_size)
+PRUint32 PyXPCOM_InterfaceVariantHelper::GetSizeOrLengthIs(int var_index, bool is_size)
 {
 	MOZ_ASSERT(var_index < m_num_array, "var_index param is invalid");
 	PRUint8 argnum = is_size ?
@@ -1303,7 +1303,7 @@ PRUint32 PyXPCOM_InterfaceVariantHelper::GetSizeIs(int var_index, bool is_size)
 		ns_v.val.field = static_cast<type>(num);                        \
 	}
 
-PRBool PyXPCOM_InterfaceVariantHelper::FillInVariant(const PythonTypeDescriptor &td, int value_index, int param_index)
+bool PyXPCOM_InterfaceVariantHelper::FillInVariant(const PythonTypeDescriptor &td, int value_index, int param_index)
 {
 	PRBool rc = PR_TRUE;
 	// Get a reference to the variant we are filling for convenience.
@@ -1367,7 +1367,7 @@ PRBool PyXPCOM_InterfaceVariantHelper::FillInVariant(const PythonTypeDescriptor 
 			}
 			if ((val_use=PyNumber_Long(val)) == NULL) BREAK_FALSE
 			ns_v.val.u64 = static_cast<uint64_t>(PyLong_AsUnsignedLongLong(val_use));
-			if (ns_v.val.u64 == (PY_LONG_LONG)-1 && PyErr_Occurred()) BREAK_FALSE
+			if (ns_v.val.u64 == (unsigned PY_LONG_LONG)-1 && PyErr_Occurred()) BREAK_FALSE
 			break;
 		  case XPTTypeDescriptorTags::TD_FLOAT:
 			if (val == Py_None) {
@@ -1594,7 +1594,7 @@ PRBool PyXPCOM_InterfaceVariantHelper::FillInVariant(const PythonTypeDescriptor 
 			MAKE_VALUE_BUFFER(sizeof(char), cb_this_buffer_pointer);
 			memcpy(this_buffer_pointer, PyString_AS_STRING(val_use), cb_this_buffer_pointer);
 			ns_v.val.p = this_buffer_pointer;
-			rc = SetSizeIs(value_index, PR_TRUE, cb_this_buffer_pointer);
+			rc = SetSizeIs(value_index, cb_this_buffer_pointer);
 			break;
 			}
 
@@ -1618,7 +1618,7 @@ PRBool PyXPCOM_InterfaceVariantHelper::FillInVariant(const PythonTypeDescriptor 
 			cb_this_buffer_pointer = (nch + 1) * sizeof(PRUnichar);
 			this_buffer_pointer = sv;
 			ns_v.val.p = this_buffer_pointer;
-			rc = SetSizeIs(value_index, PR_TRUE, nch);
+			rc = SetSizeIs(value_index, nch);
 			break;
 			}
 		case XPTTypeDescriptorTags::TD_ARRAY: {
@@ -1642,7 +1642,7 @@ PRBool PyXPCOM_InterfaceVariantHelper::FillInVariant(const PythonTypeDescriptor 
 			                     element_size, td.ArrayTypeTag(),
 			                     td.iid);
 			if (!rc) break;
-			rc = SetSizeIs(value_index, PR_FALSE, seq_length);
+			rc = SetLengthIs(value_index, seq_length);
 			if (!rc) break;
 			ns_v.SetValNeedsCleanup();
 			ns_v.val.p = this_buffer_pointer;
@@ -1663,7 +1663,7 @@ PRBool PyXPCOM_InterfaceVariantHelper::FillInVariant(const PythonTypeDescriptor 
 #undef ASSIGN_INT
 #undef ASSIGN_INT_STRINGIZE
 
-PRBool PyXPCOM_InterfaceVariantHelper::PrepareOutVariant(const PythonTypeDescriptor &td, int value_index)
+bool PyXPCOM_InterfaceVariantHelper::PrepareOutVariant(const PythonTypeDescriptor &td, int value_index)
 {
 	PRBool rc = PR_TRUE;
 	nsXPTCVariant &ns_v = m_var_array[value_index];
@@ -1903,7 +1903,7 @@ PyObject *PyXPCOM_InterfaceVariantHelper::MakeSinglePythonResult(int index)
 		} else {
 			XPTTypeDescriptorTags array_type =
 				static_cast<XPTTypeDescriptorTags>(td.array_type & XPT_TDP_TAGMASK);
-			PRUint32 seq_size = GetSizeIs(index, PR_FALSE);
+			PRUint32 seq_size = GetLengthIs(index);
 			nsIID *iid;
 			switch (array_type) {
 				case nsXPTType::T_INTERFACE_IS:
@@ -1923,7 +1923,7 @@ PyObject *PyXPCOM_InterfaceVariantHelper::MakeSinglePythonResult(int index)
 			ret = Py_None;
 			Py_INCREF(Py_None);
 		} else {
-			PRUint32 string_size = GetSizeIs(index, PR_TRUE);
+			uint32_t string_size = GetSizeIs(index);
 			ret = PyString_FromStringAndSize( *((char **)ns_v.ptr), string_size );
 		}
 		break;
@@ -1933,7 +1933,7 @@ PyObject *PyXPCOM_InterfaceVariantHelper::MakeSinglePythonResult(int index)
 			ret = Py_None;
 			Py_INCREF(Py_None);
 		} else {
-			PRUint32 string_size = GetSizeIs(index, PR_TRUE);
+			uint32_t string_size = GetSizeIs(index);
 			ret = PyUnicode_FromPRUnichar( *((PRUnichar **)ns_v.ptr), string_size );
 		}
 		break;
@@ -2085,18 +2085,17 @@ PyObject *PyXPCOM_GatewayVariantHelper::MakePyArgs()
 	return ret;
 }
 
-PRBool PyXPCOM_GatewayVariantHelper::CanSetSizeIs( int var_index, bool is_size )
+bool PyXPCOM_GatewayVariantHelper::CanSetSizeOrLengthIs(int var_index, bool is_size)
 {
-	NS_ABORT_IF_FALSE(var_index < m_num_type_descs, "var_index param is invalid");
-	PRUint8 argnum = is_size ?
+	MOZ_ASSERT(var_index < m_num_type_descs, "var_index param is invalid");
+	uint8_t argnum = is_size ?
 		m_python_type_desc_array[var_index].size_is :
 		m_python_type_desc_array[var_index].length_is;
-	NS_ABORT_IF_FALSE(argnum < m_num_type_descs, "size_is param is invalid");
-	return XPT_PD_IS_OUT(m_python_type_desc_array[argnum].param_flags) ?
-		PR_TRUE : PR_FALSE;
+	MOZ_ASSERT(argnum < m_num_type_descs, "size_is param is invalid");
+	return m_python_type_desc_array[argnum].IsOut();
 }
 
-PRBool PyXPCOM_GatewayVariantHelper::SetSizeIs( int var_index, bool is_size, PRUint32 new_size)
+bool PyXPCOM_GatewayVariantHelper::SetSizeOrLengthIs( int var_index, bool is_size, PRUint32 new_size)
 {
 	NS_ABORT_IF_FALSE(var_index < m_num_type_descs, "var_index param is invalid");
 	PRUint8 argnum = is_size ?
@@ -2130,7 +2129,7 @@ PRBool PyXPCOM_GatewayVariantHelper::SetSizeIs( int var_index, bool is_size, PRU
 	return PR_TRUE;
 }
 
-PRUint32 PyXPCOM_GatewayVariantHelper::GetSizeIs( int var_index, bool is_size)
+uint32_t PyXPCOM_GatewayVariantHelper::GetSizeOrLengthIs( int var_index, bool is_size)
 {
 	MOZ_ASSERT(var_index < m_num_type_descs, "var_index param is invalid");
 	PRUint8 argnum = is_size ?
@@ -2283,14 +2282,14 @@ PyObject *PyXPCOM_GatewayVariantHelper::MakeSingleParam(int index, PythonTypeDes
 				PyXPCOM_BuildPyException(ns);
 				break;
 			}
-			PRUint32 seq_size = GetSizeIs(index, PR_FALSE);
+			PRUint32 seq_size = GetLengthIs(index);
 			ret = UnpackSingleArray(NULL, t, seq_size, array_type, &piid);
 		}
 		break;
 		}
 	  case nsXPTType::T_PSTRING_SIZE_IS: {
 		char *t = DEREF_IN_OR_OUT(ns_v.val.p, char *);
-		PRUint32 string_size = GetSizeIs(index, PR_TRUE);
+		uint32_t string_size = GetSizeIs(index);
 		if (t==NULL) {
 			ret = Py_None;
 			Py_INCREF(Py_None);
@@ -2300,7 +2299,7 @@ PyObject *PyXPCOM_GatewayVariantHelper::MakeSingleParam(int index, PythonTypeDes
 		}
 	  case nsXPTType::T_PWSTRING_SIZE_IS: {
 		PRUnichar *t = DEREF_IN_OR_OUT(ns_v.val.p, PRUnichar *);
-		PRUint32 string_size = GetSizeIs(index, PR_TRUE);
+		uint32_t string_size = GetSizeIs(index);
 		if (t==NULL) {
 			ret = Py_None;
 			Py_INCREF(Py_None);
@@ -2670,7 +2669,7 @@ nsresult PyXPCOM_GatewayVariantHelper::BackFillVariant( PyObject *val, int index
 
 	  case nsXPTType::T_PSTRING_SIZE_IS: {
 		const char *sz = nullptr;
-		PRUint32 nch = 0;
+		uint32_t nch = 0;
 		if (val != Py_None) {
 			if (!PyString_Check(val) && !PyUnicode_Check(val)) {
 				PyErr_SetString(PyExc_TypeError, "This parameter must be a string or Unicode object");
@@ -2684,11 +2683,11 @@ nsresult PyXPCOM_GatewayVariantHelper::BackFillVariant( PyObject *val, int index
 			sz = PyString_AS_STRING(val_use);
 			nch = PyString_GET_SIZE(val_use);
 		}
-		PRBool bBackFill = PR_FALSE;
-		PRBool bCanSetSizeIs = CanSetSizeIs(index, PR_TRUE);
+		bool bBackFill = false;
+		bool bCanSetSizeIs = CanSetSizeIs(index);
 		// If we can not change the size, check our sequence is correct.
 		if (!bCanSetSizeIs) {
-			PRUint32 existing_size = GetSizeIs(index, PR_TRUE);
+			uint32_t existing_size = GetSizeIs(index);
 			if (nch != existing_size) {
 				PyErr_Format(PyExc_ValueError, "This function is expecting a string of exactly length %d - %d characters were passed", existing_size, nch);
 				BREAK_FALSE;
@@ -2715,9 +2714,10 @@ nsresult PyXPCOM_GatewayVariantHelper::BackFillVariant( PyObject *val, int index
 			}
 			memcpy(*pp, sz, nch);
 			if (bCanSetSizeIs)
-				rc = SetSizeIs(index, PR_TRUE, nch);
+				rc = SetSizeIs(index, nch);
 			else {
-				NS_ABORT_IF_FALSE(GetSizeIs(index, PR_TRUE) == nch, "Can't set sizeis, but string isn't correct size");
+				MOZ_ASSERT(GetSizeIs(index) == nch,
+				           "Can't set sizeis, but string isn't correct size");
 			}
 		}
 		break;
@@ -2725,8 +2725,8 @@ nsresult PyXPCOM_GatewayVariantHelper::BackFillVariant( PyObject *val, int index
 
 	  case nsXPTType::T_PWSTRING_SIZE_IS: {
 		PRUnichar *sz = nullptr;
-		PRUint32 nch = 0;
-		PRUint32 nbytes = 0;
+		uint32_t nch = 0;
+		size_t nbytes = 0;
 
 		if (val != Py_None) {
 			if (!PyString_Check(val) && !PyUnicode_Check(val)) {
@@ -2739,12 +2739,12 @@ nsresult PyXPCOM_GatewayVariantHelper::BackFillVariant( PyObject *val, int index
 				BREAK_FALSE;
 			nbytes = sizeof(PRUnichar) * nch;
 		}
-		PRBool bBackFill = PR_FALSE;
-		PRBool bCanSetSizeIs = CanSetSizeIs(index, PR_TRUE);
+		bool bBackFill = false;
+		bool bCanSetSizeIs = CanSetSizeIs(index);
 		// If we can not change the size, check our sequence is correct.
 		if (!bCanSetSizeIs) {
 			// It is a buffer the caller prolly wants us to fill in-place!
-			PRUint32 existing_size = GetSizeIs(index, PR_TRUE);
+			uint32_t existing_size = GetSizeIs(index);
 			if (nch != existing_size) {
 				PyErr_Format(PyExc_ValueError, "This function is expecting a string of exactly length %d - %d characters were passed", existing_size, nch);
 				BREAK_FALSE;
@@ -2764,9 +2764,10 @@ nsresult PyXPCOM_GatewayVariantHelper::BackFillVariant( PyObject *val, int index
 			*pp = sz;
 			sz = nullptr;
 			if (bCanSetSizeIs)
-				rc = SetSizeIs(index, PR_TRUE, nch);
+				rc = SetSizeIs(index, nch);
 			else {
-				NS_ABORT_IF_FALSE(GetSizeIs(index, PR_TRUE) == nch, "Can't set sizeis, but string isn't correct size");
+				MOZ_ASSERT(GetSizeIs(index) == nch,
+				           "Can't set sizeis, but string isn't correct size");
 			}
 		}
 		if (sz)
@@ -2791,11 +2792,11 @@ nsresult PyXPCOM_GatewayVariantHelper::BackFillVariant( PyObject *val, int index
 			}
 			sequence_size = PySequence_Length(val);
 		}
-		PRUint32 existing_size = GetSizeIs(index, PR_FALSE);
-		PRBool bBackFill = PR_FALSE;
-		PRBool bCanSetSizeIs = CanSetSizeIs(index, PR_FALSE);
+		uint32_t existing_size = GetLengthIs(index);
+		bool bBackFill = false;
+		bool bCanSetLengthIs = CanSetLengthIs(index);
 		// If we can not change the size, check our sequence is correct.
-		if (!bCanSetSizeIs) {
+		if (!bCanSetLengthIs) {
 			// It is a buffer the caller prolly wants us to fill in-place!
 			if (sequence_size != existing_size) {
 				PyErr_Format(PyExc_ValueError,
@@ -2830,10 +2831,11 @@ nsresult PyXPCOM_GatewayVariantHelper::BackFillVariant( PyObject *val, int index
 			                     element_size,
 			                     array_type, iid);
 			if (!rc) break;
-			if (bCanSetSizeIs)
-				rc = SetSizeIs(index, PR_FALSE, sequence_size);
+			if (bCanSetLengthIs)
+				rc = SetLengthIs(index, sequence_size);
 			else {
-				NS_ABORT_IF_FALSE(GetSizeIs(index, PR_FALSE) == sequence_size, "Can't set sizeis, but string isn't correct size");
+				MOZ_ASSERT(GetLengthIs(index) == sequence_size,
+				           "Can't set sizeis, but string isn't correct size");
 			}
 		}
 		break;
