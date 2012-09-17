@@ -52,6 +52,12 @@ class _ShutdownObserver:
     _com_interfaces_ = interfaces.nsIObserver
     def observe(self, service, topic, extra):
         logger = logging.getLogger('xpcom')
+        # Remove the observer first, we can't touch things afterwards
+        svc = service.QueryInterface(interfaces.nsIServiceManager)\
+                     .getServiceByContractID(
+                        "@mozilla.org/observer-service;1",
+                        interfaces.nsIObserverService)
+        svc.removeObserver(self, topic)
         while _handlers:
             func, args, kw = _handlers.pop()
             try:
