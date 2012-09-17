@@ -911,10 +911,14 @@ public:
 	uint8_t param_flags;  // XPT_PD_*
 	uint8_t type_flags;   // XPT_TDP_TAG + XPT_TDP_* flags
 	union {
+		uint8_t argnum;
 		uint8_t iid_is;
 		uint8_t size_is;
 	};
-	uint8_t length_is;
+	union {
+		uint8_t argnum2;
+		uint8_t length_is;
+	};
 	uint8_t array_type; // The type of the array.
 	nsID iid; // The IID of the object or each elt of the array.
 	// Extra items to help our processing.
@@ -972,7 +976,7 @@ static void ProcessPythonTypeDescriptors(PythonTypeDescriptor *pdescs, int num,
 		PythonTypeDescriptor &ptd = pdescs[i];
 		switch (ptd.TypeTag()) {
 			case nsXPTType::T_ARRAY:
-				MOZ_ASSERT(ptd.size_is < num, "Bad dependent index");
+				MOZ_ASSERT(ptd.length_is < num, "Bad dependent index");
 				if (ptd.length_is < num) {
 					if (ptd.IsIn())
 						pdescs[ptd.length_is].is_auto_in = PR_TRUE;
@@ -1145,7 +1149,7 @@ PRBool PyXPCOM_InterfaceVariantHelper::Init(PyObject *obParams)
 		PythonTypeDescriptor &ptd = m_python_type_desc_array[i];
 		ptd.array_type = nsXPTType::T_ARRAY; // Array-of-array is not supported
 		PRBool this_ok = PyArg_ParseTuple(desc_object, "bbbbO|b:type_desc", 
-					&ptd.param_flags, &ptd.type_flags, &ptd.size_is, &ptd.length_is,
+					&ptd.param_flags, &ptd.type_flags, &ptd.argnum, &ptd.argnum2,
 					&obIID, &ptd.array_type);
 		Py_DECREF(desc_object);
 		MOZ_ASSERT(0 == (ptd.param_flags & ~XPT_PD_FLAGMASK),
@@ -2049,8 +2053,8 @@ PyObject *PyXPCOM_GatewayVariantHelper::MakePyArgs()
 		PythonTypeDescriptor &td = m_python_type_desc_array[i];
 		td.param_flags = pi->flags;
 		td.type_flags = pi->type.prefix.flags;
-		td.size_is = pi->type.argnum;
-		td.length_is = pi->type.argnum2;
+		td.argnum = pi->type.argnum;
+		td.argnum2 = pi->type.argnum2;
 	}
 	int min_num_params;
 	int max_num_params;
