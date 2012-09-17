@@ -38,7 +38,7 @@
 import os, sys, types
 
 import xpcom
-from xpcom import components, nsError, verbose
+from xpcom import components, nsError, verbose, COMException
 import xpcom.shutdown
 
 import module
@@ -103,24 +103,10 @@ class ModuleLoader:
     _platform_names = None
 
     def __init__(self):
-        self._registred_pylib_paths = 0
+        self._registred_pylib_paths = False
         self.com_modules = {} # Keyed by module's FQN as obtained from nsIFile.path
         self.moduleFactory = module.Module
         xpcom.shutdown.register(self._on_shutdown)
-        # Register to be notified when the profile/extensions are ready.
-        from xpcom import _xpcom
-        svc = _xpcom.GetServiceManager().getServiceByContractID(
-                                            "@mozilla.org/observer-service;1",
-                                            components.interfaces.nsIObserverService)
-        svc.addObserver(self, "profile-after-change", 0)
-
-    def observe(self, subject, topic, data):
-        self._setupPythonPaths()
-        from xpcom import _xpcom
-        svc = _xpcom.GetServiceManager().getServiceByContractID(
-                                            "@mozilla.org/observer-service;1",
-                                            components.interfaces.nsIObserverService)
-        svc.removeObserver(self, "profile-after-change")
 
     def _on_shutdown(self):
         self.com_modules.clear()
@@ -133,12 +119,7 @@ class ModuleLoader:
 
     def _getCOMModuleForLocation(self, componentFile):
         if not self._registred_pylib_paths:
-            self._registred_pylib_paths = 1
-            try:
-                self._setupPythonPaths()
-            except:
-                import traceback
-                traceback.print_exc()
+            self._setupPythonPaths()
 
         fqn = componentFile.path
         if fqn[-4:] in (".pyc", ".pyo"):
@@ -198,10 +179,17 @@ class ModuleLoader:
         """Add 'pylib' directies for the application and each extension to
         Python's sys.path."""
 
+        assert not self._registred_pylib_paths
+        self._registred_pylib_paths = True
+
         from os.path import join, exists, dirname
 
         # Extension directories.
-        for extDir in self._getExtenionDirectories():
+        try:
+            extDirs = self._getExtenionDirectories()
+        except COMException:
+            extDirs = []
+        for extDir in extDirs:
             pylibPath = join(extDir.path, "pylib")
             if exists(pylibPath) and pylibPath not in sys.path:
                 if verbose:
