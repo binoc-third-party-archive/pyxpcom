@@ -56,7 +56,6 @@ LOCAL_INCLUDES = $(MOZ_PYTHON_INCLUDES)
 EXTRA_LIBS += $(MOZ_PYTHON_LIBS)
 
 EXTRA_LIBS += $(call EXPAND_LIBNAME_PATH,pyxpcom,$(DIST)/lib) \
-              $(call EXPAND_LIBNAME_PATH,xul,$(DIST)/lib) \
 	      $(NULL)
 
 CPPSRCS= \
@@ -78,6 +77,7 @@ ifeq ($(OS_ARCH),Darwin)
 # Don't use the EXTRA_DSO_LDOPTS from rules.mk, it breaks the python module
   EXTRA_DSO_LDOPTS = -bundle $(XPCOM_GLUE_LDOPTS) \
                      $(MOZ_COMPONENT_LIBS) \
+                     $(LIBXUL_DIST)/lib/XUL \
                      $(NULL)
 else ifeq ($(OS_ARCH),WINNT)
   EXTRA_DSO_LDOPTS += $(LIBXUL_DIST)/lib/$(LIB_PREFIX)xpcomglue_s.$(LIB_SUFFIX) \
@@ -85,6 +85,7 @@ else ifeq ($(OS_ARCH),WINNT)
                       $(XPCOM_FROZEN_LDOPTS) \
 		      $(XPCOM_GLUE_LDOPTS) \
 		      $(MOZ_COMPONENT_LIBS) \
+                      $(call EXPAND_LIBNAME_PATH,xul,$(DIST)/lib) \
 		      $(NULL)
 else
   EXTRA_DSO_LDOPTS += $(XPCOM_GLUE_LDOPTS) \
@@ -92,6 +93,7 @@ else
                       $(MKSHLIB_FORCE_ALL) \
                           $(call EXPAND_LIBNAME_PATH,mozglue,$(DIST)/lib) \
                       $(MKSHLIB_UNFORCE_ALL) \
+                      $(call EXPAND_LIBNAME_PATH,xul,$(DIST)/lib) \
                       $(NULL)
 endif
 IMPORT_LIBRARY		:= $(SHARED_LIBRARY:.pyd=.lib)
