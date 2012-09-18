@@ -27,7 +27,7 @@ public:
 
 private:
     PyAppInfo(nsIFile* aAppDir);
-    ~PyAppInfo();
+    virtual ~PyAppInfo();
 
 protected:
     nsXREAppData mAppData;
