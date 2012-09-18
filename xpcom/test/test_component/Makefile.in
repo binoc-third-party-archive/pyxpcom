@@ -62,4 +62,4 @@ include $(topsrcdir)/config/rules.mk
 
 libs::
 	$(PYTHON) $(MOZILLA_DIR)/config/buildlist.py \
-		$(FINAL_TARGET)/chrome.manifest "manifest components/py_test_component.manifest"
+		$(FINAL_TARGET)/pyxpcom.manifest "manifest components/py_test_component.manifest"

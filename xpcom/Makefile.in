@@ -97,7 +97,7 @@ libs::
 	$(INSTALL) $(PYSRCS_XPCOMSERVER) $(DIST)/bin/python/xpcom/server
 	$(INSTALL) $(PYSRCS_XPCOMTOOLS) $(DIST)/bin/python/xpcom/tools
 	$(PYTHON) $(MOZILLA_DIR)/config/buildlist.py \
-		$(FINAL_TARGET)/chrome.manifest "manifest components/pyxpcom.manifest"
+		$(FINAL_TARGET)/pyxpcom.manifest "manifest components/pyxpcom.manifest"
 
 install::
 	$(SYSINSTALL) $(IFLAGS1) $(PYSRCS_XPCOM) $(DISTDIR)$(pyexecdir)/xpcom

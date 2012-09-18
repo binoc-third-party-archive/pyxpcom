@@ -513,8 +513,12 @@ static PRBool EnsureXPCOM()
 				nsCOMPtr<nsIFile> app_manifest;
 				rv = app_dir->Clone(getter_AddRefs(app_manifest));
 				if (NS_SUCCEEDED(rv)) {
-					app_manifest->Append(NS_LITERAL_STRING("chrome.manifest"));
-					(void)XRE_AddManifestLocation(NS_COMPONENT_LOCATION, app_manifest);
+					app_manifest->Append(NS_LITERAL_STRING("pyxpcom.manifest"));
+					bool exists = false;
+					rv = app_manifest->Exists(&exists);
+					if (NS_SUCCEEDED(rv) && exists) {
+						(void)XRE_AddManifestLocation(NS_COMPONENT_LOCATION, app_manifest);
+					}
 				}
 			}
 		}
