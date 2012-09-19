@@ -175,15 +175,15 @@ done:
 		PyErr_NormalizeException( &exc_typ, &exc_val, &exc_tb);
 
 		PyObject *err_result = PyObject_CallMethod(m_pPyObject, 
-	                                       "_CallMethodException_",
-					       "OiOO(OOO)",
-					       obThisObject,
-					       (int)methodIndex,
-					       obMI,
-					       obParams,
-		                               exc_typ ? exc_typ : Py_None, // should never be NULL, but defensive programming...
-		                               exc_val ? exc_val : Py_None, // may well be NULL.
-					       exc_tb ? exc_tb : Py_None); // may well be NULL.
+		                                           "_CallMethodException_",
+		                                           "OiOO(OOO)",
+		                                           obThisObject,
+		                                           (int)methodIndex,
+		                                           obMI,
+		                                           obParams,
+		                                           exc_typ ? exc_typ : Py_None, // should never be NULL, but defensive programming...
+		                                           exc_val ? exc_val : Py_None, // may well be NULL.
+		                                           exc_tb ? exc_tb : Py_None); // may well be NULL.
 		if (err_result == NULL) {
 			PyXPCOM_LogError("The exception handler _CallMethodException_ failed!\n");
 		} else if (err_result == Py_None) {
