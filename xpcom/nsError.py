@@ -71,8 +71,8 @@ NS_ERROR_NULL_POINTER = NS_ERROR_INVALID_POINTER
 NS_ERROR_XPATH_INVALID_ARG = NS_ERROR_INVALID_ARG
 NS_RDF_ASSERTION_ACCEPTED = NS_OK
 NS_STATE_PROPERTY_EXISTS = NS_OK
-def NS_LIKELY(x): return x
-def NS_UNLIKELY(x): return x
+def NS_LIKELY(x): return bool(x)
+def NS_UNLIKELY(x): return bool(x)
 def NS_ERROR_GENERATE(sev,module,code): return (((sev) << 31) | ((module + NS_ERROR_MODULE_BASE_OFFSET) << 16) | ((code)))
 def NS_ERROR_GENERATE_FAILURE(module,code): return NS_ERROR_GENERATE(NS_ERROR_SEVERITY_ERROR, module, code)
 def NS_ERROR_GENERATE_SUCCESS(module,code): return NS_ERROR_GENERATE(NS_ERROR_SEVERITY_SUCCESS, module, code)
