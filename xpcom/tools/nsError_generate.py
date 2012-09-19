@@ -92,7 +92,8 @@ for literals in simples, modules, expressions:
             del literals[name]
 
 # print out some unforunately hard-coded functions
-hardcoded = ["def NS_LIKELY(x): return x\n", "def NS_UNLIKELY(x): return x\n"]
+hardcoded = ["def NS_LIKELY(x): return bool(x)\n",
+             "def NS_UNLIKELY(x): return bool(x)\n"]
 for stmt in hardcoded:
     exec stmt in env
     out.write(stmt)
