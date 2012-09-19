@@ -439,6 +439,8 @@ def test_derived_interface(c, test_flat = 0):
     test_method(c.SumVariants, ([MakeVariant(1),MakeVariant(2),MakeVariant(3)],), 6)
     test_method(c.SumVariants, ([MakeVariant('foo'), MakeVariant('bar')],), 'foobar')
 
+    test_method(c.ReturnArray, (), [1,2,3])
+
     if not test_flat:
         c = c.queryInterface(xpcom.components.interfaces.nsIPythonTestInterfaceDOMStrings)
 # NULL DOM strings don't work yet.

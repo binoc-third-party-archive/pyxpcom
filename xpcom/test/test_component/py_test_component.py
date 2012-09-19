@@ -377,6 +377,9 @@ class PythonTestComponent:
             result += v
         return result
 
+    def ReturnArray(self):
+        return [1, 2, 3]
+
     # Some tests for the "new" (Feb-2001) DOMString type.
     def GetDOMStringResult( self, length ):
         # Result: DOMString &

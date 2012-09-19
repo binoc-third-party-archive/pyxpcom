@@ -26,6 +26,20 @@ Object.defineProperty(Array.prototype, "compareArrays", {
   },
 });
 
+function is(got, expect, message) {
+  if (Array.isArray(got) || Array.isArray(expect)) {
+    if (Array.prototype.compareArrays.call(got, expect)) {
+      return;
+    }
+  } else {
+    if (got === expect) {
+      return;
+    }
+  }
+  throw(message + ": got " + JSON.stringify(got) +
+        ", expected " + JSON.stringify(expect));
+}
+
 function JSTestComponent() {
 }
 
@@ -137,6 +151,11 @@ function JSTestComponent_run() {
   var v2 = c.CopyVariant(v);
   if (!v.compareArrays(v2))
     throw("Could not copy a non-empty array of nsIVariant");
+
+  v = {};
+  v2 = c.ReturnArray(v);
+  is(v.value, [1,2,3], "Did not return correct array");
+  is(v2.value, 3, "Did not return correct value");
 }
 
 JSTestComponent.prototype.QueryInterface = XPCOMUtils.generateQI([Ci.nsIRunnable]);

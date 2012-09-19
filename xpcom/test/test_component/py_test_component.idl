@@ -213,6 +213,9 @@ interface nsIPythonTestInterfaceExtra : nsIPythonTestInterface
     void AppendVariant(in nsIVariant variant, inout nsIVariant result);
     nsIVariant CopyVariant(in nsIVariant variant);
     nsIVariant SumVariants(in unsigned long incount, [array, size_is(incount)]in nsIVariant variants);
+    // Test that retval can be auto-filled
+    void ReturnArray([array, size_is(count)] out long array,
+                     [retval] out unsigned long count);
 
     // Testing of optional IDL arguments.
     attribute long   optional_number_1;

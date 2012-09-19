@@ -391,7 +391,8 @@ public:
 	PyObject *MakePythonResult();
 
 	nsXPTCVariant *m_var_array;
-	int m_num_array;
+	int m_num_array; // maximum number of arguments (including hidden/auto)
+	                 // we can hold
 protected:
 	PyObject *MakeSinglePythonResult(int index);
 	bool FillInVariant(const PythonTypeDescriptor &, int, int);

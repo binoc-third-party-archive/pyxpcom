@@ -898,12 +898,12 @@ done:
 class PythonTypeDescriptor {
 public:
 	PythonTypeDescriptor() {
-		param_flags = size_is = length_is = 0;
+		param_flags = argnum = argnum2 = 0;
 		type_flags = TD_VOID;
 		iid = NS_GET_IID(nsISupports); // always a valid IID
 		array_type = 0;
-		is_auto_out = PR_FALSE;
-		is_auto_in = PR_FALSE;
+		is_auto_in = false;
+		is_auto_out = false;
 		have_set_auto = PR_FALSE;
 	}
 	~PythonTypeDescriptor() {
@@ -925,6 +925,8 @@ public:
 	// Is this auto-filled by some other "in" param?
 	bool is_auto_in;
 	// Is this auto-filled by some other "out" param?
+	// (This can't be merged with is_auto_in because things might be auto in
+	// only one direction, e.g. in unsigned int count + out array size_is(count) )
 	bool is_auto_out;
 	// If is_auto_out, have I already filled it?  Used when multiple
 	// params share a size_is fields - first time sets it, subsequent
@@ -979,9 +981,9 @@ static void ProcessPythonTypeDescriptors(PythonTypeDescriptor *pdescs, int num,
 				MOZ_ASSERT(ptd.length_is < num, "Bad dependent index");
 				if (ptd.length_is < num) {
 					if (ptd.IsIn())
-						pdescs[ptd.length_is].is_auto_in = PR_TRUE;
+						pdescs[ptd.length_is].is_auto_in = true;
 					if (ptd.IsOut())
-						pdescs[ptd.length_is].is_auto_out = PR_TRUE;
+						pdescs[ptd.length_is].is_auto_out = true;
 				}
 				break;
 			case nsXPTType::T_PSTRING_SIZE_IS:
@@ -989,9 +991,9 @@ static void ProcessPythonTypeDescriptors(PythonTypeDescriptor *pdescs, int num,
 				MOZ_ASSERT(ptd.size_is < num, "Bad dependent index");
 				if (ptd.size_is < num) {
 					if (ptd.IsIn())
-						pdescs[ptd.size_is].is_auto_in = PR_TRUE;
+						pdescs[ptd.size_is].is_auto_in = true;
 					if (ptd.IsOut())
-						pdescs[ptd.size_is].is_auto_out = PR_TRUE;
+						pdescs[ptd.size_is].is_auto_out = true;
 				}
 				break;
 			default:
@@ -1136,7 +1138,6 @@ PRBool PyXPCOM_InterfaceVariantHelper::Init(PyObject *obParams)
 
 	m_python_type_desc_array = new (fallible) PythonTypeDescriptor[m_num_array];
 	if (!m_python_type_desc_array) goto done;
-	memset(m_python_type_desc_array, 0, sizeof(PythonTypeDescriptor) * m_num_array);
 
 	// Pull apart the type descs and stash them.
 	for (i = 0; i < m_num_array; i++) {
@@ -1148,12 +1149,24 @@ PRBool PyXPCOM_InterfaceVariantHelper::Init(PyObject *obParams)
 		PyObject *obIID;
 		PythonTypeDescriptor &ptd = m_python_type_desc_array[i];
 		ptd.array_type = nsXPTType::T_ARRAY; // Array-of-array is not supported
-		PRBool this_ok = PyArg_ParseTuple(desc_object, "bbbbO|b:type_desc", 
+		bool this_ok = PyArg_ParseTuple(desc_object, "bbbbO|b:type_desc",
 					&ptd.param_flags, &ptd.type_flags, &ptd.argnum, &ptd.argnum2,
 					&obIID, &ptd.array_type);
 		Py_DECREF(desc_object);
 		MOZ_ASSERT(0 == (ptd.param_flags & ~XPT_PD_FLAGMASK),
 				   "Invalid param flags");
+		if (ptd.IsIn() && ptd.IsRetval() && !ptd.IsDipper()) {
+			PyErr_Format(PyExc_ValueError,
+			             "'[retval] in' parameter in position %i makes no sense!",
+						 i);
+			goto done; // This is an insane interface, we can't call it, sorry
+		}
+		if (ptd.IsIn() && ptd.IsShared()) {
+			PyErr_Format(PyExc_ValueError,
+						 "'[shared] in' parameter in position %i makes no sense!",
+						 i);
+			goto done;
+		}
 		if (!this_ok) goto done;
 
 		// The .py code may send a 0 as the IID!
@@ -1206,12 +1219,12 @@ PRBool PyXPCOM_InterfaceVariantHelper::FillArray()
 		// stash the type_flags into the variant, and remember how many extra
 		// bits of info we have.
 		m_var_array[i].type = ptd.type_flags;
-		if (ptd.IsIn() && !ptd.is_auto_in && !ptd.IsDipper()) {
+		if (ptd.IsIn() && !ptd.IsAutoIn() && !ptd.IsDipper()) {
 			if (!FillInVariant(ptd, i, param_index))
 				return PR_FALSE;
 			param_index++;
 		}
-		if ((ptd.IsOut() && !ptd.is_auto_out) || ptd.IsDipper()) {
+		if ((ptd.IsOut() && !ptd.IsAutoOut()) || ptd.IsDipper()) {
 			if (!PrepareOutVariant(ptd, i))
 				return PR_FALSE;
 		}
@@ -1222,7 +1235,7 @@ PRBool PyXPCOM_InterfaceVariantHelper::FillArray()
 	// Final loop to handle this.
 	for (i=0;i<m_num_array;i++) {
 		PythonTypeDescriptor &ptd = m_python_type_desc_array[i];
-		if (ptd.is_auto_out && !ptd.have_set_auto) {
+		if (ptd.IsAutoOut() && !ptd.IsAutoSet()) {
 			// Call PrepareOutVariant to ensure buffers etc setup.
 			if (!PrepareOutVariant(ptd, i))
 				return PR_FALSE;
@@ -1240,8 +1253,8 @@ bool PyXPCOM_InterfaceVariantHelper::SetSizeOrLengthIs(int var_index, bool is_si
 		m_python_type_desc_array[var_index].length_is;
 	NS_ABORT_IF_FALSE(argnum < m_num_array, "size_is param is invalid");
 	PythonTypeDescriptor &td_size = m_python_type_desc_array[argnum];
-	MOZ_ASSERT(td_size.is_auto_in || td_size.is_auto_out,
-			   "Setting size_is, but param is not marked as auto!");
+	MOZ_ASSERT(td_size.IsAutoIn() || td_size.IsAutoOut(),
+			   "Setting size_is/length_is, but param is not marked as auto!");
 	MOZ_ASSERT(td_size.TypeTag() == nsXPTType::T_U32,
 			   "size param must be Uint32");
 	MOZ_ASSERT(!td_size.IsPointer(),
@@ -1955,10 +1968,10 @@ PyObject *PyXPCOM_InterfaceVariantHelper::MakePythonResult()
 	PRBool have_retval = PR_FALSE;
 	for (i=0;i<m_num_array;i++) {
 		PythonTypeDescriptor &td = m_python_type_desc_array[i];
-		if (!td.is_auto_out) {
-			if (XPT_PD_IS_OUT(td.param_flags) || XPT_PD_IS_DIPPER(td.param_flags))
+		if (!td.IsAutoOut()) {
+			if (td.IsOut() || td.IsDipper())
 				n_results++;
-			if (XPT_PD_IS_RETVAL(td.param_flags))
+			if (td.IsRetval())
 				have_retval = PR_TRUE;
 		}
 	}
@@ -1986,8 +1999,8 @@ PyObject *PyXPCOM_InterfaceVariantHelper::MakePythonResult()
 
 		}
 		for (i=0;ret_index < n_results && i < max_index;i++) {
-			if (!m_python_type_desc_array[i].is_auto_out) {
-				if (XPT_PD_IS_OUT(m_python_type_desc_array[i].param_flags) || XPT_PD_IS_DIPPER(m_python_type_desc_array[i].param_flags)) {
+			if (!m_python_type_desc_array[i].IsAutoOut()) {
+				if (m_python_type_desc_array[i].IsOut() || m_python_type_desc_array[i].IsDipper()) {
 					PyObject *val = MakeSinglePythonResult(i);
 					if (val==NULL) {
 						Py_XDECREF(ret);
@@ -2882,7 +2895,7 @@ nsresult PyXPCOM_GatewayVariantHelper::ProcessPythonResult(PyObject *ret_ob)
 	int index_retval = -1;
 	for (i=0;i<m_num_type_descs;i++) {
 		nsXPTParamInfo *pi = (nsXPTParamInfo *)m_info->params+i;
-		if (!m_python_type_desc_array[i].is_auto_out) {
+		if (!m_python_type_desc_array[i].IsAutoOut()) {
 			if (pi->IsOut() || pi->IsDipper()) {
 				num_results++;
 				last_result = i;
@@ -2934,7 +2947,7 @@ nsresult PyXPCOM_GatewayVariantHelper::ProcessPythonResult(PyObject *ret_ob)
 		}
 		for (i=0;NS_SUCCEEDED(rc) && i<m_info->num_args;i++) {
 			// If we've already done it, or don't need to do it!
-			if (i==index_retval || m_python_type_desc_array[i].is_auto_out) 
+			if (i == index_retval || m_python_type_desc_array[i].IsAutoOut())
 				continue;
 			XPTParamDescriptor *pi = m_info->params+i;
 			if (XPT_PD_IS_OUT(pi->flags)) {
