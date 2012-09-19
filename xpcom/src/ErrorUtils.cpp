@@ -271,7 +271,7 @@ PYXPCOM_EXPORT void PyXPCOM_LogDebug(const char *fmt, ...)
 PYXPCOM_EXPORT PyObject *PyXPCOM_BuildPyException(nsresult r)
 {
 	// Need the message etc.
-	PyObject *evalue = Py_BuildValue("i", r);
+	PyObject *evalue = Py_BuildValue("I", r);
 	PyErr_SetObject(PyXPCOM_Error, evalue);
 	Py_XDECREF(evalue);
 	return NULL;

@@ -1,5 +1,22 @@
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
 """
-Generate nsError.py via clang
+Generate nsError.py via clang/gcc
+
+Since landing of bug 780618, most error codes are now in nsError.h and we can
+generate the Python mapping from there.  This does that.
+
+This runs nsError.h through clang or GCC, and have that dump the defines (so
+that we don't have to parse the full C syntax).  It then sorts the output into a
+few groups, and outputs them in order:
+    - simple numbers
+    - module definitions (mostly for sorting)
+    - expressions that don't involve calls
+    - functions (i.e. things that take arguments)
+    - expressions that involve calls
+    - anything else (due to dependencies on previously defined things)
 """
 
 from pprint import pprint
@@ -28,7 +45,19 @@ expressions = {} # involving operators
 calls = {} # involving function calls
 modules = {}
 
+prologue = """
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at http://mozilla.org/MPL/2.0/.
+#
+# This file is generated from %s
+#
+# Please use pyxpcom/xpcom/tools/nsError_generate.py to re-generate this file.
+
+""" % (sys.argv[1])
+
 out = open(sys.argv[2], "w")
+out.write(prologue)
 
 for line in output.splitlines():
     prefix, name, value = line.split(" ", 2)
@@ -41,7 +70,7 @@ for line in output.splitlines():
             modules[name] = value
         elif "(" in value:
             calls[name] = value
-        elif set("+-*/").intersection(value) or not set("0123456789").intersection(value[0]):
+        elif set("+-*/ ").intersection(value) or not set("0123456789").intersection(value[0]):
             expressions[name] = value
         else:
             simples[name] = value
@@ -59,10 +88,6 @@ for literals in simples, modules, expressions:
         except Exception, ex:
             pass # we might depend on things not there yet
         else:
-            # nsresult is _signed_
-            if isinstance(env[name], int) and env[name] > 0x80000000:
-                stmt = "%s = (%s) - 0x100000000\n" % (name, value)
-                exec stmt in env
             out.write(stmt)
             del literals[name]
 
@@ -96,9 +121,5 @@ for literals in calls, modules, simples, expressions:
         except Exception, ex:
             sys.stderr.write("Failed: %s: %s\n" % (stmt, ex))
         else:
-            # nsresult is _signed_
-            if isinstance(env[name], int) and env[name] > 0x80000000:
-                stmt = "%s = (%s) - 0x100000000\n" % (name, value)
-                exec stmt in env
             out.write(stmt)
             del literals[name]
