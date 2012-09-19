@@ -155,7 +155,7 @@ function JSTestComponent_run() {
   v = {};
   v2 = c.ReturnArray(v);
   is(v.value, [1,2,3], "Did not return correct array");
-  is(v2.value, 3, "Did not return correct value");
+  is(v2, 3, "Did not return correct value");
 }
 
 JSTestComponent.prototype.QueryInterface = XPCOMUtils.generateQI([Ci.nsIRunnable]);
