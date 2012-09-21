@@ -137,7 +137,8 @@ def test_method(method, args, expected_results):
         print "Testing %s%s" % (method.__name__, `args`)
     ret = method(*args)
     if ret != expected_results:
-        print_error("calling method %s - expected %r, but got %r" % (method.__name__, expected_results, ret))
+        print_error("calling method %s with %r - expected %r, but got %r" %
+                    (method.__name__, args, expected_results, ret))
 
 def test_int_method(meth):
     test_method(meth, (0,0), (0,0,0))
@@ -276,9 +277,9 @@ def test_base_interface(c):
     test_attribute(c, "isupports_value", None, c)
 
     # The methods
-    test_method(c.do_boolean, (0,1), (1,0,1))
-    test_method(c.do_boolean, (1,0), (1,0,1))
-    test_method(c.do_boolean, (1,1), (0,1,0))
+    test_method(c.do_boolean, (False, True), (True, False, True))
+    test_method(c.do_boolean, (True, False), (True, False, True))
+    test_method(c.do_boolean, (True, True), (False, True, False))
 
     test_int_method(c.do_octet)
     test_int_method(c.do_short)

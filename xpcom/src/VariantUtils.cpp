@@ -1285,7 +1285,7 @@ bool PyXPCOM_InterfaceVariantHelper::SetSizeOrLengthIs(int var_index, bool is_si
 	return PR_TRUE;
 }
 
-PRUint32 PyXPCOM_InterfaceVariantHelper::GetSizeOrLengthIs(int var_index, bool is_size)
+uint32_t PyXPCOM_InterfaceVariantHelper::GetSizeOrLengthIs(int var_index, bool is_size)
 {
 	MOZ_ASSERT(var_index < mPyTypeDesc.Length(), "var_index param is invalid");
 	PRUint8 argnum = is_size ?
@@ -1712,6 +1712,12 @@ bool PyXPCOM_InterfaceVariantHelper::FillInVariant(const PythonTypeDescriptor &t
 									   "Null interfaces should not need cleanup!");
 						}
 						break;
+					case XPTTypeDescriptorTags::TD_ARRAY: {
+						MOZ_ASSERT(val == Py_None || ns_v.val.p != nullptr,
+								   "Non-empty arrays should be allocated!");
+						// ns_v.DoesValNeedCleanup() checking is... harder
+						break;
+						}
 					case nsXPTType::T_CHAR_STR:
 						if (!td.IsOut() && PyString_Check(val)) {
 							// Optimization in effect, this does not need cleanup
@@ -1759,37 +1765,52 @@ bool PyXPCOM_InterfaceVariantHelper::PrepareOutVariant(const PythonTypeDescripto
 	  case nsXPTType::T_U16:
 	  case nsXPTType::T_U32:
 	  case nsXPTType::T_U64:
-		ns_v.val.u64 = 0;
+		if (!td.IsIn()) {
+			ns_v.val.u64 = 0;
+		}
 		break;
 	  case nsXPTType::T_FLOAT:
-		ns_v.val.f = 0;
+		if (!td.IsIn()) {
+			ns_v.val.f = 0;
+		}
 		break;
 	  case nsXPTType::T_DOUBLE:
-		ns_v.val.d = 0;
+		if (!td.IsIn()) {
+			ns_v.val.d = 0;
+		}
 		break;
 	  case nsXPTType::T_BOOL:
-		ns_v.val.b = false;
+		if (!td.IsIn()) {
+			ns_v.val.b = false;
+		}
 		break;
 	  case nsXPTType::T_CHAR:
-		ns_v.val.c = '\0';
+		if (!td.IsIn()) {
+			ns_v.val.c = '\0';
+		}
 		break;
 	  case nsXPTType::T_WCHAR:
-		ns_v.val.wc = PRUnichar('\0');
+		if (!td.IsIn()) {
+			ns_v.val.wc = PRUnichar('\0');
+		}
 		break;
 	  case nsXPTType::T_VOID:
-		ns_v.val.p = nullptr; // Not really, but close enough
+		if (!td.IsIn()) {
+			ns_v.val.p = nullptr; // Not really, but close enough
+		}
 		break;
 
 	  case nsXPTType::T_INTERFACE:
 	  case nsXPTType::T_INTERFACE_IS:
-		MOZ_ASSERT(!ns_v.val.p, "Can't have an interface pointer!");
+		if (!td.IsIn()) {
+			MOZ_ASSERT(!ns_v.val.p, "Can't have an interface pointer!");
+		}
 		// Nothing is in there yet, no need to cleanup
 		break;
 	  case nsXPTType::T_ARRAY:
-		if (!ns_v.DoesValNeedCleanup()) {
+		if (!td.IsIn()) {
 			MOZ_ASSERT(!ns_v.val.p, "Garbage in our pointer?");
-			ns_v.val.p = Alloc(sizeof(void*), 1);
-			ns_v.SetValNeedsCleanup();
+			// We wait for the callee to allocate space
 		} else {
 			// We've already got space (i.e. inout)
 			// Don't worry about it
