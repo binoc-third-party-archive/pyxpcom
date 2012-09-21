@@ -319,7 +319,8 @@ PyG_Base::MakeInterfaceParam(nsISupports *pis,
 	// But if it ever triggers, the poor Python code has no real hope
 	// of returning something useful, so we should at least do our
 	// best to provide the useful data.
-	NS_ASSERTION( ((piid != NULL) ^ (d != NULL)) == 1, "No information on the interface available - Python's gunna have a hard time doing much with it!");
+	MOZ_ASSERT(((piid != NULL) ^ (d != NULL)),
+	           "No information on the interface available - Python's gunna have a hard time doing much with it!");
 	PyObject *obIID = NULL;
 	PyObject *obISupports = NULL;
 	PyObject *obParamDesc = NULL;

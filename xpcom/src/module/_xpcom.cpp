@@ -180,12 +180,14 @@ PyXPCOMMethod_NS_InvokeByIndex(PyObject *self, PyObject *args)
 	if (!arg_helper.Init(obParams))
 		return NULL;
 
-	if (!arg_helper.FillArray())
+	if (!arg_helper.PrepareCall())
 		return NULL;
 
 	nsresult r;
 	Py_BEGIN_ALLOW_THREADS;
-	r = NS_InvokeByIndex(pis, index, arg_helper.m_num_array, arg_helper.m_var_array);
+	r = NS_InvokeByIndex(pis, index,
+	                     arg_helper.mDispatchParams.Length(),
+	                     arg_helper.mDispatchParams.Elements());
 	Py_END_ALLOW_THREADS;
 	if ( NS_FAILED(r) )
 		return PyXPCOM_BuildPyException(r);

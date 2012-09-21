@@ -58,9 +58,18 @@ static mozilla::fallible_t fallible;
 #define PyUnicode_FromPRUnichar(src, size) \
 	PyUnicode_DecodeUTF16((char*)(src),sizeof(PRUnichar)*(size),NULL,NULL)
 
-// Create a zero-terminated PRUnichar buffer from a Python unicode.
-// On success, returns 0.  On failure, returns -1 and sets an exception.
-// dest_out must not be null.  size_out may be null.
+/**
+ * Copy a Python unicode string to a zero-terminated PRUnichar buffer
+ * @param dest_out The resulting buffer.  Must not be null.  If the points to a
+ * 		null pointer, memory will be allocated.  If this points to a block of
+ * 		memory, it will be used instead.
+ * @param size_out [optional] The size of the buffer, in characters.  If
+ * 		dest_out is null, returns the size of the memory allocated.  If dest_out
+ * 		is not null, should point to the size of the buffer given; on return,
+ * 		will return the number of characters written.  This excludes the
+ * 		terminating null.
+ * @returns 0 on success, -1 on failure (and set a Python exception).
+ */
 static int
 PyUnicode_AsPRUnichar(PyObject *obj, PRUnichar **dest_out, PRUint32 *size_out)
 {
@@ -74,11 +83,23 @@ PyUnicode_AsPRUnichar(PyObject *obj, PRUnichar **dest_out, PRUint32 *size_out)
 	if (!s)
 		return -1;
 	size = (PyString_GET_SIZE(s) - 2) / sizeof(PRUnichar); // remove BOM
-	dest = (PRUnichar *)moz_malloc(sizeof(PRUnichar) * (size + 1));
-	if (!dest) {
-		PyErr_NoMemory();
-		Py_DECREF(s);
-		return -1;
+	if (*dest_out) {
+		MOZ_ASSERT(size_out, "Can't have preallocated buffer of unknown size");
+		uint32_t buffer_size = *size_out;
+		*size_out = size;
+		if (buffer_size <= *size_out) {
+			PyErr_NoMemory();
+			Py_DECREF(s);
+			return -1;
+		}
+		dest = *dest_out;
+	} else {
+		dest = reinterpret_cast<PRUnichar *>(moz_malloc(sizeof(PRUnichar) * (size + 1)));
+		if (!dest) {
+			PyErr_NoMemory();
+			Py_DECREF(s);
+			return -1;
+		}
 	}
 	// Drop the UTF-16 byte order mark at the beginning of
 	// the string.  (See the docs on PyUnicode_AsUTF16String.)
@@ -278,9 +299,9 @@ void FreeSingleArray(void *array_ptr, PRUint32 sequence_size, PRUint8 array_type
 #define BREAK_FALSE {rc=PR_FALSE;break;}
 
 
-PRBool FillSingleArray(void *array_ptr, PyObject *sequence_ob, PRUint32 sequence_size,
-                       PRUint32 array_element_size, XPTTypeDescriptorTags array_type,
-                       const nsIID &iid)
+bool FillSingleArray(void *array_ptr, PyObject *sequence_ob, PRUint32 sequence_size,
+                     PRUint32 array_element_size, XPTTypeDescriptorTags array_type,
+                     const nsIID &iid)
 {
 	PRUint8 *pthis = reinterpret_cast<uint8_t*>(array_ptr);
 	MOZ_ASSERT(pthis, "Don't have a valid array to fill!");
@@ -688,7 +709,7 @@ PyObject_AsVariant( PyObject *ob, nsIVariant **aRet)
 			}
 			else {
 				PRUint32 nch;
-				PRUnichar *p;
+				PRUnichar *p = nullptr;
 				if (PyUnicode_AsPRUnichar(ob, &p, &nch) < 0) {
 					PyXPCOM_LogWarning("Failed to convert object to unicode", ob->ob_type->tp_name);
 					nr = NS_ERROR_UNEXPECTED;
@@ -904,7 +925,7 @@ public:
 		array_type = 0;
 		is_auto_in = false;
 		is_auto_out = false;
-		have_set_auto = PR_FALSE;
+		have_set_auto = false;
 	}
 	~PythonTypeDescriptor() {
 	}
@@ -951,24 +972,38 @@ public:
 
 	// NOTE: these are deprecated and should only be used in assertions
 	// (See Mozilla bug 692342)
-	bool IsPointer()   const { return 0 != (XPT_TDP_IS_POINTER(type_flags)); }
-	bool IsReference() const { return 0 != (XPT_TDP_IS_REFERENCE(type_flags)); }
+	MOZ_INLINE bool IsPointer()   const { return 0 != (XPT_TDP_IS_POINTER(type_flags)); }
+	MOZ_INLINE bool IsReference() const { return 0 != (XPT_TDP_IS_REFERENCE(type_flags)); }
 
-	bool IsIn()        const { return 0 != (XPT_PD_IS_IN(param_flags)) ; }
-	bool IsOut()       const { return 0 != (XPT_PD_IS_OUT(param_flags)) ; }
-	bool IsRetval()    const { return 0 != (XPT_PD_IS_RETVAL(param_flags)) ; }
-	bool IsShared()    const { return 0 != (XPT_PD_IS_SHARED(param_flags)) ; }
-	bool IsDipper()    const { return 0 != (XPT_PD_IS_DIPPER(param_flags)) ; }
-	bool IsOptional()  const { return 0 != (XPT_PD_IS_OPTIONAL(param_flags)) ; }
+	MOZ_INLINE bool IsIn()        const { return 0 != (XPT_PD_IS_IN(param_flags)) ; }
+	MOZ_INLINE bool IsOut()       const { return 0 != (XPT_PD_IS_OUT(param_flags)) ; }
+	MOZ_INLINE bool IsRetval()    const { return 0 != (XPT_PD_IS_RETVAL(param_flags)) ; }
+	MOZ_INLINE bool IsShared()    const { return 0 != (XPT_PD_IS_SHARED(param_flags)) ; }
+	MOZ_INLINE bool IsDipper()    const { return 0 != (XPT_PD_IS_DIPPER(param_flags)) ; }
+	MOZ_INLINE bool IsOptional()  const { return 0 != (XPT_PD_IS_OPTIONAL(param_flags)) ; }
 
 	// These are just to match the style
-	bool IsAutoIn()    const { return is_auto_in; }
-	bool IsAutoOut()   const { return is_auto_out; }
-	bool IsAutoSet()   const { return have_set_auto; }
+	MOZ_INLINE bool IsAutoIn()    const { return is_auto_in; }
+	MOZ_INLINE bool IsAutoOut()   const { return is_auto_out; }
+	MOZ_INLINE bool IsAutoSet()   const { return have_set_auto; }
+
+	#if DEBUG
+	bool IsDipperType() const {
+		switch (TypeTag()) {
+			case XPTTypeDescriptorTags::TD_DOMSTRING:
+			case XPTTypeDescriptorTags::TD_UTF8STRING:
+			case XPTTypeDescriptorTags::TD_CSTRING:
+			case XPTTypeDescriptorTags::TD_ASTRING:
+				return true;
+			default:
+				return false;
+		}
+	}
+	#endif
 };
 
-static void ProcessPythonTypeDescriptors(PythonTypeDescriptor *pdescs, int num,
-					 int *min_num_params, int *max_num_params)
+static bool ProcessPythonTypeDescriptors(PythonTypeDescriptor *pdescs, int num,
+                                         int *min_num_params, int *max_num_params)
 {
 	// Loop over the array, checking all the params marked as having an arg.
 	// If these args nominate another arg as the size_is param, then
@@ -976,6 +1011,26 @@ static void ProcessPythonTypeDescriptors(PythonTypeDescriptor *pdescs, int num,
 	int i;
 	for (i = 0; i < num; i++) {
 		PythonTypeDescriptor &ptd = pdescs[i];
+
+		// Some sanity checks on the type
+		MOZ_ASSERT(0 == (ptd.param_flags & ~XPT_PD_FLAGMASK),
+		           "Invalid param flags");
+		MOZ_ASSERT_IF(ptd.IsDipper(), ptd.IsDipperType());
+		MOZ_ASSERT_IF(ptd.IsDipper(), !ptd.IsOut());
+		MOZ_ASSERT_IF(ptd.IsDipperType(), !ptd.IsOut());
+		if (ptd.IsIn() && ptd.IsRetval() && !ptd.IsDipper()) {
+			PyErr_Format(PyExc_ValueError,
+			             "'[retval] in' parameter in position %i makes no sense!",
+			             i);
+			return false; // This is an insane interface, we can't call it, sorry
+		}
+		if (ptd.IsIn() && ptd.IsShared()) {
+			PyErr_Format(PyExc_ValueError,
+			             "'[shared] in' parameter in position %i makes no sense!",
+			             i);
+			return false;
+		}
+
 		switch (ptd.TypeTag()) {
 			case nsXPTType::T_ARRAY:
 				MOZ_ASSERT(ptd.length_is < num, "Bad dependent index");
@@ -996,6 +1051,11 @@ static void ProcessPythonTypeDescriptors(PythonTypeDescriptor *pdescs, int num,
 						pdescs[ptd.size_is].is_auto_out = true;
 				}
 				break;
+			case nsXPTType::T_JSVAL:
+				PyErr_Format(PyExc_ValueError,
+							 "Can't deal with jsval in position %i in Python-land",
+							 i);
+				return false;
 			default:
 				break;
 		}
@@ -1010,6 +1070,7 @@ static void ProcessPythonTypeDescriptors(PythonTypeDescriptor *pdescs, int num,
 			}
 		}
 	}
+	return true;
 }
 
 /*************************************************************************
@@ -1023,10 +1084,7 @@ Helpers when CALLING interfaces.
 PyXPCOM_InterfaceVariantHelper::PyXPCOM_InterfaceVariantHelper(Py_nsISupports *parent)
 {
 	MOZ_ASSERT(parent);
-	m_var_array = nullptr;
-	m_buffer_array = nullptr;
 	m_pyparams = nullptr;
-	m_num_array = 0;
 	// Parent should never die before we do, but let's not take the chance.
 	m_parent = parent;
 	Py_INCREF(parent);
@@ -1036,72 +1094,29 @@ PyXPCOM_InterfaceVariantHelper::~PyXPCOM_InterfaceVariantHelper()
 {
 	Py_DECREF(m_parent);
 	Py_XDECREF(m_pyparams);
-	for (int i = 0; i < m_num_array; i++) {
-		if (m_var_array) {
-			nsXPTCVariant &ns_v = m_var_array[i];
-			
-			if(!ns_v.DoesValNeedCleanup())
-				continue;
-			
-			switch (ns_v.type.TagPart()) {
-				case nsXPTType::T_INTERFACE:
-				case nsXPTType::T_INTERFACE_IS:
-					if (ns_v.val.p) {
-						Py_BEGIN_ALLOW_THREADS; // MUST release thread-lock, incase a Python COM object that re-acquires.
-						((nsISupports *)ns_v.val.p)->Release();
-						Py_END_ALLOW_THREADS;
-					}
-					break;
-				case nsXPTType::T_DOMSTRING:
-					if (ns_v.val.p) {
-						delete (const nsString *)ns_v.val.p;
-					}
-					break;
-				case nsXPTType::T_CSTRING:
-					if (ns_v.val.p) {
-						delete (const nsCString *)ns_v.val.p;
-					}
-					break;
-				case nsXPTType::T_UTF8STRING:
-					if (ns_v.val.p) {
-						delete (const nsCString *)ns_v.val.p;
-					}
-					break;
-				case nsXPTType::T_ARRAY: {
-					nsXPTCVariant &ns_v = m_var_array[i];
-					if (ns_v.val.p) {
-						PRUint8 array_type = m_python_type_desc_array[i].array_type;
-						PRUint32 seq_size = GetLengthIs(i);
-						FreeSingleArray(ns_v.val.p, seq_size, array_type);
-						// SOMETIMES the contents of the array is shared with
-						// the variant; in that case, don't free it (to avoid a
-						// double-free, since we clear out m_buffer_array later)
-						bool shared = false;
-						for (int j = 0; j < m_num_array; ++j) {
-							if (ns_v.val.p == m_buffer_array[j]) {
-								shared = true;
-								break;
-							}
-						}
-						if (!shared) {
-							moz_free(ns_v.val.p);
-						}
-					}
-					break;
+	MOZ_ASSERT(mDispatchParams.Length() == mPyTypeDesc.Length());
+	for (int i = 0; i < mDispatchParams.Length(); ++i) {
+		nsXPTCVariant &ns_v = mDispatchParams.ElementAt(i);
+
+		if (ns_v.type.TagPart() == nsXPTType::T_ARRAY) {
+			if (ns_v.DoesValNeedCleanup()) {
+				nsXPTType array_type(mPyTypeDesc[i].array_type);
+				uint32_t seq_size = GetLengthIs(i);
+				void** p = reinterpret_cast<void**>(ns_v.val.p);
+				for (uint32_t j = 0; j < seq_size; ++j) {
+					CleanupParam(p[j], array_type);
 				}
-				case nsXPTType::T_IID:
-					moz_free(ns_v.val.p);
-					break;
+			}
+			//uint32_t seq_size = GetLengthIs(i);
+			//FreeSingleArray(ns_v.val.p, seq_size, mPyTypeDesc[i].array_type);
+			//CleanupParam(ns_v, array_type);
+			moz_free(ns_v.val.p);
+		} else {
+			if (ns_v.DoesValNeedCleanup()) {
+				CleanupParam(ns_v.val.p, ns_v.type);
 			}
 		}
-		if (m_buffer_array && m_buffer_array[i]) {
-			moz_free(m_buffer_array[i]);
-			m_buffer_array[i] = nullptr;
-		}
 	}
-	delete [] m_python_type_desc_array;
-	delete [] m_buffer_array;
-	delete [] m_var_array;
 }
 
 /**
@@ -1112,9 +1127,9 @@ PyXPCOM_InterfaceVariantHelper::~PyXPCOM_InterfaceVariantHelper()
  * 		Each element in the tuple of types is itself a tuple, of elements
  * 		(param_flags, type_flags, argnum, argnum2, iid, array_type).
  */
-PRBool PyXPCOM_InterfaceVariantHelper::Init(PyObject *obParams)
+bool PyXPCOM_InterfaceVariantHelper::Init(PyObject *obParams)
 {
-	PRBool ok = PR_FALSE;
+	bool ok = false;
 	int i;
 	int min_num_params = 0;
 	int max_num_params = 0;
@@ -1125,48 +1140,34 @@ PRBool PyXPCOM_InterfaceVariantHelper::Init(PyObject *obParams)
 	}
 	PyObject *typedescs = PySequence_GetItem(obParams, 0);
 	if (!typedescs)
-		return PR_FALSE;
+		return false;
 	// NOTE: The length of the typedescs may be different than the
 	// args actually passed.  The typedescs always include all
 	// hidden params (such as "size_is"), while the actual 
 	// args never include this.
-	m_num_array = PySequence_Length(typedescs);
+	Py_ssize_t numParams = PySequence_Length(typedescs);
 	if (PyErr_Occurred()) goto done;
+	mPyTypeDesc.SetLength(numParams);
 
 	m_pyparams = PySequence_GetItem(obParams, 1);
 	if (!m_pyparams) goto done;
 
-	m_python_type_desc_array = new (fallible) PythonTypeDescriptor[m_num_array];
-	if (!m_python_type_desc_array) goto done;
-
 	// Pull apart the type descs and stash them.
-	for (i = 0; i < m_num_array; i++) {
+	for (i = 0; i < numParams; i++) {
 		PyObject *desc_object = PySequence_GetItem(typedescs, i);
 		if (!desc_object)
 			goto done;
 
 		// Pull apart the typedesc tuple back into a structure we can work with.
-		PyObject *obIID;
-		PythonTypeDescriptor &ptd = m_python_type_desc_array[i];
-		ptd.array_type = nsXPTType::T_ARRAY; // Array-of-array is not supported
+		PyObject *obIID; // This doesn't hold a ref
+		PythonTypeDescriptor &ptd = mPyTypeDesc[i];
+		// Array-of-array is not supported; use it as a sentiel
+		ptd.array_type = nsXPTType::T_ARRAY;
 		bool this_ok = PyArg_ParseTuple(desc_object, "bbbbO|b:type_desc",
-					&ptd.param_flags, &ptd.type_flags, &ptd.argnum, &ptd.argnum2,
-					&obIID, &ptd.array_type);
+		                                &ptd.param_flags, &ptd.type_flags,
+		                                &ptd.argnum, &ptd.argnum2,
+		                                &obIID, &ptd.array_type);
 		Py_DECREF(desc_object);
-		MOZ_ASSERT(0 == (ptd.param_flags & ~XPT_PD_FLAGMASK),
-				   "Invalid param flags");
-		if (ptd.IsIn() && ptd.IsRetval() && !ptd.IsDipper()) {
-			PyErr_Format(PyExc_ValueError,
-			             "'[retval] in' parameter in position %i makes no sense!",
-						 i);
-			goto done; // This is an insane interface, we can't call it, sorry
-		}
-		if (ptd.IsIn() && ptd.IsShared()) {
-			PyErr_Format(PyExc_ValueError,
-						 "'[shared] in' parameter in position %i makes no sense!",
-						 i);
-			goto done;
-		}
 		if (!this_ok) goto done;
 
 		// The .py code may send a 0 as the IID!
@@ -1175,32 +1176,37 @@ PRBool PyXPCOM_InterfaceVariantHelper::Init(PyObject *obParams)
 				goto done;
 		}
 	}
-	ProcessPythonTypeDescriptors(m_python_type_desc_array, m_num_array,
-				     &min_num_params, &max_num_params);
+	ok = ProcessPythonTypeDescriptors(mPyTypeDesc.Elements(), mPyTypeDesc.Length(),
+	                                  &min_num_params, &max_num_params);
+	if (!ok) {
+		goto done;
+	}
+
 	// OK - check we got the number of args we expected.
 	// If not, its really an internal error rather than the user.
 	num_args_provided = PySequence_Length(m_pyparams);
 	if ((num_args_provided < min_num_params) || (num_args_provided > max_num_params)) {
 		if (min_num_params == max_num_params) {
-			PyErr_Format(PyExc_ValueError, "The type descriptions indicate %d args are needed, but %d were provided",
-				max_num_params, num_args_provided);
+			PyErr_Format(PyExc_ValueError,
+			             "The type descriptions indicate %d args are needed, but %d were provided",
+			             max_num_params, num_args_provided);
 		} else {
-			PyErr_Format(PyExc_ValueError, "The type descriptions indicate between %d to %d args are needed, but %d were provided",
-				min_num_params, max_num_params, num_args_provided);
+			PyErr_Format(PyExc_ValueError,
+			             "The type descriptions indicate between %d to %d args are needed, but %d were provided",
+			             min_num_params, max_num_params, num_args_provided);
 		}
+		ok = false;
 		goto done;
 	}
 
-	// Init the other arrays.
-	m_var_array = new (fallible) nsXPTCVariant[m_num_array];
-	if (!m_var_array) goto done;
-	memset(m_var_array, 0, m_num_array * sizeof(m_var_array[0]));
+	// Init the parameters to pass to XPCOM
+	mDispatchParams.SetLength(numParams);
+	// We need to initialize params
+	for (Py_ssize_t i = 0; i < numParams; ++i) {
+		new (&mDispatchParams[i]) nsXPTCVariant();
+	}
 
-	m_buffer_array = new (fallible) void *[m_num_array];
-	if (!m_buffer_array) goto done;
-	memset(m_buffer_array, 0, m_num_array * sizeof(m_buffer_array[0]));
-
-	ok = PR_TRUE;
+	ok = true;
 done:
 	if (!ok && !PyErr_Occurred())
 		PyErr_NoMemory();
@@ -1210,15 +1216,16 @@ done:
 }
 
 
-PRBool PyXPCOM_InterfaceVariantHelper::FillArray()
+bool PyXPCOM_InterfaceVariantHelper::PrepareCall()
 {
 	int param_index = 0;
 	int i;
-	for (i=0;i<m_num_array;i++) {
-		PythonTypeDescriptor &ptd = m_python_type_desc_array[i];
+	MOZ_ASSERT(mPyTypeDesc.Length() == mDispatchParams.Length());
+	for (i = 0; i < mPyTypeDesc.Length(); ++i) {
+		PythonTypeDescriptor &ptd = mPyTypeDesc[i];
 		// stash the type_flags into the variant, and remember how many extra
 		// bits of info we have.
-		m_var_array[i].type = ptd.type_flags;
+		mDispatchParams[i].type = ptd.type_flags;
 		if (ptd.IsIn() && !ptd.IsAutoIn() && !ptd.IsDipper()) {
 			if (!FillInVariant(ptd, i, param_index))
 				return PR_FALSE;
@@ -1233,8 +1240,8 @@ PRBool PyXPCOM_InterfaceVariantHelper::FillArray()
 	// (ie, as the param itself is marked "out", we never got to
 	// touch the associated "size_is".
 	// Final loop to handle this.
-	for (i=0;i<m_num_array;i++) {
-		PythonTypeDescriptor &ptd = m_python_type_desc_array[i];
+	for (i = 0; i < mPyTypeDesc.Length(); ++i) {
+		PythonTypeDescriptor &ptd = mPyTypeDesc[i];
 		if (ptd.IsAutoOut() && !ptd.IsAutoSet()) {
 			// Call PrepareOutVariant to ensure buffers etc setup.
 			if (!PrepareOutVariant(ptd, i))
@@ -1247,19 +1254,19 @@ PRBool PyXPCOM_InterfaceVariantHelper::FillArray()
 
 bool PyXPCOM_InterfaceVariantHelper::SetSizeOrLengthIs(int var_index, bool is_size, uint32_t new_size)
 {
-	NS_ABORT_IF_FALSE(var_index < m_num_array, "var_index param is invalid");
+	MOZ_ASSERT(var_index < mPyTypeDesc.Length(), "var_index param is invalid");
 	uint8_t argnum = is_size ?
-		m_python_type_desc_array[var_index].size_is :
-		m_python_type_desc_array[var_index].length_is;
-	NS_ABORT_IF_FALSE(argnum < m_num_array, "size_is param is invalid");
-	PythonTypeDescriptor &td_size = m_python_type_desc_array[argnum];
+		mPyTypeDesc[var_index].size_is :
+		mPyTypeDesc[var_index].length_is;
+	MOZ_ASSERT(argnum < mPyTypeDesc.Length(), "size_is param is invalid");
+	PythonTypeDescriptor &td_size = mPyTypeDesc[argnum];
 	MOZ_ASSERT(td_size.IsAutoIn() || td_size.IsAutoOut(),
 			   "Setting size_is/length_is, but param is not marked as auto!");
 	MOZ_ASSERT(td_size.TypeTag() == nsXPTType::T_U32,
 			   "size param must be Uint32");
 	MOZ_ASSERT(!td_size.IsPointer(),
 			   "size_is must not be a pointer");
-	nsXPTCVariant &ns_v = m_var_array[argnum];
+	nsXPTCVariant &ns_v = mDispatchParams[argnum];
 
 	if (!td_size.IsAutoSet()) {
 		ns_v.type = td_size.type_flags;
@@ -1269,7 +1276,9 @@ bool PyXPCOM_InterfaceVariantHelper::SetSizeOrLengthIs(int var_index, bool is_si
 		td_size.have_set_auto = PR_TRUE;
 	} else {
 		if (ns_v.val.u32 != new_size) {
-			PyErr_Format(PyExc_ValueError, "Array lengths inconsistent; array size previously set to %d, but second array is of size %d", ns_v.val.u32, new_size);
+			PyErr_Format(PyExc_ValueError,
+			             "Array lengths inconsistent; array size previously set to %d, but second array is of size %d",
+			             ns_v.val.u32, new_size);
 			return PR_FALSE;
 		}
 	}
@@ -1278,26 +1287,20 @@ bool PyXPCOM_InterfaceVariantHelper::SetSizeOrLengthIs(int var_index, bool is_si
 
 PRUint32 PyXPCOM_InterfaceVariantHelper::GetSizeOrLengthIs(int var_index, bool is_size)
 {
-	MOZ_ASSERT(var_index < m_num_array, "var_index param is invalid");
+	MOZ_ASSERT(var_index < mPyTypeDesc.Length(), "var_index param is invalid");
 	PRUint8 argnum = is_size ?
-		m_python_type_desc_array[var_index].size_is :
-		m_python_type_desc_array[var_index].length_is;
-	MOZ_ASSERT(argnum < m_num_array,
+		mPyTypeDesc[var_index].size_is :
+		mPyTypeDesc[var_index].length_is;
+	MOZ_ASSERT(argnum < mPyTypeDesc.Length(),
 			   "size_is param is invalid");
-	const PythonTypeDescriptor &ptd = m_python_type_desc_array[argnum];
+	const PythonTypeDescriptor &ptd = mPyTypeDesc[argnum];
 	MOZ_ASSERT(ptd.TypeTag() == nsXPTType::T_U32, "size param must be Uint32");
 	MOZ_ASSERT(!ptd.IsPointer(), "size param must not be a pointer");
-	nsXPTCVariant &ns_v = m_var_array[argnum];
-	return ptd.IsOut() ? *((PRUint32 *)ns_v.ptr) : ns_v.val.u32;
+	nsXPTCVariant &ns_v = mDispatchParams[argnum];
+	MOZ_ASSERT(!ptd.IsOut() || ns_v.ptr == &ns_v.val);
+	return ns_v.val.u32;
 }
 
-#define MAKE_VALUE_BUFFER(size, count) \
-	if (!(this_buffer_pointer = moz_calloc(PR_MAX(size, 1), PR_MAX(count, 1)))) { \
-		PyErr_NoMemory(); \
-		BREAK_FALSE; \
-	}
-
-#define ASSIGN_INT_STRINGIZE(x) #x
 #define ASSIGN_INT(type, field, unsigned)                               \
 	{                                                                   \
 		if (val == Py_None) {                                           \
@@ -1310,7 +1313,7 @@ PRUint32 PyXPCOM_InterfaceVariantHelper::GetSizeOrLengthIs(int var_index, bool i
 		if ((unsigned && num < 0) || static_cast<type>(num) != num) {   \
 			PyErr_Format(PyExc_OverflowError,                           \
 						 "param %d (%ld) does not fit in %s",           \
-						 value_index, num, ASSIGN_INT_STRINGIZE(type)); \
+						 value_index, num, NS_STRINGIFY(type));         \
 			return PR_FALSE;                                            \
 		}                                                               \
 		ns_v.val.field = static_cast<type>(num);                        \
@@ -1318,12 +1321,17 @@ PRUint32 PyXPCOM_InterfaceVariantHelper::GetSizeOrLengthIs(int var_index, bool i
 
 bool PyXPCOM_InterfaceVariantHelper::FillInVariant(const PythonTypeDescriptor &td, int value_index, int param_index)
 {
-	PRBool rc = PR_TRUE;
+	bool rc = true;
 	// Get a reference to the variant we are filling for convenience.
-	nsXPTCVariant &ns_v = m_var_array[value_index];
+	nsXPTCVariant &ns_v = mDispatchParams[value_index];
 	MOZ_ASSERT(ns_v.type == td.type_flags,
-			   "Expecting variant all setup for us");
-
+	           "Expecting variant all setup for us");
+	MOZ_ASSERT(td.IsIn(),
+	           "Trying to fill 'in' variant that isn't an 'in' param");
+	MOZ_ASSERT(!td.IsAutoIn(),
+	           "Param is 'auto-in', but we are filling it normally!");
+	MOZ_ASSERT(!td.IsDipper(),
+	           "Param is 'dipper', we don't konw what to fill it with!");
 	// We used to avoid passing internal buffers to PyString etc objects
 	// for 2 reasons: paranoia (so incorrect external components couldn't break
 	// Python) and simplicity (in vs in-out issues, etc)
@@ -1331,468 +1339,549 @@ bool PyXPCOM_InterfaceVariantHelper::FillInVariant(const PythonTypeDescriptor &t
 	// uses a "char *", and keys on the address (assuming that the same
 	// *pointer* is passed rather than value.  Therefore, we have a special case
 	// - T_CHAR_STR that is "in" gets the Python string pointer passed.
-	void *&this_buffer_pointer = m_buffer_array[value_index]; // Freed at object destruction with PyMem_Free()
-	MOZ_ASSERT(!this_buffer_pointer, "We appear to already have a buffer");
-	int cb_this_buffer_pointer = 0;
-	if (td.IsIn()) {
-		MOZ_ASSERT(!td.IsAutoIn(), "Param is 'auto-in', but we are filling it normally!");
-		PyObject *val_use = nullptr; // a temp object converters can use, and will be DECREF'd
-		PyObject *val = PySequence_GetItem(m_pyparams, param_index);
-		MOZ_ASSERT(val, "Have an 'in' param, but no Python value!");
-		if (!val) {
-			PyErr_Format(PyExc_ValueError,
-						 "Param %d is marked as 'in', but no value was given", value_index);
-			return PR_FALSE;
-		}
-		// Cast this to the enum so we can get warnings about missing cases
-		switch (static_cast<XPTTypeDescriptorTags>(ns_v.type.TagPart())) {
-		  case XPTTypeDescriptorTags::TD_INT8:
-			ASSIGN_INT(int8_t, i8, false);
-			break;
-		  case XPTTypeDescriptorTags::TD_INT16:
-			ASSIGN_INT(int16_t, i16, false);
-			break;
-		  case XPTTypeDescriptorTags::TD_INT32:
-			ASSIGN_INT(int32_t, i32, false);
-			break;
-		  case XPTTypeDescriptorTags::TD_INT64:
-			if (val == Py_None) {
-				ns_v.val.i64 = 0;
-				break;
-			}
-			if ((val_use=PyNumber_Long(val)) == NULL) BREAK_FALSE
-			ns_v.val.i64 = static_cast<int64_t>(PyLong_AsLongLong(val_use));
-			if (ns_v.val.i64 == -1 && PyErr_Occurred()) BREAK_FALSE
-			break;
-		  case XPTTypeDescriptorTags::TD_UINT8:
-			ASSIGN_INT(uint8_t, u8, true);
-			break;
-		  case XPTTypeDescriptorTags::TD_UINT16:
-			ASSIGN_INT(uint16_t, u16, true);
-			break;
-		  case XPTTypeDescriptorTags::TD_UINT32:
-			ASSIGN_INT(uint32_t, u32, true);
-			break;
-		  case XPTTypeDescriptorTags::TD_UINT64:
-			if (val == Py_None) {
-				ns_v.val.u64 = 0;
-				break;
-			}
-			if ((val_use=PyNumber_Long(val)) == NULL) BREAK_FALSE
-			ns_v.val.u64 = static_cast<uint64_t>(PyLong_AsUnsignedLongLong(val_use));
-			if (ns_v.val.u64 == (unsigned PY_LONG_LONG)-1 && PyErr_Occurred()) BREAK_FALSE
-			break;
-		  case XPTTypeDescriptorTags::TD_FLOAT:
-			if (val == Py_None) {
-				ns_v.val.f = 0;
-				break;
-			}
-			if ((val_use=PyNumber_Float(val)) == NULL) BREAK_FALSE
-			ns_v.val.f = static_cast<float>(PyFloat_AsDouble(val_use));
-			break;
-		  case XPTTypeDescriptorTags::TD_DOUBLE:
-			if (val == Py_None) {
-				ns_v.val.d = 0;
-				break;
-			}
-			if ((val_use=PyNumber_Float(val)) == NULL) BREAK_FALSE
-			ns_v.val.d = PyFloat_AsDouble(val_use);
-			break;
-		  case XPTTypeDescriptorTags::TD_BOOL:
-			if (val == Py_None) {
-				ns_v.val.b = PR_FALSE;
-				break;
-			}
-			if ((val_use=PyNumber_Int(val)) == NULL) BREAK_FALSE
-			ns_v.val.b = (0 != PyInt_AsLong(val_use));
-			break;
-		  case XPTTypeDescriptorTags::TD_CHAR:{
-			if (!PyString_Check(val) && !PyUnicode_Check(val)) {
-				PyErr_SetString(PyExc_TypeError, "This parameter must be a string or Unicode object");
-				BREAK_FALSE;
-			}
-			if ((val_use = PyObject_Str(val)) == NULL)
-				BREAK_FALSE;
-			// Sanity check should PyObject_Str() ever loosen its semantics wrt Unicode!
-			MOZ_ASSERT(PyString_Check(val_use), "PyObject_Str didn't return a string object!");
-			if (PyString_GET_SIZE(val_use) != 1) {
-				PyErr_SetString(PyExc_ValueError, "Must specify a one character string for a character");
-				BREAK_FALSE;
-			}
-
-			ns_v.val.c = *PyString_AS_STRING(val_use);
-			break;
-			}
-
-		  case XPTTypeDescriptorTags::TD_WCHAR: {
-			if (!PyString_Check(val) && !PyUnicode_Check(val)) {
-				PyErr_SetString(PyExc_TypeError, "This parameter must be a string or Unicode object");
-				BREAK_FALSE;
-			}
-			if ((val_use = PyUnicode_FromObject(val)) == NULL)
-				BREAK_FALSE;
-			// Sanity check should PyObject_Str() ever loosen its semantics wrt Unicode!
-			MOZ_ASSERT(PyUnicode_Check(val_use), "PyUnicode_FromObject didnt return a unicode object!");
-			if (PyUnicode_GetSize(val_use) != 1) {
-				PyErr_SetString(PyExc_ValueError, "Must specify a one character string for a character");
-				BREAK_FALSE;
-			}
-			// Lossy!
-			ns_v.val.wc = *PyUnicode_AS_UNICODE(val_use);
-			break;
-			}
-
-		  case XPTTypeDescriptorTags::TD_PNSIID: {
-			MAKE_VALUE_BUFFER(sizeof(nsIID), 1);
-			nsIID *iid = reinterpret_cast<nsIID*>(this_buffer_pointer);
-			if (!Py_nsIID::IIDFromPyObject(val, iid))
-				BREAK_FALSE;
-			ns_v.val.p = this_buffer_pointer;
-			break;
-		  }
-		  case XPTTypeDescriptorTags::TD_ASTRING:
-		  case XPTTypeDescriptorTags::TD_DOMSTRING: {
-			nsString *s = new (fallible) nsString();
-			if (!s) {
-				PyErr_NoMemory();
-				BREAK_FALSE;
-			}
-			ns_v.val.p = s;
-			// We created it - flag as such for cleanup.
-			ns_v.SetValNeedsCleanup();
-			
-			if (!PyObject_AsNSString(val, *s))
-				BREAK_FALSE;
-			break;
-		  }
-		  case XPTTypeDescriptorTags::TD_CSTRING:
-		  case XPTTypeDescriptorTags::TD_UTF8STRING: {
-			PRBool bIsUTF8 = XPT_TDP_TAG(ns_v.type) == XPTTypeDescriptorTags::TD_UTF8STRING;
-			if (val == Py_None) {
-				ns_v.val.p = new nsCString();
-			} else {
-				// strings are assumed to already be UTF8 encoded.
-				if (PyString_Check(val)) {
-					val_use = val;
-					Py_INCREF(val);
-				// Unicode objects are encoded by us.
-				} else if (PyUnicode_Check(val)) {
-					if (bIsUTF8)
-						val_use = PyUnicode_AsUTF8String(val);
-					else
-						val_use = PyObject_Str(val);
-				} else {
-					PyErr_SetString(PyExc_TypeError, "UTF8 parameters must be string or Unicode objects");
-					BREAK_FALSE;
-				}
-				if (!val_use)
-					BREAK_FALSE;
-				ns_v.val.p = new nsCString(PyString_AS_STRING(val_use), 
-				                           PyString_GET_SIZE(val_use));
-			}
-
-			if (!ns_v.val.p) {
-				PyErr_NoMemory();
-				BREAK_FALSE;
-			}
-			// We created it - flag as such for cleanup.
-			ns_v.SetValNeedsCleanup();
-			break;
-			}
-		  case XPTTypeDescriptorTags::TD_PSTRING: {
-			if (val==Py_None) {
-				ns_v.val.p = nullptr;
-				break;
-			}
-			// If an "in" char *, and we have a PyString, then pass the
-			// pointer (hoping everyone else plays by the rules too.
-			if (!XPT_PD_IS_OUT(td.param_flags) && PyString_Check(val)) {
-				ns_v.val.p = PyString_AS_STRING(val);
-				break;
-			}
-			   
-			if (!PyString_Check(val) && !PyUnicode_Check(val)) {
-				PyErr_SetString(PyExc_TypeError, "This parameter must be a string or Unicode object");
-				BREAK_FALSE;
-			}
-			if ((val_use = PyObject_Str(val))==NULL)
-				BREAK_FALSE;
-			// Sanity check should PyObject_Str() ever loosen its semantics wrt Unicode!
-			NS_ABORT_IF_FALSE(PyString_Check(val_use), "PyObject_Str didn't return a string object!");
-
-			cb_this_buffer_pointer = PyString_GET_SIZE(val_use)+1;
-			MAKE_VALUE_BUFFER(sizeof(char), cb_this_buffer_pointer);
-			memcpy(this_buffer_pointer, PyString_AS_STRING(val_use), cb_this_buffer_pointer);
-			ns_v.val.p = this_buffer_pointer;
-			break;
-			}
-
-		  case XPTTypeDescriptorTags::TD_PWSTRING: {
-			if (val==Py_None) {
-				ns_v.val.p = nullptr;
-				break;
-			}
-			if (!PyString_Check(val) && !PyUnicode_Check(val)) {
-				PyErr_SetString(PyExc_TypeError, "This parameter must be a string or Unicode object");
-				BREAK_FALSE;
-			}
-			if ((val_use = PyUnicode_FromObject(val))==NULL)
-				BREAK_FALSE;
-			NS_ABORT_IF_FALSE(PyUnicode_Check(val_use), "PyUnicode_FromObject didnt return a Unicode object!");
-			PRUnichar *sv;
-			PRUint32 nch;
-			if (PyUnicode_AsPRUnichar(val_use, &sv, &nch) < 0)
-				BREAK_FALSE;
-			cb_this_buffer_pointer = (nch + 1) * sizeof(PRUnichar);
-			this_buffer_pointer = sv;
-			ns_v.val.p = this_buffer_pointer;
-			break;
-			}
-		  case XPTTypeDescriptorTags::TD_INTERFACE_TYPE:  {
-			if (!Py_nsISupports::InterfaceFromPyObject(
-			                       val, 
-			                       td.iid, 
-			                       (nsISupports **)&ns_v.val.p, 
-			                       PR_TRUE))
-				BREAK_FALSE;
-			// We have added a reference - flag as such for cleanup.
-			ns_v.SetValNeedsCleanup();
-			break;
-			}
-		  case XPTTypeDescriptorTags::TD_INTERFACE_IS_TYPE: {
-			nsIID iid;
-			nsXPTCVariant &ns_viid = m_var_array[td.iid_is];
-			MOZ_ASSERT(ns_viid.type.TagPart() == XPTTypeDescriptorTags::TD_PNSIID,
-					   "The INTERFACE_IS iid describer isn't an IID!");
-			// This is a pretty serious problem, but not Python's fault!
-			// Just return an nsISupports and hope the caller does whatever
-			// QI they need before using it.
-			if (ns_viid.type.TagPart() == XPTTypeDescriptorTags::TD_PNSIID &&
-			    XPT_PD_IS_IN(ns_viid.type))
-			{
-				nsIID *piid = (nsIID *)ns_viid.val.p;
-				if (!piid)
-					// Also serious, but like below, not our fault!
-					iid = NS_GET_IID(nsISupports);
-				else
-					iid = *piid;
-			} else
-				// Use NULL IID to avoid a QI in this case.
-				iid = Py_nsIID_NULL;
-			if (!Py_nsISupports::InterfaceFromPyObject(
-				               val, 
-				               iid, 
-			                       (nsISupports **)&ns_v.val.p, 
-			                       PR_TRUE))
-				BREAK_FALSE;
-			// We have added a reference - flag as such for cleanup.
-			ns_v.SetValNeedsCleanup();
-			break;
-			}
-		  case XPTTypeDescriptorTags::TD_PSTRING_SIZE_IS: {
-			if (val==Py_None) {
-				ns_v.val.p = nullptr;
-				break;
-			}
-			if (!PyString_Check(val) && !PyUnicode_Check(val)) {
-				PyErr_SetString(PyExc_TypeError, "This parameter must be a string or Unicode object");
-				BREAK_FALSE;
-			}
-			if ((val_use = PyObject_Str(val))==NULL)
-				BREAK_FALSE;
-			// Sanity check should PyObject_Str() ever loosen its semantics wrt Unicode!
-			NS_ABORT_IF_FALSE(PyString_Check(val_use), "PyObject_Str didn't return a string object!");
-
-			cb_this_buffer_pointer = PyString_GET_SIZE(val_use);
-			MAKE_VALUE_BUFFER(sizeof(char), cb_this_buffer_pointer);
-			memcpy(this_buffer_pointer, PyString_AS_STRING(val_use), cb_this_buffer_pointer);
-			ns_v.val.p = this_buffer_pointer;
-			rc = SetSizeIs(value_index, cb_this_buffer_pointer);
-			break;
-			}
-
-		case XPTTypeDescriptorTags::TD_PWSTRING_SIZE_IS: {
-			if (val==Py_None) {
-				ns_v.val.p = nullptr;
-				break;
-			}
-			if (!PyString_Check(val) && !PyUnicode_Check(val)) {
-				PyErr_SetString(PyExc_TypeError, "This parameter must be a string or Unicode object");
-				BREAK_FALSE;
-			}
-			if ((val_use = PyUnicode_FromObject(val))==NULL)
-				BREAK_FALSE;
-			// Sanity check should PyObject_Str() ever loosen its semantics wrt Unicode!
-			NS_ABORT_IF_FALSE(PyUnicode_Check(val_use), "PyObject_Unicode didnt return a unicode object!");
-			PRUnichar *sv;
-			PRUint32 nch;
-			if (PyUnicode_AsPRUnichar(val_use, &sv, &nch) < 0)
-				BREAK_FALSE;
-			cb_this_buffer_pointer = (nch + 1) * sizeof(PRUnichar);
-			this_buffer_pointer = sv;
-			ns_v.val.p = this_buffer_pointer;
-			rc = SetSizeIs(value_index, nch);
-			break;
-			}
-		case XPTTypeDescriptorTags::TD_ARRAY: {
-			if (val == Py_None) {
-				ns_v.val.p = nullptr;
-				break;
-			}
-			if (td.ArrayTypeTag() == nsXPTType::T_ARRAY) {
-				PyErr_SetString(PyExc_TypeError, "The array info is not valid");
-				BREAK_FALSE;
-			}
-			if (!PySequence_Check(val)) {
-				PyErr_SetString(PyExc_TypeError, "This parameter must be a sequence");
-				BREAK_FALSE;
-			}
-
-			PRUint32 element_size = GetArrayElementSize(td.ArrayTypeTag());
-			int seq_length = PySequence_Length(val);
-			MAKE_VALUE_BUFFER(seq_length, element_size);
-			rc = FillSingleArray(this_buffer_pointer, val, seq_length,
-			                     element_size, td.ArrayTypeTag(),
-			                     td.iid);
-			if (!rc) break;
-			rc = SetLengthIs(value_index, seq_length);
-			if (!rc) break;
-			ns_v.SetValNeedsCleanup();
-			ns_v.val.p = this_buffer_pointer;
-			break;
-			}
-		case XPTTypeDescriptorTags::TD_VOID:
-		case XPTTypeDescriptorTags::TD_JSVAL:
-			PyErr_Format(PyExc_TypeError,
-						 "The object type (0x%x) is unknown", ns_v.type.TagPart());
-			rc = PR_FALSE;
-			break;
-		}
-		Py_DECREF(val); // Can't be NULL!
-		Py_XDECREF(val_use);
+	PyObject *val_use = nullptr; // a temp object converters can use, and will be DECREF'd
+	PyObject *val = PySequence_GetItem(m_pyparams, param_index);
+	MOZ_ASSERT(val, "Have an 'in' param, but no Python value!");
+	if (!val) {
+		PyErr_Format(PyExc_ValueError,
+		             "Param %d is marked as 'in', but no value was given", value_index);
+		return false;
 	}
+	// Cast this to the enum so we can get warnings about missing cases
+	switch (static_cast<XPTTypeDescriptorTags>(ns_v.type.TagPart())) {
+	  case XPTTypeDescriptorTags::TD_INT8:
+		ASSIGN_INT(int8_t, i8, false);
+		break;
+	  case XPTTypeDescriptorTags::TD_INT16:
+		ASSIGN_INT(int16_t, i16, false);
+		break;
+	  case XPTTypeDescriptorTags::TD_INT32:
+		ASSIGN_INT(int32_t, i32, false);
+		break;
+	  case XPTTypeDescriptorTags::TD_INT64:
+		if (val == Py_None) {
+			ns_v.val.i64 = 0;
+			break;
+		}
+		if ((val_use=PyNumber_Long(val)) == NULL) BREAK_FALSE
+		ns_v.val.i64 = static_cast<int64_t>(PyLong_AsLongLong(val_use));
+		if (ns_v.val.i64 == (PY_LONG_LONG)-1 && PyErr_Occurred()) BREAK_FALSE
+		break;
+	  case XPTTypeDescriptorTags::TD_UINT8:
+		ASSIGN_INT(uint8_t, u8, true);
+		break;
+	  case XPTTypeDescriptorTags::TD_UINT16:
+		ASSIGN_INT(uint16_t, u16, true);
+		break;
+	  case XPTTypeDescriptorTags::TD_UINT32:
+		ASSIGN_INT(uint32_t, u32, true);
+		break;
+	  case XPTTypeDescriptorTags::TD_UINT64:
+		if (val == Py_None) {
+			ns_v.val.u64 = 0;
+			break;
+		}
+		if ((val_use=PyNumber_Long(val)) == NULL) BREAK_FALSE
+		ns_v.val.u64 = static_cast<uint64_t>(PyLong_AsUnsignedLongLong(val_use));
+		if (ns_v.val.u64 == (unsigned PY_LONG_LONG)-1 && PyErr_Occurred()) BREAK_FALSE
+		break;
+	  case XPTTypeDescriptorTags::TD_FLOAT:
+		if (val == Py_None) {
+			ns_v.val.f = 0;
+			break;
+		}
+		if ((val_use=PyNumber_Float(val)) == NULL) BREAK_FALSE
+		ns_v.val.f = static_cast<float>(PyFloat_AsDouble(val_use));
+		break;
+	  case XPTTypeDescriptorTags::TD_DOUBLE:
+		if (val == Py_None) {
+			ns_v.val.d = 0;
+			break;
+		}
+		if ((val_use=PyNumber_Float(val)) == NULL) BREAK_FALSE
+		ns_v.val.d = PyFloat_AsDouble(val_use);
+		break;
+	  case XPTTypeDescriptorTags::TD_BOOL:
+		if (val == Py_None) {
+			ns_v.val.b = false;
+			break;
+		}
+		if ((val_use=PyNumber_Int(val)) == NULL) BREAK_FALSE
+		ns_v.val.b = (0 != PyInt_AsLong(val_use));
+		break;
+	  case XPTTypeDescriptorTags::TD_CHAR:{
+		if (!PyString_Check(val) && !PyUnicode_Check(val)) {
+			PyErr_SetString(PyExc_TypeError, "This parameter must be a string or Unicode object");
+			BREAK_FALSE;
+		}
+		if ((val_use = PyObject_Str(val)) == NULL)
+			BREAK_FALSE;
+		// Sanity check should PyObject_Str() ever loosen its semantics wrt Unicode!
+		MOZ_ASSERT(PyString_Check(val_use), "PyObject_Str didn't return a string object!");
+		if (PyString_GET_SIZE(val_use) != 1) {
+			PyErr_SetString(PyExc_ValueError, "Must specify a one character string for a character");
+			BREAK_FALSE;
+		}
+
+		ns_v.val.c = *PyString_AS_STRING(val_use);
+		break;
+		}
+
+	  case XPTTypeDescriptorTags::TD_WCHAR: {
+		if (!PyString_Check(val) && !PyUnicode_Check(val)) {
+			PyErr_SetString(PyExc_TypeError, "This parameter must be a string or Unicode object");
+			BREAK_FALSE;
+		}
+		if ((val_use = PyUnicode_FromObject(val)) == NULL)
+			BREAK_FALSE;
+		// Sanity check should PyObject_Str() ever loosen its semantics wrt Unicode!
+		MOZ_ASSERT(PyUnicode_Check(val_use), "PyUnicode_FromObject didnt return a unicode object!");
+		if (PyUnicode_GetSize(val_use) != 1) {
+			PyErr_SetString(PyExc_ValueError, "Must specify a one character string for a character");
+			BREAK_FALSE;
+		}
+		// Lossy!
+		ns_v.val.wc = *PyUnicode_AS_UNICODE(val_use);
+		break;
+		}
+
+	  case XPTTypeDescriptorTags::TD_PNSIID: {
+		nsIID *iid;
+		if (!Alloc(iid, 1)) {
+			PyErr_NoMemory();
+			BREAK_FALSE;
+		}
+		if (!Py_nsIID::IIDFromPyObject(val, iid))
+			BREAK_FALSE;
+		ns_v.val.p = iid;
+		ns_v.SetValNeedsCleanup();
+		break;
+	  }
+	  case XPTTypeDescriptorTags::TD_ASTRING:
+	  case XPTTypeDescriptorTags::TD_DOMSTRING: {
+		nsString *s;
+		if (!Alloc(s, 1)) {
+			PyErr_NoMemory();
+			BREAK_FALSE;
+		}
+		ns_v.val.p = s;
+		// We created it - flag as such for cleanup.
+		ns_v.SetValNeedsCleanup();
+
+		if (!PyObject_AsNSString(val, *s))
+			BREAK_FALSE;
+		break;
+	  }
+	  case XPTTypeDescriptorTags::TD_CSTRING:
+	  case XPTTypeDescriptorTags::TD_UTF8STRING: {
+		PRBool bIsUTF8 = ns_v.type.TagPart() == nsXPTType::T_UTF8STRING;
+		nsCString* str;
+		if (!Alloc(str, 1)) {
+			PyErr_NoMemory();
+			BREAK_FALSE;
+		}
+		if (val == Py_None) {
+			str->SetIsVoid(true);
+		} else {
+			// strings are assumed to already be UTF8 encoded.
+			if (PyString_Check(val)) {
+				val_use = val;
+				Py_INCREF(val);
+			// Unicode objects are encoded by us.
+			} else if (PyUnicode_Check(val)) {
+				if (bIsUTF8)
+					val_use = PyUnicode_AsUTF8String(val);
+				else
+					val_use = PyObject_Str(val);
+			} else {
+				PyErr_SetString(PyExc_TypeError, "UTF8 parameters must be string or Unicode objects");
+				val_use = nullptr;
+			}
+			if (!val_use) {
+				delete str;
+				BREAK_FALSE;
+			}
+			str->Assign(PyString_AS_STRING(val_use), PyString_GET_SIZE(val_use));
+		}
+		ns_v.val.p = str;
+		ns_v.SetValNeedsCleanup();
+		break;
+		}
+	  case XPTTypeDescriptorTags::TD_PSTRING: {
+		if (val == Py_None) {
+			ns_v.val.p = nullptr;
+			break;
+		}
+		// If an "in" char *, and we have a PyString, then pass the
+		// pointer (hoping everyone else plays by the rules too).
+		MOZ_ASSERT(!td.IsDipper(), "PSTRING shouldn't be a dipper!");
+		if (!td.IsOut() && PyString_Check(val)) {
+			ns_v.val.p = PyString_AS_STRING(val);
+			// DO NOT need cleanup
+			break;
+		}
+
+		if (!PyString_Check(val) && !PyUnicode_Check(val)) {
+			PyErr_SetString(PyExc_TypeError, "This parameter must be a string or Unicode object");
+			BREAK_FALSE;
+		}
+		if ((val_use = PyObject_Str(val))==NULL)
+			BREAK_FALSE;
+		// Sanity check should PyObject_Str() ever loosen its semantics wrt Unicode!
+		MOZ_ASSERT(PyString_Check(val_use), "PyObject_Str didn't return a string object!");
+
+		char* str;
+		if (!Alloc(str, PyString_GET_SIZE(val_use) + 1)) {
+			PyErr_NoMemory();
+			BREAK_FALSE;
+		}
+		memcpy(str, PyString_AS_STRING(val_use), PyString_GET_SIZE(val_use) + 1);
+		ns_v.val.p = str;
+		ns_v.SetValNeedsCleanup();
+		break;
+		}
+
+	  case XPTTypeDescriptorTags::TD_PWSTRING: {
+		if (val == Py_None) {
+			ns_v.val.p = nullptr;
+			break;
+		}
+		if (!PyString_Check(val) && !PyUnicode_Check(val)) {
+			PyErr_SetString(PyExc_TypeError, "This parameter must be a string or Unicode object");
+			BREAK_FALSE;
+		}
+		if ((val_use = PyUnicode_FromObject(val))==NULL)
+			BREAK_FALSE;
+		MOZ_ASSERT(PyUnicode_Check(val_use), "PyUnicode_FromObject didnt return a Unicode object!");
+		PRUnichar *sv = nullptr;
+		PRUint32 nch;
+		if (PyUnicode_AsPRUnichar(val_use, &sv, &nch) < 0)
+			BREAK_FALSE;
+		ns_v.val.p = sv;
+		ns_v.SetValNeedsCleanup();
+		break;
+		}
+	  case XPTTypeDescriptorTags::TD_INTERFACE_TYPE:  {
+		if (!Py_nsISupports::InterfaceFromPyObject(val,
+		                                           td.iid,
+		                                           reinterpret_cast<nsISupports **>(&ns_v.val.p),
+		                                           PR_TRUE))
+			BREAK_FALSE;
+		if (ns_v.val.p) {
+			// We have added a reference - flag as such for cleanup.
+			ns_v.SetValNeedsCleanup();
+		}
+		break;
+		}
+	  case XPTTypeDescriptorTags::TD_INTERFACE_IS_TYPE: {
+		nsIID iid;
+		nsXPTCVariant &ns_viid = mDispatchParams[td.iid_is];
+		MOZ_ASSERT(ns_viid.type.TagPart() == XPTTypeDescriptorTags::TD_PNSIID,
+				   "The INTERFACE_IS iid describer isn't an IID!");
+		// This is a pretty serious problem, but not Python's fault!
+		// Just return an nsISupports and hope the caller does whatever
+		// QI they need before using it.
+		if (ns_viid.type.TagPart() == XPTTypeDescriptorTags::TD_PNSIID &&
+			XPT_PD_IS_IN(ns_viid.type))
+		{
+			nsIID *piid = reinterpret_cast<nsIID *>(ns_viid.val.p);
+			if (!piid)
+				// Also serious, but like below, not our fault!
+				iid = NS_GET_IID(nsISupports);
+			else
+				iid = *piid;
+		} else {
+			// Use NULL IID to avoid a QI in this case.
+			iid = Py_nsIID_NULL;
+		}
+		if (!Py_nsISupports::InterfaceFromPyObject(val,
+		                                           iid,
+		                                           (nsISupports **)&ns_v.val.p,
+		                                           PR_TRUE))
+			BREAK_FALSE;
+		// We have added a reference - flag as such for cleanup.
+		ns_v.SetValNeedsCleanup();
+		break;
+		}
+	  case XPTTypeDescriptorTags::TD_PSTRING_SIZE_IS: {
+		if (val==Py_None) {
+			ns_v.val.p = nullptr;
+			break;
+		}
+		if (!PyString_Check(val) && !PyUnicode_Check(val)) {
+			PyErr_SetString(PyExc_TypeError, "This parameter must be a string or Unicode object");
+			BREAK_FALSE;
+		}
+		if ((val_use = PyObject_Str(val))==NULL)
+			BREAK_FALSE;
+		// Sanity check should PyObject_Str() ever loosen its semantics wrt Unicode!
+		NS_ABORT_IF_FALSE(PyString_Check(val_use), "PyObject_Str didn't return a string object!");
+
+		char* str;
+		const Py_ssize_t size = PyString_GET_SIZE(val_use);
+		if (!Alloc(str, size + 1)) {
+			PyErr_NoMemory();
+			BREAK_FALSE;
+		}
+		memcpy(str, PyString_AS_STRING(val_use), size);
+		str[size] = '\0'; // be safe
+		ns_v.val.p = str;
+		ns_v.SetValNeedsCleanup();
+		rc = SetSizeIs(value_index, size); // excludes terminating null
+		break;
+		}
+
+	case XPTTypeDescriptorTags::TD_PWSTRING_SIZE_IS: {
+		if (val==Py_None) {
+			ns_v.val.p = nullptr;
+			break;
+		}
+		if (!PyString_Check(val) && !PyUnicode_Check(val)) {
+			PyErr_SetString(PyExc_TypeError, "This parameter must be a string or Unicode object");
+			BREAK_FALSE;
+		}
+		if ((val_use = PyUnicode_FromObject(val))==NULL)
+			BREAK_FALSE;
+		// Sanity check should PyObject_Str() ever loosen its semantics wrt Unicode!
+		NS_ABORT_IF_FALSE(PyUnicode_Check(val_use), "PyObject_Unicode didnt return a unicode object!");
+		PRUnichar *sv = nullptr;
+		PRUint32 nch;
+		if (PyUnicode_AsPRUnichar(val_use, &sv, &nch) < 0)
+			BREAK_FALSE;
+		ns_v.val.p = sv;
+		ns_v.SetValNeedsCleanup();
+		rc = SetSizeIs(value_index, nch); // excludes terminating null
+		break;
+		}
+	case XPTTypeDescriptorTags::TD_ARRAY: {
+		if (val == Py_None) {
+			ns_v.val.p = nullptr;
+			break;
+		}
+		if (td.ArrayTypeTag() == nsXPTType::T_ARRAY) {
+			// we can't deal with array of array (but then, nor can XPIDL)
+			PyErr_SetString(PyExc_TypeError, "The array info is not valid");
+			BREAK_FALSE;
+		}
+		if (!PySequence_Check(val)) {
+			PyErr_SetString(PyExc_TypeError, "This parameter must be a sequence");
+			BREAK_FALSE;
+		}
+
+		PRUint32 element_size = GetArrayElementSize(td.ArrayTypeTag());
+		Py_ssize_t seq_length = PySequence_Length(val);
+		ns_v.val.p = Alloc(element_size, seq_length);
+		if (!ns_v.val.p) {
+			PyErr_NoMemory();
+			BREAK_FALSE;
+		}
+		rc = FillSingleArray(ns_v.val.p, val, seq_length,
+							 element_size, td.ArrayTypeTag(),
+							 td.iid);
+		rc &= SetLengthIs(value_index, seq_length);
+		if (!rc) {
+			Free(ns_v.val.p);
+			ns_v.val.p = nullptr;
+			break;
+		}
+		if (!static_cast<nsXPTType>(td.ArrayTypeTag()).IsArithmetic())
+			ns_v.SetValNeedsCleanup();
+		break;
+		}
+	case XPTTypeDescriptorTags::TD_VOID:
+	case XPTTypeDescriptorTags::TD_JSVAL:
+		PyErr_Format(PyExc_TypeError,
+					 "The object type (0x%x) is unknown", ns_v.type.TagPart());
+		rc = false;
+		break;
+	}
+	#if DEBUG
+		if (rc && !PyErr_Occurred()) {
+			if (static_cast<nsXPTType>(td.TypeTag()).IsArithmetic()) {
+				MOZ_ASSERT(ns_v.ptr == nullptr,
+						   "Arithmetic params shouldn't be pointers");
+			} else {
+				switch (ns_v.type.TagPart()) {
+					case nsXPTType::T_INTERFACE:
+					case nsXPTType::T_INTERFACE_IS:
+						if (ns_v.val.p) {
+							MOZ_ASSERT(ns_v.DoesValNeedCleanup(),
+									   "Non-null interfaces should need cleanup!");
+						} else {
+							MOZ_ASSERT(!ns_v.DoesValNeedCleanup(),
+									   "Null interfaces should not need cleanup!");
+						}
+						break;
+					case nsXPTType::T_CHAR_STR:
+						if (!td.IsOut() && PyString_Check(val)) {
+							// Optimization in effect, this does not need cleanup
+							MOZ_ASSERT(ns_v.val.p != nullptr,
+									   "String should not be null");
+							break;
+						}
+						// fall through
+					default:
+						MOZ_ASSERT(val == Py_None || ns_v.val.p != nullptr,
+								   "Non-arithmetic params should allocate");
+						MOZ_ASSERT(!ns_v.val.p || ns_v.DoesValNeedCleanup(),
+								   "Allocated things should need cleanup!");
+				}
+			}
+		}
+	#endif
+	Py_DECREF(val); // Can't be NULL!
+	Py_XDECREF(val_use);
 	return rc && !PyErr_Occurred();
 }
 #undef ASSIGN_INT
-#undef ASSIGN_INT_STRINGIZE
 
 bool PyXPCOM_InterfaceVariantHelper::PrepareOutVariant(const PythonTypeDescriptor &td, int value_index)
 {
-	PRBool rc = PR_TRUE;
-	nsXPTCVariant &ns_v = m_var_array[value_index];
-	void *&this_buffer_pointer = m_buffer_array[value_index]; // Freed at object destruction with PyMem_Free()
-	// Do the out param thang...
-	if (XPT_PD_IS_OUT(td.param_flags) || XPT_PD_IS_DIPPER(td.param_flags)) {
-		NS_ABORT_IF_FALSE(ns_v.ptr == NULL, "already have a pointer!");
-		ns_v.ptr = &ns_v;
-		ns_v.flags |= nsXPTCVariant::PTR_IS_DATA;
-
-		// Special flags based on the data type
-		switch (XPT_TDP_TAG(ns_v.type)) {
-		  case nsXPTType::T_I8:
-		  case nsXPTType::T_I16:
-		  case nsXPTType::T_I32:
-		  case nsXPTType::T_I64:
-		  case nsXPTType::T_U8:
-		  case nsXPTType::T_U16:
-		  case nsXPTType::T_U32:
-		  case nsXPTType::T_U64:
-		  case nsXPTType::T_FLOAT:
-		  case nsXPTType::T_DOUBLE:
-		  case nsXPTType::T_BOOL:
-		  case nsXPTType::T_CHAR:
-		  case nsXPTType::T_WCHAR:
-		  case nsXPTType::T_VOID:
-			break;
-
-		  case nsXPTType::T_INTERFACE:
-		  case nsXPTType::T_INTERFACE_IS:
-			MOZ_ASSERT(!this_buffer_pointer, "Can't have an interface and a buffer pointer!");
-			ns_v.SetValNeedsCleanup();
-			break;
-		  case nsXPTType::T_ARRAY:
-			ns_v.SetValNeedsCleanup();
-			// Even if ns_val.p already setup as part of "in" processing,
-			// we need to ensure setup for out.
-			MOZ_ASSERT(!ns_v.val.p || ns_v.val.p == this_buffer_pointer, "Garbage in our pointer?");
-			ns_v.val.p = this_buffer_pointer;
-			this_buffer_pointer = nullptr;
-			break;
-		  case nsXPTType::T_PWSTRING_SIZE_IS:
-		  case nsXPTType::T_PSTRING_SIZE_IS:
-		  case nsXPTType::T_WCHAR_STR:
-		  case nsXPTType::T_CHAR_STR:
-		  case nsXPTType::T_IID:
-			// If we stashed a value in the this_buffer_pointer, and
-			// we are passing it as an OUT param, we do _not_ want to
-			// treat it as a temporary buffer.
-			// For example, if we pass an IID or string as an IN param,
-			// we allocate a buffer for the value, but this is NOT cleaned up
-			// via normal VARIANT cleanup rules - hence we clean it up ourselves.
-			// If the param is IN/OUT, then the buffer falls under the normal variant
-			// rules (ie, is flagged as VAL_IS_ALLOCD), so we don't clean it as a temporary.
-			// (it may have been changed under us - we free the _new_ value.
-			// Even if ns_val.p already setup as part of "in" processing,
-			// we need to ensure setup for out.
-			NS_ABORT_IF_FALSE(!ns_v.val.p || ns_v.val.p == this_buffer_pointer, "Garbage in our pointer?");
-			ns_v.val.p = this_buffer_pointer;
-			ns_v.SetValNeedsCleanup();
-			this_buffer_pointer = nullptr;
-			break;
-		  case nsXPTType::T_DOMSTRING:
-		  case nsXPTType::T_ASTRING: {
-			  NS_ABORT_IF_FALSE(ns_v.val.p==nullptr, "T_DOMTSTRINGS can't be out and have a value (ie, no in/outs are allowed!");
-			  NS_ABORT_IF_FALSE(XPT_PD_IS_DIPPER(td.param_flags), "out DOMStrings must really be in dippers!");
-			  ns_v.SetValNeedsCleanup();
-			  // Dippers are really treated like "in" params.
-			  ns_v.ptr = new nsString();
-			  ns_v.val.p = ns_v.ptr; // VAL_IS_* says the .p is what gets freed
-			  if (!ns_v.ptr) {
-				  PyErr_NoMemory();
-				  rc = PR_FALSE;
-			  }
-			  break;
-			}
-		  case nsXPTType::T_CSTRING:
-		  case nsXPTType::T_UTF8STRING: {
-			  NS_ABORT_IF_FALSE(ns_v.val.p==nullptr, "T_DOMTSTRINGS can't be out and have a value (ie, no in/outs are allowed!");
-			  NS_ABORT_IF_FALSE(XPT_PD_IS_DIPPER(td.param_flags), "out DOMStrings must really be in dippers!");
-			  ns_v.SetValNeedsCleanup();
-			  ns_v.ptr = new nsCString();
-			  ns_v.val.p = ns_v.ptr; // VAL_IS_* says the .p is what gets freed
-			  if (!ns_v.ptr) {
-				  PyErr_NoMemory();
-				  rc = PR_FALSE;
-			  }
-			  break;
-			}
-		  default:
-			NS_ABORT_IF_FALSE(0, "Unknown type - don't know how to prepare the output value");
-			break; // Nothing to do!
-		}
+	MOZ_ASSERT(td.IsDipper() == td.IsDipperType(), "inconsistent dipper usage");
+	if (!(td.IsOut() || td.IsDipper())) {
+		// No need to do anything here
+		return true;
 	}
-	return rc;
+
+	nsXPTCVariant &ns_v = mDispatchParams[value_index];
+	// Do the out param thang...
+	MOZ_ASSERT(ns_v.ptr == nullptr, "already have a pointer!");
+	// We can be out, inout, or in [dipper]; in all cases, we need to be indirect
+	ns_v.SetIndirect();
+
+	// Special flags based on the data type
+	switch (ns_v.type.TagPart()) {
+	  case nsXPTType::T_I8:
+	  case nsXPTType::T_I16:
+	  case nsXPTType::T_I32:
+	  case nsXPTType::T_I64:
+	  case nsXPTType::T_U8:
+	  case nsXPTType::T_U16:
+	  case nsXPTType::T_U32:
+	  case nsXPTType::T_U64:
+		ns_v.val.u64 = 0;
+		break;
+	  case nsXPTType::T_FLOAT:
+		ns_v.val.f = 0;
+		break;
+	  case nsXPTType::T_DOUBLE:
+		ns_v.val.d = 0;
+		break;
+	  case nsXPTType::T_BOOL:
+		ns_v.val.b = false;
+		break;
+	  case nsXPTType::T_CHAR:
+		ns_v.val.c = '\0';
+		break;
+	  case nsXPTType::T_WCHAR:
+		ns_v.val.wc = PRUnichar('\0');
+		break;
+	  case nsXPTType::T_VOID:
+		ns_v.val.p = nullptr; // Not really, but close enough
+		break;
+
+	  case nsXPTType::T_INTERFACE:
+	  case nsXPTType::T_INTERFACE_IS:
+		MOZ_ASSERT(!ns_v.val.p, "Can't have an interface pointer!");
+		// Nothing is in there yet, no need to cleanup
+		break;
+	  case nsXPTType::T_ARRAY:
+		if (!ns_v.DoesValNeedCleanup()) {
+			MOZ_ASSERT(!ns_v.val.p, "Garbage in our pointer?");
+			ns_v.val.p = Alloc(sizeof(void*), 1);
+			ns_v.SetValNeedsCleanup();
+		} else {
+			// We've already got space (i.e. inout)
+			// Don't worry about it
+		}
+		break;
+	  case nsXPTType::T_PWSTRING_SIZE_IS:
+	  case nsXPTType::T_PSTRING_SIZE_IS:
+	  case nsXPTType::T_WCHAR_STR:
+	  case nsXPTType::T_CHAR_STR:
+	  case nsXPTType::T_IID:
+		if (!ns_v.DoesValNeedCleanup()) {
+			MOZ_ASSERT(!td.IsIn(), "got to an allocating type, but is in?");
+			MOZ_ASSERT(!ns_v.val.p, "Garbage in our pointer?");
+			#warning This code is suspcious; double check what it's doing
+			ns_v.val.p = Alloc(sizeof(void*), 1);
+			ns_v.SetValNeedsCleanup();
+		} else {
+			// We've already got space (i.e. inout)
+			// Don't worry about it
+		}
+		break;
+	  case nsXPTType::T_DOMSTRING:
+	  case nsXPTType::T_ASTRING: {
+		  MOZ_ASSERT(ns_v.val.p == nullptr,
+					 "T_ASTRINGs can't be out and have a value (ie, no in/outs are allowed!");
+		  MOZ_ASSERT(td.IsDipper(),
+					 "out AStrings must really be in dippers!");
+		  MOZ_ASSERT(!ns_v.DoesValNeedCleanup(),
+					 "T_ASTRING shouldn't already need cleanup!");
+		  // Dippers are really treated like "in" params.
+		  nsString * str;
+		  if (!Alloc(str, 1)) {
+			PyErr_NoMemory();
+			return false;
+		  } else {
+			// ns_v.ptr is the one that is read, but we free ns_v.val.p, so...
+			ns_v.ptr = ns_v.val.p = str;
+		  }
+		  break;
+		}
+	  case nsXPTType::T_CSTRING:
+	  case nsXPTType::T_UTF8STRING: {
+		  MOZ_ASSERT(ns_v.val.p == nullptr,
+					 "T_CSTRINGs can't be out and have a value (ie, no in/outs are allowed!");
+		  MOZ_ASSERT(td.IsDipper(),
+					 "out ACStrings must really be in dippers!");
+		  MOZ_ASSERT(!ns_v.DoesValNeedCleanup(),
+					 "T_CSTRING shouldn't already need cleanup!");
+		  ns_v.SetValNeedsCleanup();
+		  // Dippers are really treated like "in" params.
+		  nsCString * str;
+		  if (!Alloc(str, 1)) {
+			PyErr_NoMemory();
+			return false;
+		  } else {
+			// ns_v.ptr is the one that is read, but we free ns_v.val.p, so...
+			ns_v.ptr = ns_v.val.p = str;
+		  }
+		  break;
+		}
+	  case nsXPTType::T_JSVAL:
+		PyErr_Format(PyExc_ValueError,
+					 "Don't know how to set [out] jsval at position %i",
+					 value_index);
+		return false;
+		break;
+	  default:
+		MOZ_NOT_REACHED("Unknown type - don't know how to prepare the output value");
+		break; // Nothing to do!
+	}
+	return true;
 }
 
 PyObject *PyXPCOM_InterfaceVariantHelper::MakeSinglePythonResult(int index)
 {
-	nsXPTCVariant &ns_v = m_var_array[index];
+	nsXPTCVariant &ns_v = mDispatchParams[index];
 	PyObject *ret = nullptr;
 	NS_ABORT_IF_FALSE(ns_v.IsPtrData(), "expecting a pointer if you want a result!");
 
 	// Re-fetch the type descriptor.
-	PythonTypeDescriptor &td = m_python_type_desc_array[index];
+	PythonTypeDescriptor &td = mPyTypeDesc[index];
 	// Make sure the type tag of the variant hasnt changed on us.
-	MOZ_ASSERT(ns_v.type==td.type_flags,
+	MOZ_ASSERT(ns_v.type == td.type_flags,
 			   "variant type has changed under us!");
 
 	// If the pointer is NULL, we can get out now!
-	if (ns_v.ptr==nullptr) {
+	if (ns_v.ptr == nullptr) {
 		Py_INCREF(Py_None);
 		return Py_None;
 	}
 
-	switch (XPT_TDP_TAG(ns_v.type)) {
+	switch (td.TypeTag()) {
 	  case nsXPTType::T_I8:
 		ret = PyInt_FromLong( *((PRInt8 *)ns_v.ptr) );
 		break;
@@ -1824,7 +1913,7 @@ PyObject *PyXPCOM_InterfaceVariantHelper::MakeSinglePythonResult(int index)
 		ret = PyFloat_FromDouble( *((double *)ns_v.ptr) );
 		break;
 	  case nsXPTType::T_BOOL:
-		ret = *((PRBool *)ns_v.ptr) ? Py_True : Py_False;
+		ret = *((bool *)ns_v.ptr) ? Py_True : Py_False;
 		Py_INCREF(ret);
 		break;
 	  case nsXPTType::T_CHAR:
@@ -1835,47 +1924,54 @@ PyObject *PyXPCOM_InterfaceVariantHelper::MakeSinglePythonResult(int index)
 		ret = PyUnicode_FromPRUnichar( ((PRUnichar *)ns_v.ptr), 1 );
 		break;
 //	  case nsXPTType::T_VOID:
-	  case nsXPTType::T_IID:
+	  case nsXPTType::T_IID: {
 		// guard against null IIDs
-		if (*((nsIID**)ns_v.ptr) == NULL) {
+		nsIID* iid = *reinterpret_cast<nsIID**>(ns_v.ptr);
+		if (iid == NULL) {
 			ret = Py_None;
 			Py_INCREF(Py_None);
-		} else
-			ret = Py_nsIID::PyObjectFromIID( **((nsIID **)ns_v.ptr) );
+		} else {
+			ret = Py_nsIID::PyObjectFromIID(*iid);
+		}
 		break;
+	    }
 	  case nsXPTType::T_ASTRING:
 	  case nsXPTType::T_DOMSTRING: {
-		nsAString *rs = (nsAString *)ns_v.ptr;
+		nsAString *rs = reinterpret_cast<nsAString*>(ns_v.ptr);
 		ret = PyObject_FromNSString(*rs);
 		break;
 		}
 	  case nsXPTType::T_UTF8STRING:
 	  case nsXPTType::T_CSTRING: {
-		nsCString *rs = (nsCString *)ns_v.ptr;
-		ret = PyObject_FromNSString(*rs, XPT_TDP_TAG(ns_v.type)==nsXPTType::T_UTF8STRING);
+		nsCString *rs = reinterpret_cast<nsCString*>(ns_v.ptr);
+		bool isUTF8 = (td.TypeTag() == nsXPTType::T_UTF8STRING);
+		ret = PyObject_FromNSString(*rs, isUTF8);
 		break;
 		}
 
-	  case nsXPTType::T_CHAR_STR:
-		if (*((char **)ns_v.ptr) == NULL) {
+	  case nsXPTType::T_CHAR_STR: {
+		char* str = *reinterpret_cast<char**>(ns_v.ptr);
+		if (str == nullptr) {
 			ret = Py_None;
 			Py_INCREF(Py_None);
 		} else
-			ret = PyString_FromString( *((char **)ns_v.ptr) );
+			ret = PyString_FromString(str);
 		break;
+	    }
 
 	  case nsXPTType::T_WCHAR_STR: {
-		PRUnichar *us = *((PRUnichar **)ns_v.ptr);
-		if (us == NULL) {
+		PRUnichar *us = *reinterpret_cast<PRUnichar**>(ns_v.ptr);
+		if (us == nullptr) {
 			ret = Py_None;
 			Py_INCREF(Py_None);
 		} else {
-			ret = PyUnicode_FromPRUnichar( us, NS_strlen(us));
+			ret = PyUnicode_FromPRUnichar(us, NS_strlen(us));
 		}
 		break;
 		}
 	  case nsXPTType::T_INTERFACE: {
-		nsISupports *iret = *((nsISupports **)ns_v.ptr);
+		nsISupports *iret = *reinterpret_cast<nsISupports **>(ns_v.ptr);
+		MOZ_ASSERT(ns_v.ptr == &ns_v.val.p);
 		// Our cleanup code manages iret reference ownership, and our
 		// new object takes its own.
 		if (td.iid.Equals(NS_GET_IID(nsIVariant)))
@@ -1886,37 +1982,42 @@ PyObject *PyXPCOM_InterfaceVariantHelper::MakeSinglePythonResult(int index)
 		}
 	  case nsXPTType::T_INTERFACE_IS: {
 		nsIID iid;
-		nsXPTCVariant &ns_viid = m_var_array[td.iid_is];
-		NS_ASSERTION(XPT_TDP_TAG(ns_viid.type)==nsXPTType::T_IID, "The INTERFACE_IS iid describer isn't an IID!");
-		if (XPT_TDP_TAG(ns_viid.type)==nsXPTType::T_IID) {
-			nsIID *piid = (nsIID *)ns_viid.val.p;
-			if (piid==NULL)
+		MOZ_ASSERT(td.iid_is < mDispatchParams.Length(),
+				   "Looking for an IID that doesn't exist!");
+		nsXPTCVariant &ns_viid = mDispatchParams[td.iid_is];
+		MOZ_ASSERT(ns_viid.type.TagPart() == nsXPTType::T_IID,
+		           "The INTERFACE_IS iid describer isn't an IID!");
+		if (ns_viid.type.TagPart() == nsXPTType::T_IID) {
+			nsIID *piid = reinterpret_cast<nsIID*>(ns_viid.val.p);
+			if (piid == nullptr) {
 				// Also serious, but like below, not our fault!
 				iid = NS_GET_IID(nsISupports);
-			else
+			} else {
 				iid = *piid;
+			}
 		} else {
 			// This is a pretty serious problem, but not Python's fault!
 			// Just return an nsISupports and hope the caller does whatever
 			// QI they need before using it.
+			// (Note that the assert above means this shouldn't happen in debug)
 			NS_ERROR("Failed to get the IID for T_INTERFACE_IS!");
 			iid = NS_GET_IID(nsISupports);
 		}
-		nsISupports *iret = *((nsISupports **)ns_v.ptr);
-		if (iid.Equals(NS_GET_IID(nsIVariant)))
-			ret = PyObject_FromVariant(m_parent, (nsIVariant *)iret);
-		else
+		nsISupports *iret = *reinterpret_cast<nsISupports **>(ns_v.ptr);
+		if (iid.Equals(NS_GET_IID(nsIVariant))) {
+			ret = PyObject_FromVariant(m_parent, reinterpret_cast<nsIVariant *>(iret));
+		} else {
 			ret = m_parent->MakeInterfaceResult(iret, iid);
+		}
 		break;
 		}
 	  case nsXPTType::T_ARRAY: {
-		if ( (* ((void **)ns_v.ptr)) == NULL) {
+		if (*reinterpret_cast<void **>(ns_v.ptr) == nullptr) {
 			ret = Py_None;
 			Py_INCREF(Py_None);
 		} else {
-			XPTTypeDescriptorTags array_type =
-				static_cast<XPTTypeDescriptorTags>(td.array_type & XPT_TDP_TAGMASK);
-			PRUint32 seq_size = GetLengthIs(index);
+			XPTTypeDescriptorTags array_type = td.ArrayTypeTag();
+			uint32_t seq_size = GetLengthIs(index);
 			nsIID *iid;
 			switch (array_type) {
 				case nsXPTType::T_INTERFACE_IS:
@@ -1926,32 +2027,38 @@ PyObject *PyXPCOM_InterfaceVariantHelper::MakeSinglePythonResult(int index)
 				default:
 					iid = nullptr;
 			}
-			ret = UnpackSingleArray(m_parent, * ((void **)ns_v.ptr), seq_size, array_type, iid);
+			ret = UnpackSingleArray(m_parent,
+			                        *reinterpret_cast<void **>(ns_v.ptr),
+			                        seq_size, array_type, iid);
 		}
 		break;
 		}
 
-	  case nsXPTType::T_PSTRING_SIZE_IS:
-		if (*((char **)ns_v.ptr) == NULL) {
+	  case nsXPTType::T_PSTRING_SIZE_IS: {
+		char *str = *reinterpret_cast<char**>(ns_v.ptr);
+		if (str == nullptr) {
 			ret = Py_None;
 			Py_INCREF(Py_None);
 		} else {
 			uint32_t string_size = GetSizeIs(index);
-			ret = PyString_FromStringAndSize( *((char **)ns_v.ptr), string_size );
+			ret = PyString_FromStringAndSize( str, string_size );
 		}
 		break;
+	    }
 
-	  case nsXPTType::T_PWSTRING_SIZE_IS:
-		if (*((PRUnichar **)ns_v.ptr) == NULL) {
+	  case nsXPTType::T_PWSTRING_SIZE_IS: {
+		PRUnichar *str = *reinterpret_cast<PRUnichar**>(ns_v.ptr);
+		if (str == NULL) {
 			ret = Py_None;
 			Py_INCREF(Py_None);
 		} else {
 			uint32_t string_size = GetSizeIs(index);
-			ret = PyUnicode_FromPRUnichar( *((PRUnichar **)ns_v.ptr), string_size );
+			ret = PyUnicode_FromPRUnichar( str, string_size );
 		}
 		break;
+		}
 	  default:
-		PyErr_Format(PyExc_ValueError, "Unknown XPCOM type code (0x%x)", XPT_TDP_TAG(ns_v.type));
+		PyErr_Format(PyExc_ValueError, "Unknown XPCOM type code (0x%x)", ns_v.type.TagPart());
 		/* ret remains nullptr */
 		break;
 	}
@@ -1965,42 +2072,47 @@ PyObject *PyXPCOM_InterfaceVariantHelper::MakePythonResult()
 	int i = 0;
 	int n_results = 0;
 	PyObject *ret = NULL;
-	PRBool have_retval = PR_FALSE;
-	for (i=0;i<m_num_array;i++) {
-		PythonTypeDescriptor &td = m_python_type_desc_array[i];
+	bool have_retval = false;
+	for (i = 0; i < mPyTypeDesc.Length(); ++i) {
+		PythonTypeDescriptor &td = mPyTypeDesc[i];
 		if (!td.IsAutoOut()) {
 			if (td.IsOut() || td.IsDipper())
 				n_results++;
-			if (td.IsRetval())
-				have_retval = PR_TRUE;
+			if (td.IsRetval()) {
+				MOZ_ASSERT(i == mPyTypeDesc.Length() - 1,
+						   "retval should be the last argument");
+				MOZ_ASSERT(!have_retval,
+						   "should not have more than one [retval]");
+				have_retval = true;
+			}
 		}
 	}
-	if (n_results==0) {
+	if (n_results == 0) {
 		ret = Py_None;
 		Py_INCREF(ret);
 	} else {
 		if (n_results > 1) {
 			ret = PyTuple_New(n_results);
-			if (ret==NULL)
+			if (ret == NULL)
 				return NULL;
 		}
 		int ret_index = 0;
-		int max_index = m_num_array;
+		int max_index = mPyTypeDesc.Length();
 		// Stick the retval at the front if we have have
 		if (have_retval && n_results > 1) {
-			PyObject *val = MakeSinglePythonResult(m_num_array-1);
-			if (val==NULL) {
+			PyObject *val = MakeSinglePythonResult(mPyTypeDesc.Length() - 1);
+			if (val == NULL) {
 				Py_DECREF(ret);
 				return NULL;
 			}
 			PyTuple_SET_ITEM(ret, 0, val);
 			max_index--;
 			ret_index++;
-
 		}
-		for (i=0;ret_index < n_results && i < max_index;i++) {
-			if (!m_python_type_desc_array[i].IsAutoOut()) {
-				if (m_python_type_desc_array[i].IsOut() || m_python_type_desc_array[i].IsDipper()) {
+
+		for (i = 0; ret_index < n_results && i < max_index; i++) {
+			if (!mPyTypeDesc[i].IsAutoOut()) {
+				if (mPyTypeDesc[i].IsOut() || mPyTypeDesc[i].IsDipper()) {
 					PyObject *val = MakeSinglePythonResult(i);
 					if (val==NULL) {
 						Py_XDECREF(ret);
@@ -2019,6 +2131,63 @@ PyObject *PyXPCOM_InterfaceVariantHelper::MakePythonResult()
 
 	}
 	return ret;
+}
+
+/* static */
+void PyXPCOM_InterfaceVariantHelper::CleanupParam(void* p, nsXPTType& type)
+{
+	if (!p) {
+		return; // nothing to clean up
+	}
+	switch (static_cast<XPTTypeDescriptorTags>(type.TagPart())) {
+        case XPTTypeDescriptorTags::TD_INTERFACE_TYPE:
+        case XPTTypeDescriptorTags::TD_INTERFACE_IS_TYPE:
+			// MUST release thread-lock, incase a Python COM object that re-acquires.
+			Py_BEGIN_ALLOW_THREADS;
+			reinterpret_cast<nsISupports*>(p)->Release();
+			Py_END_ALLOW_THREADS;
+			break;
+        case XPTTypeDescriptorTags::TD_ASTRING:
+        case XPTTypeDescriptorTags::TD_DOMSTRING:
+			delete reinterpret_cast<const nsString*>(p);
+			break;
+        case XPTTypeDescriptorTags::TD_CSTRING:
+        case XPTTypeDescriptorTags::TD_UTF8STRING:
+				delete reinterpret_cast<const nsCString*>(p);
+			break;
+        case XPTTypeDescriptorTags::TD_PNSIID:
+			moz_free(p);
+			break;
+        case XPTTypeDescriptorTags::TD_ARRAY:
+			MOZ_NOT_REACHED("CleanupParam doesn't support arrays");
+			break;
+        case XPTTypeDescriptorTags::TD_JSVAL:
+			MOZ_ASSERT(false, "PyXPCOM shouldn't be playing with jsvals");
+			break;
+        case XPTTypeDescriptorTags::TD_INT8:
+        case XPTTypeDescriptorTags::TD_INT16:
+        case XPTTypeDescriptorTags::TD_INT32:
+        case XPTTypeDescriptorTags::TD_INT64:
+        case XPTTypeDescriptorTags::TD_UINT8:
+        case XPTTypeDescriptorTags::TD_UINT16:
+        case XPTTypeDescriptorTags::TD_UINT32:
+        case XPTTypeDescriptorTags::TD_UINT64:
+        case XPTTypeDescriptorTags::TD_FLOAT:
+        case XPTTypeDescriptorTags::TD_DOUBLE:
+        case XPTTypeDescriptorTags::TD_BOOL:
+        case XPTTypeDescriptorTags::TD_CHAR:
+        case XPTTypeDescriptorTags::TD_WCHAR:
+        case XPTTypeDescriptorTags::TD_VOID:
+        case XPTTypeDescriptorTags::TD_PSTRING:
+        case XPTTypeDescriptorTags::TD_PWSTRING:
+        case XPTTypeDescriptorTags::TD_PSTRING_SIZE_IS:
+        case XPTTypeDescriptorTags::TD_PWSTRING_SIZE_IS:
+			// These don't need to be freed
+			break;
+		default:
+			MOZ_NOT_REACHED("Unkown tag");
+			break;
+	}
 }
 
 /*************************************************************************

@@ -385,17 +385,32 @@ class PYXPCOM_EXPORT PyXPCOM_InterfaceVariantHelper {
 public:
 	PyXPCOM_InterfaceVariantHelper(Py_nsISupports *parent);
 	~PyXPCOM_InterfaceVariantHelper();
-	PRBool Init(PyObject *obParams);
-	PRBool FillArray();
+	bool Init(PyObject *obParams);
+	/**
+	 * Prepare for the call; this converts the params, etc.
+	 */
+	bool PrepareCall();
 
 	PyObject *MakePythonResult();
 
-	nsXPTCVariant *m_var_array;
-	int m_num_array; // maximum number of arguments (including hidden/auto)
-	                 // we can hold
+	// The array of variants to pass to XPTCall
+	nsAutoTArray<nsXPTCVariant, 8> mDispatchParams;
 protected:
 	PyObject *MakeSinglePythonResult(int index);
-	bool FillInVariant(const PythonTypeDescriptor &, int, int);
+	/**
+	 * Fill in a single variant value
+	 * @param td The type descriptor about the parameter we need to fill
+	 * @param value_index The index of the params (incl. hidden) we are filling
+	 * @param param_index The index in m_pyparams to gather the Python argument from
+	 * @postcondition m_var_array[value_index] is ready for call
+	 */
+	bool FillInVariant(const PythonTypeDescriptor &td, int value_index, int param_index);
+	/**
+	 * Allocate space for 'out' parameters
+	 * @param td The type descriptor about the parameter
+	 * @param value_index The index of params (incl. hidden) we are filling
+	 * @postcondition m_var_array[value_index] is ready for call
+	 */
 	bool PrepareOutVariant(const PythonTypeDescriptor &td, int value_index);
 	bool SetSizeOrLengthIs(int var_index, bool is_size, uint32_t new_size);
 	uint32_t GetSizeOrLengthIs(int var_index, bool is_size);
@@ -412,12 +427,39 @@ protected:
 		return GetSizeOrLengthIs(var_index, false);
 	}
 
+	/**
+	 * Clean up a single nsXPTCMiniVariant (free memory as appropriate)
+	 */
+	static void CleanupParam(void* p, nsXPTType& type);
+
+	// These are to help track down leaks
+	#ifdef DEBUG
+	template<typename T>
+	MOZ_INLINE T* Alloc(T*& dest, size_t count) {
+		dest = reinterpret_cast<T*>(moz_calloc(sizeof(T), count));
+		return new (dest) T[count]();
+	}
+	MOZ_INLINE void* Alloc(size_t size, size_t count) {
+		return moz_calloc(size, count);
+	}
+	template<typename T>
+	MOZ_INLINE void Free(T* buf) {
+		delete[] buf;
+	}
+	MOZ_INLINE void Free(void* buf) {
+		moz_free(buf);
+	}
+	#else
+	#error implement me
+	#endif
+
 	PyObject *m_pyparams; // sequence of actual params passed (ie, not including hidden)
-	PyObject *m_typedescs; // desc of _all_ params, including hidden.
-	PythonTypeDescriptor *m_python_type_desc_array; // type descriptors for all params
-	void **m_buffer_array; // buffer for params to pass to xpcom; we allocate
-	                       // one entry per param but won't use them all
-	Py_nsISupports *m_parent; // The XPCOM interface this method is being called on
+
+	nsTArray<PythonTypeDescriptor> mPyTypeDesc; // type descriptors for all params
+
+	// The XPCOM interface this method is being called on
+	// (This holds a strong reference)
+	Py_nsISupports *m_parent;
 
 };
 
