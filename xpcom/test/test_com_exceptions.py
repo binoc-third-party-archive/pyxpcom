@@ -82,13 +82,13 @@ class PythonFailingComponent:
 class TestHandler(logging.Handler):
     def __init__(self, level=logging.ERROR): # only counting error records
         logging.Handler.__init__(self, level)
-        self.records = []
+        self.reset()
     
     def reset(self):
-        self.records = []
+        self.count = 0
 
     def handle(self, record):
-        self.records.append(record)
+        self.count += 1
 
 class ExceptionTests(unittest.TestCase):
 
@@ -101,13 +101,13 @@ class ExceptionTests(unittest.TestCase):
 
         try:
             try:
-                apply(func, args)
+                func(*args)
             except COMException, what:
                 if what.errno != expected_errno:
                     raise
         finally:
             logger.handlers = old_handlers
-        self.failUnlessEqual(num_tracebacks, len(test_handler.records))
+        self.failUnlessEqual(num_tracebacks, test_handler.count)
 
     def testEmAll(self):
         ob = WrapObject( PythonFailingComponent(), components.interfaces.nsIPythonTestInterfaceExtra)
