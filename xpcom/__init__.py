@@ -57,13 +57,11 @@ class Exception(exceptions.Exception):
         if not hr_map:
             import nsError
             for name, val in nsError.__dict__.items():
-                if type(val)==type(0):
-                    hr_map[val] = name
+                if isinstance(val, int):
+                    hr_map[val] = str(name)
         message = self.msg
         if message is None:
-            message = hr_map.get(self.errno)
-            if message is None:
-                message = ""
+            message = hr_map.get(self.errno, "")
         return "%d (%s)" % (self.errno, message)
 
 # An alias for Exception - allows code to say "from xpcom import COMException"

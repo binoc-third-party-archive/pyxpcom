@@ -3061,7 +3061,8 @@ nsresult PyXPCOM_GatewayVariantHelper::ProcessPythonResult(PyObject *ret_ob)
 	// exception set, then our caller may take additional action
 	// (ie, translating our nsresult to a more appropriate nsresult
 	// for the Python exception.)
-	NS_PRECONDITION(!PyErr_Occurred(), "Expecting no Python exception to be pending when processing the return result");
+	NS_PRECONDITION(!PyErr_Occurred(),
+	                "Expecting no Python exception to be pending when processing the return result");
 
 	nsresult rc = NS_OK;
 	// If we don't get a tuple back, then the result is only

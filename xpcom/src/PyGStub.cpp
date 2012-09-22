@@ -148,8 +148,8 @@ PyXPCOM_XPTStub::CallMethod(PRUint16 methodIndex,
 	                             obParams);
 	if (result!=NULL) {
 		rc = arg_helper.ProcessPythonResult(result);
-		// Use an xor to check failure && pyerr, or !failure && !pyerr.
-		NS_ABORT_IF_FALSE( ((NS_FAILED(rc)!=0)^(PyErr_Occurred()!=0)) == 0, "We must have failure with a Python error, or success without a Python error.");
+		MOZ_ASSERT(bool(NS_FAILED(rc)) == bool(PyErr_Occurred()),
+		           "We must have failure with a Python error, or success without a Python error.");
 	}
 done:
 	if (PyErr_Occurred()) {
@@ -169,7 +169,7 @@ done:
 		// If this callback fails, we log _2_ exceptions - the error handler
 		// error, and the original error.
 
-		PRBool bProcessMainError = PR_TRUE; // set to false if our exception handler does its thing!
+		bool bProcessMainError = true; // set to false if our exception handler does its thing!
 		PyObject *exc_typ, *exc_val, *exc_tb;
 		PyErr_Fetch(&exc_typ, &exc_val, &exc_tb);
 		PyErr_NormalizeException( &exc_typ, &exc_val, &exc_tb);
@@ -193,7 +193,7 @@ done:
 		} else if (PyInt_Check(err_result)) {
 			// The exception handler has given us the nresult.
 			rc = PyInt_AsLong(err_result);
-			bProcessMainError = PR_FALSE;
+			bProcessMainError = false;
 		} else {
 			// The exception handler succeeded, but returned other than
 			// int or None.
