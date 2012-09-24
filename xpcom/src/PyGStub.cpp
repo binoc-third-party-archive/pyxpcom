@@ -135,7 +135,7 @@ PyXPCOM_XPTStub::CallMethod(PRUint16 methodIndex,
 		goto done;
 	// base object is passed raw.
 	obThisObject = PyObject_FromNSInterface((nsISupports *)ThisAsIID(m_iid),
-	                                        m_iid, PR_FALSE);
+	                                        m_iid, false);
 	obParams = arg_helper.MakePyArgs();
 	if (obParams==NULL)
 		goto done;

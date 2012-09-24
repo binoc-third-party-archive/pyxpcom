@@ -195,7 +195,7 @@ nsPythonModuleLoader::PythonModule::GetFactory(const mozilla::Module& module,
     obFnName = PyString_FromString("getClassObject");
     obFactory = PyObject_CallMethodObjArgs(pyMod.mPyObjModule, obFnName, Py_None, obClsId, Py_None, NULL);
     if (obFactory!=NULL) {
-        Py_nsISupports::InterfaceFromPyObject(obFactory, NS_GET_IID(nsIFactory), getter_AddRefs(f), PR_FALSE);
+        Py_nsISupports::InterfaceFromPyObject(obFactory, NS_GET_IID(nsIFactory), getter_AddRefs(f), false);
     }
 
     if (PyErr_Occurred()) {

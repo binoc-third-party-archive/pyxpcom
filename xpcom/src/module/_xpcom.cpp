@@ -92,7 +92,7 @@ PyXPCOMMethod_GetComponentManager(PyObject *self, PyObject *args)
 	if ( NS_FAILED(rv) )
 		return PyXPCOM_BuildPyException(rv);
 
-	return Py_nsISupports::PyObjectFromInterface(cm, NS_GET_IID(nsIComponentManager), PR_FALSE);
+	return Py_nsISupports::PyObjectFromInterface(cm, NS_GET_IID(nsIComponentManager), false);
 }
 
 // No xpcom callable way to get at the registrar, even though the interface
@@ -110,7 +110,7 @@ PyXPCOMMethod_GetComponentRegistrar(PyObject *self, PyObject *args)
 	if ( NS_FAILED(rv) )
 		return PyXPCOM_BuildPyException(rv);
 
-	return Py_nsISupports::PyObjectFromInterface(cm, NS_GET_IID(nsISupports), PR_FALSE);
+	return Py_nsISupports::PyObjectFromInterface(cm, NS_GET_IID(nsISupports), false);
 }
 
 static PyObject *
@@ -143,7 +143,7 @@ PyXPCOMMethod_XPTI_GetInterfaceInfoManager(PyObject *self, PyObject *args)
 	/* Return a type based on the IID (with no extra ref) */
 	// Can not auto-wrap the interface info manager as it is critical to
 	// building the support we need for autowrap.
-	return Py_nsISupports::PyObjectFromInterface(im, NS_GET_IID(nsIInterfaceInfoManager), PR_FALSE);
+	return Py_nsISupports::PyObjectFromInterface(im, NS_GET_IID(nsIInterfaceInfoManager), false);
 }
 
 static PyObject *
@@ -173,7 +173,7 @@ PyXPCOMMethod_NS_InvokeByIndex(PyObject *self, PyObject *args)
 			obIS, 
 			Py_nsIID_NULL, 
 			getter_AddRefs(pis), 
-			PR_FALSE))
+			false))
 		return NULL;
 
 	PyXPCOM_InterfaceVariantHelper arg_helper((Py_nsISupports *)obIS);
@@ -243,7 +243,7 @@ PyXPCOMMethod_UnwrapObject(PyObject *self, PyObject *args)
 	if (!Py_nsISupports::InterfaceFromPyObject(ob, 
 				NS_GET_IID(nsISupports), 
 				&uob, 
-				PR_FALSE))
+				false))
 		goto done;
 	if (NS_FAILED(uob->QueryInterface(NS_GET_IID(nsIInternalPython), reinterpret_cast<void **>(&iob)))) {
 		PyErr_SetString(PyExc_ValueError, "This XPCOM object is not implemented by Python");
@@ -328,7 +328,7 @@ PyXPCOMMethod_GetVariantValue(PyObject *self, PyObject *args)
 	if (!Py_nsISupports::InterfaceFromPyObject(ob, 
 				NS_GET_IID(nsISupports), 
 				getter_AddRefs(var), 
-				PR_FALSE))
+				false))
 		return PyErr_Format(PyExc_ValueError,
 				    "Object is not an nsIVariant (got %s)",
 				    ob->ob_type->tp_name);
@@ -434,9 +434,9 @@ static struct PyMethodDef xpcom_methods[]=
 // Theoretically this should only happen when a standard python program
 // (ie, hosted by python itself) imports the xpcom module (ie, as part of
 // the pyxpcom test suite), hence it lives here...
-static PRBool EnsureXPCOM()
+static bool EnsureXPCOM()
 {
-	static PRBool bHaveInitXPCOM = PR_FALSE;
+	static bool bHaveInitXPCOM = false;
 	if (!bHaveInitXPCOM) {
 		// xpcom appears to assert if already initialized, but there
 		// is no official way to determine this!  Sadly though,
@@ -457,7 +457,7 @@ static PRBool EnsureXPCOM()
 			HMODULE hmod = GetModuleHandle("nspr4.dll");
 			if (hmod==NULL) {
 				PyErr_SetString(PyExc_RuntimeError, "We dont appear to be linked against nspr4.dll.");
-				return PR_FALSE;
+				return false;
 			}
 			GetModuleFileName(hmod, landmark, sizeof(landmark)/sizeof(landmark[0]));
 			char *end = landmark + (strlen(landmark)-1);
@@ -467,7 +467,7 @@ static PRBool EnsureXPCOM()
 
 			nsCOMPtr<nsIFile> ns_bin_dir;
 			NS_ConvertASCIItoUTF16 strLandmark(landmark);
-			NS_NewLocalFile(strLandmark, PR_FALSE, getter_AddRefs(ns_bin_dir));
+			NS_NewLocalFile(strLandmark, false, getter_AddRefs(ns_bin_dir));
 			rv = NS_InitXPCOM2(nullptr, ns_bin_dir, nullptr);
 #elif defined(XP_UNIX)
 			// Elsewhere, try to check MOZILLA_FIVE_HOME
@@ -475,7 +475,7 @@ static PRBool EnsureXPCOM()
 			nsCOMPtr<nsIFile> ns_bin_dir;
 			if (ns_bin_path && *ns_bin_path) {
 				rv = NS_NewNativeLocalFile(nsDependentCString(ns_bin_path),
-							   PR_FALSE,
+							   false,
 							   getter_AddRefs(ns_bin_dir));
 				if (NS_FAILED(rv)) {
 					ns_bin_dir = nullptr;
@@ -485,14 +485,14 @@ static PRBool EnsureXPCOM()
 #endif
 			if (NS_FAILED(rv)) {
 				PyErr_SetString(PyExc_RuntimeError, "The XPCOM subsystem could not be initialized");
-				return PR_FALSE;
+				return false;
 			}
 
 			nsCOMPtr<nsIFile> app_dir;
 			char* app_path = PR_GetEnv("PYXPCOM_APPDIR");
 			if (app_path && *app_path) {
 				rv = NS_NewNativeLocalFile(nsDependentCString(app_path),
-				                           PR_FALSE,
+				                           false,
 				                           getter_AddRefs(app_dir));
 				if (NS_FAILED(rv)) {
 					app_dir = nullptr;
@@ -526,9 +526,9 @@ static PRBool EnsureXPCOM()
 			}
 		}
 		// Even if xpcom was already init, we want to flag it as init!
-		bHaveInitXPCOM = PR_TRUE;
+		bHaveInitXPCOM = true;
 	}
-	return PR_TRUE;
+	return true;
 }
 
 ////////////////////////////////////////////////////////////
@@ -596,5 +596,5 @@ init_xpcom() {
     PyDict_SetItemString(dict, "NS_DEBUG", ob);
     Py_DECREF(ob);
     // Flag we initialized correctly!
-    PyXPCOM_ModuleInitialized = PR_TRUE;
+    PyXPCOM_ModuleInitialized = true;
 }

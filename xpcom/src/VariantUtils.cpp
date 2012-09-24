@@ -114,7 +114,7 @@ PyUnicode_AsPRUnichar(PyObject *obj, PRUnichar **dest_out, PRUint32 *size_out)
 }
 
 PYXPCOM_EXPORT PyObject *
-PyObject_FromNSString( const nsACString &s, PRBool bAssumeUTF8 /*= PR_FALSE */)
+PyObject_FromNSString( const nsACString &s, bool bAssumeUTF8 /*= false */)
 {
 	PyObject *ret;
 	if (s.IsVoid()) {
@@ -154,20 +154,20 @@ PyObject_FromNSString( const PRUnichar *s,
 	           len==((PRUint32)-1)? NS_strlen(s) : len);
 }
 
-PYXPCOM_EXPORT PRBool
+PYXPCOM_EXPORT bool
 PyObject_AsNSString( PyObject *val, nsAString &aStr)
 {
 	if (val == Py_None) {
-		aStr.SetIsVoid(PR_TRUE);
-		return PR_TRUE;
+		aStr.SetIsVoid(true);
+		return true;
 	}
 	if (!PyString_Check(val) && !PyUnicode_Check(val)) {
 		PyErr_SetString(PyExc_TypeError, "This parameter must be a string or Unicode object");
-		return PR_FALSE;
+		return false;
 	}
 	PyObject *val_use = NULL;
 	if (!(val_use = PyUnicode_FromObject(val)))
-		return PR_FALSE;
+		return false;
 	if (PyUnicode_GET_SIZE(val_use) == 0) {
 		aStr.Truncate();
 	}
@@ -175,7 +175,7 @@ PyObject_AsNSString( PyObject *val, nsAString &aStr)
 		PyObject *s = PyUnicode_AsUTF16String(val_use);
 		if (!s) {
 			Py_DECREF(val_use);
-			return PR_FALSE;
+			return false;
 		}
 		// Skip the BOM at the start of the string
 		// (see PyUnicode_AsPRUnichar)
@@ -184,7 +184,7 @@ PyObject_AsNSString( PyObject *val, nsAString &aStr)
 		Py_DECREF(s);
 	}
 	Py_DECREF(val_use);
-	return PR_TRUE;
+	return true;
 }
 
 // Array utilities
@@ -216,7 +216,7 @@ static PRUint32 GetArrayElementSize(XPTTypeDescriptorTags t)
 			ret = sizeof(double); 
 			break;
 		case nsXPTType::T_BOOL:
-			ret = sizeof(PRBool); 
+			ret = sizeof(bool); 
 			break;
 		case nsXPTType::T_CHAR:
 			ret = sizeof(char); 
@@ -296,7 +296,7 @@ void FreeSingleArray(void *array_ptr, PRUint32 sequence_size, PRUint8 array_type
 }
 
 #define FILL_SIMPLE_POINTER( type, val ) *reinterpret_cast<type*>(pthis) = (type)(val)
-#define BREAK_FALSE {rc=PR_FALSE;break;}
+#define BREAK_FALSE {rc=false;break;}
 
 
 bool FillSingleArray(void *array_ptr, PyObject *sequence_ob, PRUint32 sequence_size,
@@ -307,33 +307,33 @@ bool FillSingleArray(void *array_ptr, PyObject *sequence_ob, PRUint32 sequence_s
 	MOZ_ASSERT(pthis, "Don't have a valid array to fill!");
 	MOZ_ASSERT((static_cast<uint8_t>(array_type) & XPT_TDP_FLAGMASK) == 0,
 			   "Array type should not have flags");
-	PRBool rc = PR_TRUE;
+	bool rc = true;
 	// We handle T_U8 specially as a string/Unicode.
 	// If it is NOT a string, we just fall through and allow the standard
 	// sequence unpack code process it (just slower!)
 	if (array_type == XPTTypeDescriptorTags::TD_UINT8 &&
 		(PyString_Check(sequence_ob) || PyUnicode_Check(sequence_ob))) {
 
-		PRBool release_seq;
+		bool release_seq;
 		if (PyUnicode_Check(sequence_ob)) {
-			release_seq = PR_TRUE;
+			release_seq = true;
 			sequence_ob = PyObject_Str(sequence_ob);
 		} else {
-			release_seq = PR_FALSE;
+			release_seq = false;
 		}
 		if (!sequence_ob) // presumably a memory error, or Unicode encoding error.
-			return PR_FALSE;
+			return false;
 		memcpy(pthis, PyString_AS_STRING(sequence_ob), sequence_size);
 		if (release_seq)
 			Py_DECREF(sequence_ob);
-		return PR_TRUE;
+		return true;
 	}
 
 	for (PRUint32 i = 0; rc && i < sequence_size; i++, pthis += array_element_size) {
 		PyObject *val = PySequence_GetItem(sequence_ob, i);
 		PyObject *val_use = NULL;
 		if (val == nullptr)
-			return PR_FALSE;
+			return false;
 		switch(array_type) {
 			  case XPTTypeDescriptorTags::TD_INT8:
 				if ((val_use=PyNumber_Int(val)) == NULL) BREAK_FALSE;
@@ -377,7 +377,7 @@ bool FillSingleArray(void *array_ptr, PyObject *sequence_ob, PRUint32 sequence_s
 				break;
 			  case XPTTypeDescriptorTags::TD_BOOL:
 				if ((val_use=PyNumber_Int(val)) == NULL) BREAK_FALSE
-				FILL_SIMPLE_POINTER(PRBool, PyInt_AsLong(val_use) != 0);
+				FILL_SIMPLE_POINTER(bool, PyInt_AsLong(val_use) != 0);
 				break;
 			  case XPTTypeDescriptorTags::TD_CHAR:
 				if (!PyString_Check(val) && !PyUnicode_Check(val)) {
@@ -557,7 +557,7 @@ static PyObject *UnpackSingleArray(Py_nsISupports *parent, void *array_ptr,
 				val = PyFloat_FromDouble( *((double*)pthis) );
 				break;
 			  case nsXPTType::T_BOOL:
-				val = (*((PRBool *)pthis)) ? Py_True : Py_False;
+				val = (*((bool *)pthis)) ? Py_True : Py_False;
 				Py_INCREF(val);
 				break;
 			  case nsXPTType::T_IID:
@@ -596,7 +596,7 @@ static PyObject *UnpackSingleArray(Py_nsISupports *parent, void *array_ptr,
 					val = Py_nsISupports::PyObjectFromInterface(
 					                *pp,
 					                iid ? *iid : NS_GET_IID(nsISupports),
-					                PR_TRUE);
+					                true);
 				break;
 				}
 			  default: {
@@ -657,7 +657,7 @@ static PRUint16 BestVariantTypeForPyObject( PyObject *ob, BVFTResult *pdata)
 	}
 	// Now do expensive or abstract checks.
 	if (Py_nsISupports::InterfaceFromPyObject(ob, NS_GET_IID(nsISupports),
-						  getter_AddRefs(ps), PR_TRUE))
+						  getter_AddRefs(ps), true))
 	{
 		ps.forget(&pdata->pis);
 		pdata->iid = NS_GET_IID(nsISupports);
@@ -889,7 +889,7 @@ PyObject_FromVariant( Py_nsISupports *parent, nsIVariant *v)
 				ret = parent->MakeInterfaceResult(p, NS_GET_IID(nsISupports));
 			else
 				ret = Py_nsISupports::PyObjectFromInterface(
-					                p, NS_GET_IID(nsISupports), PR_TRUE);
+					                p, NS_GET_IID(nsISupports), true);
 			break;
 		}
 		case nsIDataType::VTYPE_INTERFACE_IS: {
@@ -1133,7 +1133,7 @@ bool PyXPCOM_InterfaceVariantHelper::Init(PyObject *obParams)
 	int num_args_provided;
 	if (!PySequence_Check(obParams) || PySequence_Length(obParams) != 2) {
 		PyErr_Format(PyExc_TypeError, "Param descriptors must be a sequence of exactly length 2");
-		return PR_FALSE;
+		return false;
 	}
 	PyObject *typedescs = PySequence_GetItem(obParams, 0);
 	if (!typedescs)
@@ -1225,12 +1225,12 @@ bool PyXPCOM_InterfaceVariantHelper::PrepareCall()
 		mDispatchParams[i].type = ptd.type_flags;
 		if (ptd.IsIn() && !ptd.IsAutoIn() && !ptd.IsDipper()) {
 			if (!FillInVariant(ptd, i, param_index))
-				return PR_FALSE;
+				return false;
 			param_index++;
 		}
 		if ((ptd.IsOut() && !ptd.IsAutoOut()) || ptd.IsDipper()) {
 			if (!PrepareOutVariant(ptd, i))
-				return PR_FALSE;
+				return false;
 		}
 	}
 	// There may be out "size_is" params we havent touched yet
@@ -1242,10 +1242,10 @@ bool PyXPCOM_InterfaceVariantHelper::PrepareCall()
 		if (ptd.IsAutoOut() && !ptd.IsAutoSet()) {
 			// Call PrepareOutVariant to ensure buffers etc setup.
 			if (!PrepareOutVariant(ptd, i))
-				return PR_FALSE;
+				return false;
 		}
 	}
-	return PR_TRUE;
+	return true;
 }
 
 
@@ -1270,16 +1270,16 @@ bool PyXPCOM_InterfaceVariantHelper::SetSizeOrLengthIs(int var_index, bool is_si
 		ns_v.val.u32 = new_size;
 		// In case it is "out", setup the necessary pointers.
 		PrepareOutVariant(td_size, argnum);
-		td_size.have_set_auto = PR_TRUE;
+		td_size.have_set_auto = true;
 	} else {
 		if (ns_v.val.u32 != new_size) {
 			PyErr_Format(PyExc_ValueError,
 			             "Array lengths inconsistent; array size previously set to %d, but second array is of size %d",
 			             ns_v.val.u32, new_size);
-			return PR_FALSE;
+			return false;
 		}
 	}
-	return PR_TRUE;
+	return true;
 }
 
 uint32_t PyXPCOM_InterfaceVariantHelper::GetSizeOrLengthIs(int var_index, bool is_size)
@@ -1311,7 +1311,7 @@ uint32_t PyXPCOM_InterfaceVariantHelper::GetSizeOrLengthIs(int var_index, bool i
 			PyErr_Format(PyExc_OverflowError,                           \
 						 "param %d (%ld) does not fit in %s",           \
 						 value_index, num, NS_STRINGIFY(type));         \
-			return PR_FALSE;                                            \
+			return false;                                            \
 		}                                                               \
 		ns_v.val.field = static_cast<type>(num);                        \
 	}
@@ -1471,7 +1471,7 @@ bool PyXPCOM_InterfaceVariantHelper::FillInVariant(const PythonTypeDescriptor &t
 	  }
 	  case XPTTypeDescriptorTags::TD_CSTRING:
 	  case XPTTypeDescriptorTags::TD_UTF8STRING: {
-		PRBool bIsUTF8 = ns_v.type.TagPart() == nsXPTType::T_UTF8STRING;
+		bool bIsUTF8 = ns_v.type.TagPart() == nsXPTType::T_UTF8STRING;
 		nsCString* str;
 		if (!Alloc(str, 1)) {
 			PyErr_NoMemory();
@@ -1562,7 +1562,7 @@ bool PyXPCOM_InterfaceVariantHelper::FillInVariant(const PythonTypeDescriptor &t
 		if (!Py_nsISupports::InterfaceFromPyObject(val,
 		                                           td.iid,
 		                                           reinterpret_cast<nsISupports **>(&ns_v.val.p),
-		                                           PR_TRUE))
+		                                           true))
 			BREAK_FALSE;
 		if (ns_v.val.p) {
 			// We have added a reference - flag as such for cleanup.
@@ -2315,18 +2315,18 @@ bool PyXPCOM_GatewayVariantHelper::SetSizeOrLengthIs( int var_index, bool is_siz
 	if (ns_v.val.p) {
 		if (!td_size.IsAutoSet()) {
 			*((PRUint32 *)ns_v.val.p) = new_size;
-			td_size.have_set_auto = PR_TRUE;
+			td_size.have_set_auto = true;
 		} else {
 			if (*((PRUint32 *)ns_v.val.p) != new_size ) {
 				PyErr_Format(PyExc_ValueError,
 							 "Array lengths inconsistent; array size previously set to %d, "
 								"but second array is of size %d",
 							 ns_v.val.u32, new_size);
-				return PR_FALSE;
+				return false;
 			}
 		}
 	}
-	return PR_TRUE;
+	return true;
 }
 
 uint32_t PyXPCOM_GatewayVariantHelper::GetSizeOrLengthIs( int var_index, bool is_size)
@@ -2339,7 +2339,7 @@ uint32_t PyXPCOM_GatewayVariantHelper::GetSizeOrLengthIs( int var_index, bool is
 	if (argnum >= m_num_type_descs) {
 		PyErr_SetString(PyExc_ValueError,
 						"don't have a valid size_is indicator for this param");
-		return PR_FALSE;
+		return false;
 	}
 	PythonTypeDescriptor &ptd = m_python_type_desc_array[argnum];
 	nsXPTCMiniVariant &ns_v = m_params[argnum];
@@ -2357,7 +2357,7 @@ PyObject *PyXPCOM_GatewayVariantHelper::MakeSingleParam(int index, PythonTypeDes
 	NS_PRECONDITION(XPT_PD_IS_IN(td.param_flags), "Must be an [in] param!");
 	nsXPTCMiniVariant &ns_v = m_params[index];
 	PyObject *ret = NULL;
-	PRBool is_out = XPT_PD_IS_OUT(td.param_flags);
+	bool is_out = XPT_PD_IS_OUT(td.param_flags);
 
 	switch (td.TypeTag()) {
 	  case nsXPTType::T_I8:
@@ -2391,7 +2391,7 @@ PyObject *PyXPCOM_GatewayVariantHelper::MakeSingleParam(int index, PythonTypeDes
 		ret = PyFloat_FromDouble(  DEREF_IN_OR_OUT(ns_v.val.d, double) );
 		break;
 	  case nsXPTType::T_BOOL: {
-		PRBool temp = DEREF_IN_OR_OUT(ns_v.val.b, PRBool);
+		bool temp = DEREF_IN_OR_OUT(ns_v.val.b, bool);
 		ret = temp ? Py_True : Py_False;
 		Py_INCREF(ret);
 		break;
@@ -2559,7 +2559,7 @@ nsresult PyXPCOM_GatewayVariantHelper::GetArrayType(PRUint8 index,
 	return NS_OK;
 }
 
-PRBool PyXPCOM_GatewayVariantHelper::GetIIDForINTERFACE_ID(int index, const nsIID **ppret)
+bool PyXPCOM_GatewayVariantHelper::GetIIDForINTERFACE_ID(int index, const nsIID **ppret)
 {
 	// Not sure if the IID pointed at by by this is allows to be
 	// in or out, so we will allow it.
@@ -2587,7 +2587,7 @@ PRBool PyXPCOM_GatewayVariantHelper::GetIIDForINTERFACE_ID(int index, const nsII
 			*ppret = &NS_GET_IID(nsISupports);
 		}
 	}
-	return PR_TRUE;
+	return true;
 }
 
 nsIInterfaceInfo *PyXPCOM_GatewayVariantHelper::GetInterfaceInfo()
@@ -2622,7 +2622,7 @@ nsresult PyXPCOM_GatewayVariantHelper::BackFillVariant( PyObject *val, int index
 	NS_ABORT_IF_FALSE(pi.IsDipper() || ns_v.val.p, "No space for result!");
 	if (!pi.IsDipper() && !ns_v.val.p) return NS_ERROR_INVALID_POINTER;
 
-	PRBool rc = PR_TRUE;
+	bool rc = true;
 	switch (XPT_TDP_TAG(typ)) {
 	  case nsXPTType::T_I8:
 		if ((val_use=PyNumber_Int(val))==NULL) BREAK_FALSE;
@@ -2666,7 +2666,7 @@ nsresult PyXPCOM_GatewayVariantHelper::BackFillVariant( PyObject *val, int index
 		break;
 	  case nsXPTType::T_BOOL:
 		if ((val_use=PyNumber_Int(val))==NULL) BREAK_FALSE
-		FILL_SIMPLE_POINTER( PRBool, PyInt_AsLong(val_use) );
+		FILL_SIMPLE_POINTER( bool, PyInt_AsLong(val_use) );
 		break;
 	  case nsXPTType::T_CHAR:
 		if (!PyString_Check(val) && !PyUnicode_Check(val)) {
@@ -2722,7 +2722,7 @@ nsresult PyXPCOM_GatewayVariantHelper::BackFillVariant( PyObject *val, int index
 		nsCString *ws = (nsCString *)ns_v.val.p;
 		NS_ABORT_IF_FALSE(ws->Length() == 0, "Why does this writable string already have chars??");
 		if (val == Py_None) {
-			ws->SetIsVoid(PR_TRUE);
+			ws->SetIsVoid(true);
 		} else {
 			if (!PyString_Check(val) && !PyUnicode_Check(val)) {
 				PyErr_SetString(PyExc_TypeError, "This parameter must be a string or Unicode object");
@@ -2739,7 +2739,7 @@ nsresult PyXPCOM_GatewayVariantHelper::BackFillVariant( PyObject *val, int index
 		nsCString *ws = (nsCString *)ns_v.val.p;
 		NS_ABORT_IF_FALSE(ws->Length() == 0, "Why does this writable string already have chars??");
 		if (val == Py_None) {
-			ws->SetIsVoid(PR_TRUE);
+			ws->SetIsVoid(true);
 		} else {
 			if (PyString_Check(val)) {
 				val_use = val;
@@ -2832,7 +2832,7 @@ nsresult PyXPCOM_GatewayVariantHelper::BackFillVariant( PyObject *val, int index
 		// Get it the "standard" way.
 		// We do allow NULL here, even tho doing so will no-doubt crash some objects.
 		// (but there will certainly be objects out there that will allow NULL :-(
-		PRBool ok = Py_nsISupports::InterfaceFromPyObject(val, iid, &pnew, PR_TRUE);
+		bool ok = Py_nsISupports::InterfaceFromPyObject(val, iid, &pnew, true);
 		if (!ok)
 			BREAK_FALSE;
 		nsISupports **pp = (nsISupports **)ns_v.val.p;
@@ -2854,7 +2854,7 @@ nsresult PyXPCOM_GatewayVariantHelper::BackFillVariant( PyObject *val, int index
 		// Get it the "standard" way.
 		// We do allow NULL here, even tho doing so will no-doubt crash some objects.
 		// (but there will certainly be objects out there that will allow NULL :-(
-		if (!Py_nsISupports::InterfaceFromPyObject(val, *piid, &pnew, PR_TRUE))
+		if (!Py_nsISupports::InterfaceFromPyObject(val, *piid, &pnew, true))
 			BREAK_FALSE;
 		nsISupports **pp = (nsISupports **)ns_v.val.p;
 		if (*pp && pi.IsIn()) {

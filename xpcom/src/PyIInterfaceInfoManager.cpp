@@ -85,7 +85,7 @@ static PyObject *PyGetInfoForIID(PyObject *self, PyObject *args)
 	nsIID new_iid = NS_GET_IID(nsIInterfaceInfo);
 	// Can not auto-wrap the interface info manager as it is critical to
 	// building the support we need for autowrap.
-	return Py_nsISupports::PyObjectFromInterface(pi, new_iid, PR_FALSE);
+	return Py_nsISupports::PyObjectFromInterface(pi, new_iid, false);
 }
 
 static PyObject *PyGetInfoForName(PyObject *self, PyObject *args)
@@ -109,7 +109,7 @@ static PyObject *PyGetInfoForName(PyObject *self, PyObject *args)
 	/* Return a type based on the IID (with no extra ref) */
 	// Can not auto-wrap the interface info manager as it is critical to
 	// building the support we need for autowrap.
-	return Py_nsISupports::PyObjectFromInterface(pi, NS_GET_IID(nsIInterfaceInfo), PR_FALSE);
+	return Py_nsISupports::PyObjectFromInterface(pi, NS_GET_IID(nsIInterfaceInfo), false);
 }
 
 static PyObject *PyGetNameForIID(PyObject *self, PyObject *args)

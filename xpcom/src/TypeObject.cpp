@@ -76,7 +76,7 @@ static PyTypeObject PyInterfaceType_Type = {
 	"Define the behavior of a PythonCOM Interface type.",
 };
 
-/*static*/ PRBool
+/*static*/ bool
 PyXPCOM_TypeObject::IsType(PyTypeObject *t)
 {
 	return t->ob_type == &PyInterfaceType_Type;
@@ -107,9 +107,9 @@ PyXPCOM_TypeObject::Py_cmp(PyObject *self, PyObject *other)
 	// (ie, determined by the object's relative addresses in memory.
 	nsISupports *pUnkOther;
 	nsISupports *pUnkThis;
-	if (!Py_nsISupports::InterfaceFromPyObject(self, NS_GET_IID(nsISupports), &pUnkThis, PR_FALSE))
+	if (!Py_nsISupports::InterfaceFromPyObject(self, NS_GET_IID(nsISupports), &pUnkThis, false))
 		return -1;
-	if (!Py_nsISupports::InterfaceFromPyObject(other, NS_GET_IID(nsISupports), &pUnkOther, PR_FALSE)) {
+	if (!Py_nsISupports::InterfaceFromPyObject(other, NS_GET_IID(nsISupports), &pUnkOther, false)) {
 		pUnkThis->Release();
 		return -1;
 	}
@@ -125,7 +125,7 @@ PyXPCOM_TypeObject::Py_cmp(PyObject *self, PyObject *other)
 {
 	// We always return the value of the nsISupports *.
 	nsISupports *pUnkThis;
-	if (!Py_nsISupports::InterfaceFromPyObject(self, NS_GET_IID(nsISupports), &pUnkThis, PR_FALSE))
+	if (!Py_nsISupports::InterfaceFromPyObject(self, NS_GET_IID(nsISupports), &pUnkThis, false))
 		return -1;
 	long ret = _Py_HashPointer(pUnkThis);
 	pUnkThis->Release();

@@ -90,7 +90,7 @@ static PyObject *PyCreateInstanceByContractID(PyObject *self, PyObject *args)
 		return PyXPCOM_BuildPyException(r);
 
 	/* Return a type based on the IID (with no extra ref) */
-	return Py_nsISupports::PyObjectFromInterface(pis, iid, PR_FALSE);
+	return Py_nsISupports::PyObjectFromInterface(pis, iid, false);
 }
 
 static PyObject *PyCreateInstance(PyObject *self, PyObject *args)
@@ -126,7 +126,7 @@ static PyObject *PyCreateInstance(PyObject *self, PyObject *args)
 		return PyXPCOM_BuildPyException(r);
 
 	/* Return a type based on the IID (with no extra ref) */
-	return Py_nsISupports::PyObjectFromInterface(pis, iid, PR_FALSE);
+	return Py_nsISupports::PyObjectFromInterface(pis, iid, false);
 }
 
 struct PyMethodDef 

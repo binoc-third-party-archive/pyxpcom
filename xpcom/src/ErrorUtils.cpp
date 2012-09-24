@@ -107,7 +107,7 @@ void DoLogMessage(const char *methodName, const char *pszMessageText)
 	// implementation knowledge, but it would be far worse to have some
 	// obscure problem initializing the logging package cause all future
 	// messages to be discarded.
-	static PRBool initializedForLogging = PR_FALSE;
+	static bool initializedForLogging = false;
 	if (PyXPCOM_ModuleInitialized && !initializedForLogging) {
 		PyObject *mod = PyImport_ImportModule("logging");
 		PyObject *logger = mod ?
@@ -178,9 +178,9 @@ static void VLogF(const char *methodName, const char *fmt, va_list argptr)
 	LogMessage(methodName, buff);
 }
 
-PYXPCOM_EXPORT PRBool PyXPCOM_FormatCurrentException(nsCString &streamout)
+PYXPCOM_EXPORT bool PyXPCOM_FormatCurrentException(nsCString &streamout)
 {
-	PRBool ok = PR_FALSE;
+	bool ok = false;
 	PyObject *exc_typ = NULL, *exc_val = NULL, *exc_tb = NULL;
 	PyErr_Fetch( &exc_typ, &exc_val, &exc_tb);
 	PyErr_NormalizeException( &exc_typ, &exc_val, &exc_tb);
@@ -192,12 +192,12 @@ PYXPCOM_EXPORT PRBool PyXPCOM_FormatCurrentException(nsCString &streamout)
 	return ok;
 }
 
-PYXPCOM_EXPORT PRBool PyXPCOM_FormatGivenException(nsCString &streamout,
+PYXPCOM_EXPORT bool PyXPCOM_FormatGivenException(nsCString &streamout,
 				    PyObject *exc_typ, PyObject *exc_val,
 				    PyObject *exc_tb)
 {
 	if (!exc_typ)
-		return PR_FALSE;
+		return false;
 	streamout += "\n";
 
 	if (exc_tb) {
@@ -225,7 +225,7 @@ PYXPCOM_EXPORT PRBool PyXPCOM_FormatGivenException(nsCString &streamout,
 		} else
 			streamout += "Can't convert exception value to a string!";
 	}
-	return PR_TRUE;
+	return true;
 }
 
 PYXPCOM_EXPORT void PyXPCOM_LogError(const char *fmt, ...)

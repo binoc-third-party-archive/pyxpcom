@@ -134,7 +134,7 @@ static PyObject *PyGetParent(PyObject *self, PyObject *args)
 	Py_END_ALLOW_THREADS;
 	if ( NS_FAILED(r) )
 		return PyXPCOM_BuildPyException(r);
-	return Py_nsISupports::PyObjectFromInterface(pRet, NS_GET_IID(nsIInterfaceInfo), PR_FALSE);
+	return Py_nsISupports::PyObjectFromInterface(pRet, NS_GET_IID(nsIInterfaceInfo), false);
 }
 
 static PyObject *PyGetMethodCount(PyObject *self, PyObject *args)
@@ -250,29 +250,29 @@ static PyObject *PyGetConstant(PyObject *self, PyObject *args)
 	return PyObject_FromXPTConstant(pRet);
 }
 
-static PRBool __GetMethodInfoHelper(nsIInterfaceInfo *pii, int mi, int pi, const nsXPTMethodInfo **ppmi)
+static bool __GetMethodInfoHelper(nsIInterfaceInfo *pii, int mi, int pi, const nsXPTMethodInfo **ppmi)
 {
 	PRUint16 nmethods=0;
 	pii->GetMethodCount(&nmethods);
 	if (mi<0 || mi>=nmethods) {
 		PyErr_SetString(PyExc_ValueError, "The method index is out of range");
-		return PR_FALSE;
+		return false;
 	}
 	const nsXPTMethodInfo *pmi;
 	nsresult r = pii->GetMethodInfo(mi, &pmi);
 	if ( NS_FAILED(r) ) {
 		PyXPCOM_BuildPyException(r);
-		return PR_FALSE;
+		return false;
 	}
 
 	int nparams=0;
 	nparams = pmi->GetParamCount();
 	if (pi<0 || pi>=nparams) {
 		PyErr_SetString(PyExc_ValueError, "The param index is out of range");
-		return PR_FALSE;
+		return false;
 	}
 	*ppmi = pmi;
-	return PR_TRUE;
+	return true;
 }
 
 static PyObject *PyGetInfoForParam(PyObject *self, PyObject *args)

@@ -56,7 +56,7 @@ static PyObject *g_obFuncMakeInterfaceCount = NULL; // XXX - never released!!!
 PYXPCOM_EXPORT PyObject *
 PyObject_FromNSInterface(nsISupports *aInterface,
                          const nsIID &iid, 
-                         PRBool bMakeNicePyObject /*= PR_TRUE */)
+                         bool bMakeNicePyObject /*= true */)
 {
 	return Py_nsISupports::PyObjectFromInterface(aInterface, iid,
 	                                             bMakeNicePyObject);
@@ -162,14 +162,14 @@ Py_nsISupports::Constructor(nsISupports *pInitObj, const nsIID &iid)
 				       type);
 }
 
-PRBool
+bool
 Py_nsISupports::InterfaceFromPyISupports(PyObject *ob, 
                                          const nsIID &iid, 
                                          nsISupports **ppv)
 {
 	*ppv = NULL;
 	nsISupports *pis;
-	PRBool rc = PR_FALSE;
+	bool rc = false;
 	if ( !Check(ob) )
 	{
 		PyErr_Format(PyExc_TypeError, "Objects of type '%s' can not be used as COM objects", ob->ob_type->tp_name);
@@ -207,17 +207,17 @@ Py_nsISupports::InterfaceFromPyISupports(PyObject *ob,
 			/* note: the QI added a ref for the return value */
 		}
 	}
-	rc = PR_TRUE;
+	rc = true;
 done:
 	return rc;
 }
 
-PRBool
+bool
 Py_nsISupports::InterfaceFromPyObject(PyObject *ob, 
 					   const nsIID &iid, 
 					   nsISupports **ppv, 
-					   PRBool bNoneOK,
-					   PRBool bTryAutoWrap /* = PR_TRUE */)
+					   bool bNoneOK,
+					   bool bTryAutoWrap /* = true */)
 {
 	//PyObject *r = PyObject_Repr(ob);
 	//if (r!=NULL) {
@@ -232,19 +232,19 @@ Py_nsISupports::InterfaceFromPyObject(PyObject *ob,
 		// don't overwrite an error message
 		if ( !PyErr_Occurred() )
 			PyErr_SetString(PyExc_TypeError, "The Python object is invalid");
-		return PR_FALSE;
+		return false;
 	}
 	if ( ob == Py_None )
 	{
 		if ( bNoneOK )
 		{
 			*ppv = NULL;
-			return PR_TRUE;
+			return true;
 		}
 		else
 		{
 			PyErr_SetString(PyExc_TypeError, "None is not a invalid interface object in this context");
-			return PR_FALSE;
+			return false;
 		}
 	}
 
@@ -258,7 +258,7 @@ Py_nsISupports::InterfaceFromPyObject(PyObject *ob,
 			} else {
 				if (InterfaceFromPyISupports(sub_ob, iid, ppv)) {
 					Py_DECREF(sub_ob);
-					return PR_TRUE;
+					return true;
 				}
 				PyErr_Clear();
 				Py_DECREF(sub_ob);
@@ -267,10 +267,10 @@ Py_nsISupports::InterfaceFromPyObject(PyObject *ob,
 		nsresult nr = PyObject_AsVariant(ob, (nsIVariant **)ppv);
 		if (NS_FAILED(nr)) {
 			PyXPCOM_BuildPyException(nr);
-			return PR_FALSE;
+			return false;
 		}
 		NS_ASSERTION(ppv != nullptr, "PyObject_AsVariant worked but gave null!");
-		return PR_TRUE;
+		return true;
 	}
 	// end of variant support.
 
@@ -283,14 +283,14 @@ Py_nsISupports::InterfaceFromPyObject(PyObject *ob,
 				// Try and auto-wrap it - errors will leave Py exception set,
 				return PyXPCOM_XPTStub::AutoWrapPythonInstance(ob, iid, ppv);
 			PyErr_SetString(PyExc_TypeError, "The Python instance can not be converted to an XPCOM object");
-			return PR_FALSE;
+			return false;
 		} else
 			ob = use_ob;
 
 	} else {
 		Py_INCREF(ob);
 	}
-	PRBool rc = InterfaceFromPyISupports(ob, iid, ppv);
+	bool rc = InterfaceFromPyISupports(ob, iid, ppv);
 	Py_DECREF(ob);
 	return rc;
 }
@@ -314,8 +314,8 @@ Py_nsISupports::RegisterInterface( const nsIID &iid, PyTypeObject *t)
 /*static */PyObject *
 Py_nsISupports::PyObjectFromInterface(nsISupports *pis, 
 				      const nsIID &riid, 
-				      PRBool bMakeNicePyObject, /* = PR_TRUE */
-				      PRBool bIsInternalCall /* = PR_FALSE */)
+				      bool bMakeNicePyObject, /* = true */
+				      bool bIsInternalCall /* = false */)
 {
 	// Quick exit.
 	if (pis==NULL) {
@@ -450,7 +450,7 @@ Py_nsISupports::QueryInterface(PyObject *self, PyObject *args)
 		return PyXPCOM_BuildPyException(r);
 
 	/* Return a type based on the IID (with no extra ref) */
-	return ((Py_nsISupports *)self)->MakeInterfaceResult(pis, iid, (PRBool)bWrap);
+	return ((Py_nsISupports *)self)->MakeInterfaceResult(pis, iid, (bool)bWrap);
 }
 
 

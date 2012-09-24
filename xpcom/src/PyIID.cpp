@@ -94,19 +94,19 @@ PYXPCOM_EXPORT PyObject *PyXPCOMMethod_IID(PyObject *self, PyObject *args)
 	return new Py_nsIID(iid);
 }
 
-/*static*/ PRBool
+/*static*/ bool
 Py_nsIID::IIDFromPyObject(PyObject *ob, nsIID *pRet) {
-	PRBool ok = PR_TRUE;
+	bool ok = true;
 	nsIID iid;
 	if (ob==NULL) {
 		PyErr_SetString(PyExc_RuntimeError, "The IID object is invalid!");
-		return PR_FALSE;
+		return false;
 	}
 	if (PyString_Check(ob)) {
 		ok = iid.Parse(PyString_AsString(ob));
 		if (!ok) {
 			PyErr_SetString(PyExc_ValueError, "The string is formatted as a valid nsID");
-			return PR_FALSE;
+			return false;
 		}
 	} else if (ob->ob_type == &type) {
 		iid = ((Py_nsIID *)ob)->m_iid;
@@ -115,18 +115,18 @@ Py_nsIID::IIDFromPyObject(PyObject *ob, nsIID *pRet) {
 		PyObject *use_ob = PyObject_GetAttrString(ob, "_iidobj_");
 		if (use_ob==NULL) {
 			PyErr_SetString(PyExc_TypeError, "Only instances with _iidobj_ attributes can be used as IID objects");
-			return PR_FALSE;
+			return false;
 		}
 		if (use_ob->ob_type != &type) {
 			Py_DECREF(use_ob);
 			PyErr_SetString(PyExc_TypeError, "instance _iidobj_ attributes must be raw IID object");
-			return PR_FALSE;
+			return false;
 		}
 		iid = ((Py_nsIID *)use_ob)->m_iid;
 		Py_DECREF(use_ob);
 	} else {
 		PyErr_Format(PyExc_TypeError, "Objects of type '%s' can not be converted to an IID", ob->ob_type->tp_name);
-		ok = PR_FALSE;
+		ok = false;
 	}
 	if (ok) *pRet = iid;
 	return ok;

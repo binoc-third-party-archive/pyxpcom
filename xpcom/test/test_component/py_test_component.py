@@ -274,7 +274,7 @@ class PythonTestComponent:
     def CheckInterfaceArray(self, interfaces):
         # void CheckInterfaceArray(in PRUint32 count,
         #                          [array, size_is(count)] in nsISupports data,
-        #                          [retval] out PRBool all_non_null);
+        #                          [retval] out bool all_non_null);
         ret = 1
         for i in interfaces:
             if i is None:
@@ -296,7 +296,7 @@ class PythonTestComponent:
     def CheckIIDArray(self, data):
         # void CheckIIDArray(in PRUint32 count,
         #                          [array, size_is(count)] in nsIIDRef data,
-        #                          [retval] out PRBool all_mine);
+        #                          [retval] out bool all_mine);
         ret = 1
         for i in data:
             if i!= self._com_interfaces_ and i != self._reg_clsid_:

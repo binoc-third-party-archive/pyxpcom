@@ -90,7 +90,7 @@ PyG_nsIModule::GetClassObject(nsIComponentManager *aCompMgr,
 	Py_XDECREF(iid);
 	Py_XDECREF(clsid);
 	if (NS_SUCCEEDED(nr)) {
-		nr = Py_nsISupports::InterfaceFromPyObject(ret, aIID, (nsISupports **)r_classObj, PR_FALSE);
+		nr = Py_nsISupports::InterfaceFromPyObject(ret, aIID, (nsISupports **)r_classObj, false);
 		if (PyErr_Occurred())
 			nr = HandleNativeGatewayError(methodName);
 	}
@@ -143,7 +143,7 @@ PyG_nsIModule::CanUnload(nsIComponentManager *aCompMgr, bool *okToUnload)
 	NS_PRECONDITION(okToUnload, "null pointer");
 	CEnterLeavePython _celp;
 	// we are shutting down - don't ask for a nice wrapped object.
-	PyObject *cm = PyObject_FromNSInterface(aCompMgr, NS_GET_IID(nsIComponentManager), PR_FALSE);
+	PyObject *cm = PyObject_FromNSInterface(aCompMgr, NS_GET_IID(nsIComponentManager), false);
 	const char *methodName = "canUnload";
 	PyObject *ret = NULL;
 	nsresult nr = InvokeNativeViaPolicy(methodName, &ret, "O", cm);

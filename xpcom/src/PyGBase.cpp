@@ -77,7 +77,7 @@ extern PyG_Base *MakePyG_nsIInputStream(PyObject *instance);
 
 static char *PyXPCOM_szDefaultGatewayAttributeName = "_com_instance_default_gateway_";
 static PyG_Base *GetDefaultGateway(PyObject *instance);
-static PRBool CheckDefaultGateway(PyObject *real_inst, REFNSIID iid, nsISupports **ret_gateway);
+static bool CheckDefaultGateway(PyObject *real_inst, REFNSIID iid, nsISupports **ret_gateway);
 
 /*static*/ nsresult 
 PyG_Base::CreateNew(PyObject *pPyInstance, const nsIID &iid, void **ppResult)
@@ -231,13 +231,13 @@ void *PyG_Base::ThisAsIID( const nsIID &iid )
 
 // Call back into Python, passing a Python instance, and get back
 // an interface object that wraps the instance.
-/*static*/ PRBool 
+/*static*/ bool 
 PyG_Base::AutoWrapPythonInstance(PyObject *ob, const nsIID &iid, nsISupports **ppret)
 {
 	NS_PRECONDITION(ppret!=NULL, "null pointer when wrapping a Python instance!");
 	NS_PRECONDITION(ob && PyObject_HasAttrString(ob, "__class__"),
 			"AutoWrapPythonInstance is expecting a non-NULL instance!");
-	PRBool ok = PR_FALSE;
+	bool ok = false;
 	if (PR_LOG_TEST(nsPyxpcomLog, PR_LOG_DEBUG)) {
 		PyObject *r = PyObject_Repr(ob);
 		if (r!=NULL) {
@@ -254,7 +254,7 @@ PyG_Base::AutoWrapPythonInstance(PyObject *ob, const nsIID &iid, nsISupports **p
 	PyObject *args = NULL;
 	// See if the instance has previously been wrapped.
 	if (CheckDefaultGateway(ob, iid, ppret)) {
-		ok = PR_TRUE; // life is good!
+		ok = true; // life is good!
 	} else {
 		if (func==NULL) { // not thread-safe, but nothing bad can happen, except an extra reference leak
 			PyObject *mod = PyImport_ImportModule("xpcom.server");
@@ -272,7 +272,7 @@ PyG_Base::AutoWrapPythonInstance(PyObject *ob, const nsIID &iid, nsISupports **p
 		if (args==NULL) goto done;
 		wrap_ret = PyEval_CallObject(func, args);
 		if (wrap_ret==NULL) goto done;
-		ok = Py_nsISupports::InterfaceFromPyObject(wrap_ret, iid, ppret, PR_FALSE, PR_FALSE);
+		ok = Py_nsISupports::InterfaceFromPyObject(wrap_ret, iid, ppret, false, false);
 #ifdef DEBUG
 		if (ok)
 		// Check we _now_ have a default gateway
@@ -338,7 +338,7 @@ PyG_Base::MakeInterfaceParam(nsISupports *pis,
 		pis->QueryInterface(iid_check, getter_AddRefs(piswrap));
 	}
 
-	obISupports = Py_nsISupports::PyObjectFromInterface(piswrap, iid_check, PR_FALSE);
+	obISupports = Py_nsISupports::PyObjectFromInterface(piswrap, iid_check, false);
 	if (!obISupports)
 		goto done;
 	if (piid==NULL) {
@@ -406,7 +406,7 @@ PyG_Base::QueryInterface(REFNSIID iid, void** ppv)
 		return m_pBaseObject->QueryInterface(iid, ppv);
 
 	// Call the Python policy to see if it (says it) supports the interface
-	PRBool supports = PR_FALSE;
+	bool supports = false;
 	{ // temp scope for Python lock
 		CEnterLeavePython celp;
 
@@ -415,7 +415,7 @@ PyG_Base::QueryInterface(REFNSIID iid, void** ppv)
 		// oblivion.
 		PyObject * this_interface_ob = Py_nsISupports::PyObjectFromInterface(
 		                                       (nsIXPTCProxy *)this,
-		                                       iid, PR_FALSE, PR_TRUE);
+		                                       iid, false, true);
 		if ( !ob || !this_interface_ob) {
 			Py_XDECREF(ob);
 			Py_XDECREF(this_interface_ob);
@@ -429,7 +429,7 @@ PyG_Base::QueryInterface(REFNSIID iid, void** ppv)
 		Py_DECREF(this_interface_ob);
 
 		if ( result ) {
-			if (Py_nsISupports::InterfaceFromPyObject(result, iid, (nsISupports **)ppv, PR_TRUE)) {
+			if (Py_nsISupports::InterfaceFromPyObject(result, iid, (nsISupports **)ppv, true)) {
 				// If OK, but NULL, _QI_ returned None, which simply means
 				// "no such interface"
 				supports = (*ppv!=NULL);
@@ -501,7 +501,7 @@ nsresult PyG_Base::HandleNativeGatewayError(const char *szMethodName)
 		// If this callback fails, we log _2_ exceptions - the error
 		// handler error, and the original error.
 
-		PRBool bProcessMainError = PR_TRUE; // set to false if our exception handler does its thing!
+		bool bProcessMainError = true; // set to false if our exception handler does its thing!
 		PyObject *exc_typ, *exc_val, *exc_tb;
 		PyErr_Fetch(&exc_typ, &exc_val, &exc_tb);
 
@@ -521,7 +521,7 @@ nsresult PyG_Base::HandleNativeGatewayError(const char *szMethodName)
 		} else if (PyInt_Check(err_result)) {
 			// The exception handler has given us the nresult.
 			rc = PyInt_AsLong(err_result);
-			bProcessMainError = PR_FALSE;
+			bProcessMainError = false;
 		} else {
 			// The exception handler succeeded, but returned other than
 			// int or None.
@@ -688,12 +688,12 @@ PyG_Base *GetDefaultGateway(PyObject *policy)
 	PyObject *ob_existing_weak = PyObject_GetAttrString(instance, PyXPCOM_szDefaultGatewayAttributeName);
 	Py_DECREF(instance);
 	if (ob_existing_weak != NULL) {
-		PRBool ok = PR_TRUE;
+		bool ok = true;
 		nsCOMPtr<nsIWeakReference> pWeakRef;
 		ok = NS_SUCCEEDED(Py_nsISupports::InterfaceFromPyObject(ob_existing_weak, 
 		                                       NS_GET_IID(nsIWeakReference), 
 		                                       getter_AddRefs(pWeakRef),
-		                                       PR_FALSE));
+		                                       false));
 		Py_DECREF(ob_existing_weak);
 		nsISupports *pip;
 		if (ok) {
@@ -707,23 +707,23 @@ PyG_Base *GetDefaultGateway(PyObject *policy)
 	return nullptr;
 }
 
-PRBool CheckDefaultGateway(PyObject *real_inst, REFNSIID iid, nsISupports **ret_gateway)
+bool CheckDefaultGateway(PyObject *real_inst, REFNSIID iid, nsISupports **ret_gateway)
 {
 	NS_ABORT_IF_FALSE(real_inst, "Did not have an _obj_ attribute");
 	if (real_inst==NULL) {
 		PyErr_Clear();
-		return PR_FALSE;
+		return false;
 	}
 	PyObject *ob_existing_weak = PyObject_GetAttrString(real_inst, PyXPCOM_szDefaultGatewayAttributeName);
 	if (ob_existing_weak != NULL) {
 		// We have an existing default, but as it is a weak reference, it
 		// may no longer be valid.  Check it.
-		PRBool ok = PR_TRUE;
+		bool ok = true;
 		nsCOMPtr<nsIWeakReference> pWeakRef;
 		ok = NS_SUCCEEDED(Py_nsISupports::InterfaceFromPyObject(ob_existing_weak, 
 		                                       NS_GET_IID(nsIWeakReference), 
 		                                       getter_AddRefs(pWeakRef), 
-		                                       PR_FALSE));
+		                                       false));
 		Py_DECREF(ob_existing_weak);
 		if (ok) {
 			Py_BEGIN_ALLOW_THREADS;
@@ -739,7 +739,7 @@ PRBool CheckDefaultGateway(PyObject *real_inst, REFNSIID iid, nsISupports **ret_
 		return ok;
 	}
 	PyErr_Clear();
-	return PR_FALSE;
+	return false;
 }
 
 PYXPCOM_EXPORT void AddDefaultGateway(PyObject *instance, nsISupports *gateway)
@@ -749,15 +749,15 @@ PYXPCOM_EXPORT void AddDefaultGateway(PyObject *instance, nsISupports *gateway)
 	NS_ABORT_IF_FALSE(real_inst, "Could not get the '_obj_' element");
 	if (!real_inst) return;
 	// the default gateway is a weak reference; we need to make sure it's still alive if it exists
-	PRBool hasValidDefaultGateway = PR_FALSE;
+	bool hasValidDefaultGateway = false;
 	PyObject *ob_old_weak = PyObject_GetAttrString(real_inst, PyXPCOM_szDefaultGatewayAttributeName);
 	if (ob_old_weak) {
 		nsCOMPtr<nsIWeakReference> pOldWeakReference;
-		PRBool success = Py_nsISupports::InterfaceFromPyObject(ob_old_weak,
+		bool success = Py_nsISupports::InterfaceFromPyObject(ob_old_weak,
 								       NS_GET_IID(nsIWeakReference),
 								       getter_AddRefs(pOldWeakReference),
-								       PR_FALSE,
-								       PR_FALSE);
+								       false,
+								       false);
 		Py_DECREF(ob_old_weak);
 		if (success) {
 			nsCOMPtr<nsISupports> supports = do_QueryReferent(pOldWeakReference);
@@ -765,7 +765,7 @@ PYXPCOM_EXPORT void AddDefaultGateway(PyObject *instance, nsISupports *gateway)
 				// the old weak reference is fine
 				NS_ASSERTION(SameCOMIdentity(supports, gateway),
 					     "A Python object has a duplicate gateway!");
-				hasValidDefaultGateway = PR_TRUE;
+				hasValidDefaultGateway = true;
 			}
 		}
 	} else
@@ -782,7 +782,7 @@ PYXPCOM_EXPORT void AddDefaultGateway(PyObject *instance, nsISupports *gateway)
 			if (pWeakReference) {
 				PyObject *ob_new_weak = Py_nsISupports::PyObjectFromInterface(pWeakReference, 
 										   NS_GET_IID(nsIWeakReference),
-										   PR_FALSE ); /* bMakeNicePyObject */
+										   false ); /* bMakeNicePyObject */
 				// pWeakReference reference consumed.
 				if (ob_new_weak) {
 					PyObject_SetAttrString(real_inst, PyXPCOM_szDefaultGatewayAttributeName, ob_new_weak);

@@ -67,7 +67,7 @@
 static PRLock *g_lockMain = nullptr;
 
 PYXPCOM_EXPORT PyObject *PyXPCOM_Error = NULL;
-PYXPCOM_EXPORT PRBool PyXPCOM_ModuleInitialized = PR_FALSE;
+PYXPCOM_EXPORT bool PyXPCOM_ModuleInitialized = false;
 
 PyXPCOM_INTERFACE_DEFINE(Py_nsIComponentManager, nsIComponentManager, PyMethods_IComponentManager)
 PyXPCOM_INTERFACE_DEFINE(Py_nsIInterfaceInfoManager, nsIInterfaceInfoManager, PyMethods_IInterfaceInfoManager)
@@ -149,7 +149,7 @@ void AddStandardPaths()
 		Py_DECREF(mod);
 }
 
-static PRBool bIsInitialized = PR_FALSE;
+static bool bIsInitialized = false;
 // Our 'entry point' into initialization - just call this any time you
 // like, and the world will be setup!
 PYXPCOM_EXPORT void
@@ -180,7 +180,7 @@ PyXPCOM_EnsurePythonEnvironment(void)
 	dlopen(PYTHON_SO,RTLD_NOW | RTLD_GLOBAL);
 #endif
 
-	PRBool bDidInitPython = !Py_IsInitialized(); // well, I will next line, anyway :-)
+	bool bDidInitPython = !Py_IsInitialized(); // well, I will next line, anyway :-)
 	if (bDidInitPython) {
 		Py_Initialize(); // NOTE: We never finalize Python!!
 #ifndef NS_DEBUG
@@ -236,7 +236,7 @@ PyXPCOM_EnsurePythonEnvironment(void)
 	Py_nsIClassInfo::InitType();
 	Py_nsIVariant::InitType();
 
-	bIsInitialized = PR_TRUE;
+	bIsInitialized = true;
 	// import the xpcom module itself to setup the loggers etc.
 	// We must do this after setting bIsInitialized, as it too tries to
 	// initialize!
@@ -253,7 +253,7 @@ void pyxpcom_construct(void)
 	// Create the lock we will use to ensure startup thread
 	// safetly, but don't actually initialize Python yet.
 	g_lockMain = PR_NewLock();
-	return; // PR_TRUE;
+	return; // true;
 }
 
 void pyxpcom_destruct(void)

@@ -55,7 +55,7 @@ static nsIVariant *GetI(PyObject *self) {
 	return (nsIVariant *)Py_nsISupports::GetI(self);
 }
 
-static PyObject *MyBool( PRBool v) {
+static PyObject *MyBool( bool v) {
 	PyObject *ret = v ? Py_True : Py_False;
 	Py_INCREF(ret);
 	return ret;
