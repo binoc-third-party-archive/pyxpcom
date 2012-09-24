@@ -450,7 +450,21 @@ protected:
 		moz_free(buf);
 	}
 	#else
-	#error implement me
+	template<typename T>
+	MOZ_INLINE T* Alloc(T*& dest, size_t count) {
+		dest = reinterpret_cast<T*>(moz_calloc(sizeof(T), count));
+		return new (dest) T[count]();
+	}
+	MOZ_INLINE void* Alloc(size_t size, size_t count) {
+		return moz_calloc(size, count);
+	}
+	template<typename T>
+	MOZ_INLINE void Free(T* buf) {
+		delete[] buf;
+	}
+	MOZ_INLINE void Free(void* buf) {
+		moz_free(buf);
+	}
 	#endif
 
 	PyObject *m_pyparams; // sequence of actual params passed (ie, not including hidden)
