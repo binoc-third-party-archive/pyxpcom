@@ -480,7 +480,7 @@ bool FillSingleArray(void *array_ptr, PyObject *sequence_ob, PRUint32 sequence_s
 				// We do allow NULL here, even tho doing so will no-doubt crash some objects.
 				// (but there will certainly be objects out there that will allow NULL :-(
 				nsISupports *pnew;
-				if (!Py_nsISupports::InterfaceFromPyObject(val, iid, &pnew, PR_TRUE))
+				if (!Py_nsISupports::InterfaceFromPyObject(val, iid, &pnew, true))
 					BREAK_FALSE;
 				nsISupports **pp = (nsISupports **)pthis;
 				MOZ_ASSERT(*pp == nullptr, "Existing interface?");
@@ -1107,9 +1107,6 @@ PyXPCOM_InterfaceVariantHelper::~PyXPCOM_InterfaceVariantHelper()
 					CleanupParam(p[j], array_type);
 				}
 			}
-			//uint32_t seq_size = GetLengthIs(i);
-			//FreeSingleArray(ns_v.val.p, seq_size, mPyTypeDesc[i].array_type);
-			//CleanupParam(ns_v, array_type);
 			moz_free(ns_v.val.p);
 		} else {
 			if (ns_v.DoesValNeedCleanup()) {
@@ -1597,7 +1594,7 @@ bool PyXPCOM_InterfaceVariantHelper::FillInVariant(const PythonTypeDescriptor &t
 		if (!Py_nsISupports::InterfaceFromPyObject(val,
 		                                           iid,
 		                                           (nsISupports **)&ns_v.val.p,
-		                                           PR_TRUE))
+		                                           true))
 			BREAK_FALSE;
 		// We have added a reference - flag as such for cleanup.
 		ns_v.SetValNeedsCleanup();

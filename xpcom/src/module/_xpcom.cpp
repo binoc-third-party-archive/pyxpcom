@@ -203,6 +203,7 @@ PyXPCOMMethod_NS_InvokeByIndex(PyObject *self, PyObject *args)
  * @param iid the IID to wrap as
  * @param bWrapClient [default true] whether to allow extra wrapping for Python
  * 	consumers
+ * @note This always creates a new wrapper, which is unlikely to be what you want
  */
 static PyObject *
 PyXPCOMMethod_WrapObject(PyObject *self, PyObject *args)
