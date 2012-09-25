@@ -1732,7 +1732,7 @@ bool PyXPCOM_InterfaceVariantHelper::PrepareOutVariant(const PythonTypeDescripto
 		if (!ns_v.DoesValNeedCleanup()) {
 			MOZ_ASSERT(!td.IsIn(), "got to an allocating type, but is in?");
 			MOZ_ASSERT(!ns_v.val.p, "Garbage in our pointer?");
-			#warning This code is suspcious; double check what it's doing
+			//#warning This code is suspcious; double check what it's doing
 			ns_v.val.p = Alloc(sizeof(void*), 1);
 			ns_v.SetValNeedsCleanup();
 		} else {
