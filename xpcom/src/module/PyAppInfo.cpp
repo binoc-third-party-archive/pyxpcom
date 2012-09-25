@@ -188,11 +188,14 @@ PyAppInfo::GetXPCOMABI(nsACString & aXPCOMABI)
 NS_IMETHODIMP
 PyAppInfo::GetWidgetToolkit(nsACString & aWidgetToolkit)
 {
+    /* MOZ_WIDGET_TOOLKIT is not set by configure, so not implemented for now.
     if (sizeof(NS_STRINGIFY(MOZ_WIDGET_TOOLKIT) "") <= 1) {
       return NS_ERROR_NOT_AVAILABLE;
     }
     aWidgetToolkit.AssignLiteral(NS_STRINGIFY(MOZ_WIDGET_TOOLKIT));
     return NS_OK;
+    */
+    return NS_ERROR_NOT_IMPLEMENTED;
 }
 
 /* readonly attribute unsigned long processType; */
