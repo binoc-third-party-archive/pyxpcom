@@ -80,13 +80,11 @@ ifeq ($(OS_ARCH),Darwin)
                      $(LIBXUL_DIST)/lib/XUL \
                      $(NULL)
 else ifeq ($(OS_ARCH),WINNT)
-  EXTRA_DSO_LDOPTS += $(LIBXUL_DIST)/lib/$(LIB_PREFIX)xpcomglue_s.$(LIB_SUFFIX) \
-                      $(LIBXUL_DIST)/lib/$(LIB_PREFIX)mozalloc.$(LIB_SUFFIX) \
-                      $(XPCOM_FROZEN_LDOPTS) \
-		      $(XPCOM_GLUE_LDOPTS) \
-		      $(MOZ_COMPONENT_LIBS) \
-                      $(call EXPAND_LIBNAME_PATH,xul,$(DIST)/lib) \
-		      $(NULL)
+  EXTRA_DSO_LDOPTS += $(XPCOM_GLUE_LDOPTS) \
+                      $(MOZ_COMPONENT_LIBS) \
+                      $(LIBXUL_DIST)/lib/mozalloc.$(LIB_SUFFIX) \
+                      $(LIBXUL_DIST)/lib/xul.$(LIB_SUFFIX) \
+                      $(NULL)
 else
   EXTRA_DSO_LDOPTS += $(XPCOM_GLUE_LDOPTS) \
                       $(MOZ_COMPONENT_LIBS) \
