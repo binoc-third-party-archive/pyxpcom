@@ -63,9 +63,8 @@
 #define WIN32_LEAN_AND_MEAN
 #endif
 #include "windows.h"
-#elif defined(XP_UNIX)
-#include "prenv.h"
 #endif
+#include "prenv.h"
 
 #include "nsIEventTarget.h"
 #include "PyAppInfo.h"
