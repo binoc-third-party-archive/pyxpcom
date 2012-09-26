@@ -102,6 +102,12 @@ typedef int Py_ssize_t;
 #   define PYXPCOM_EXPORT NS_IMPORT
 #endif // BUILD_PYXPCOM
 
+#ifdef DEBUG
+	/* for Alloc/Free (memory leak tracking) */
+#	include <nsClassHashtable.h>
+#	include <mozilla/Mutex.h>
+#endif
+
 // An IID we treat as NULL when passing as a reference.
 extern PYXPCOM_EXPORT nsIID Py_nsIID_NULL;
 
@@ -376,12 +382,62 @@ public:
 	static NS_EXPORT_STATIC_MEMBER_(PyMethodDef) methods[];
 };
 
+
+/**
+ * Helper class for leak tracking
+ * Pretty much debug-only
+ */
+class PyXPCOM_AllocHelper {
+protected:
+	#ifdef DEBUG
+	PyXPCOM_AllocHelper() : mAllocMutex("mAllocMutex") {
+		mAllocations.Init();
+	}
+	~PyXPCOM_AllocHelper();
+	struct LineRef {
+		const char* file;
+		const unsigned line;
+		LineRef(const char* aFile, const unsigned aLine)
+			: file(aFile), line(aLine) {}
+	};
+	nsClassHashtable<nsPtrHashKey<void>, LineRef> mAllocations;
+	mozilla::Mutex mAllocMutex;
+	template<typename T> MOZ_INLINE
+	T* Alloc(T*& dest, size_t count, const char* file, const unsigned line);
+	MOZ_INLINE void* Alloc(size_t size, size_t count, const char* file, const unsigned line);
+	MOZ_INLINE void MarkAlloc(void* buf, const char* file, const unsigned line);
+	template<typename T> MOZ_INLINE void Free(T* buf);
+	MOZ_INLINE void Free(void* buf);
+	MOZ_INLINE void MarkFree(void* buf);
+	static PLDHashOperator ReadAllocation(void* key, LineRef* value, void* userData);
+	#else
+	template<typename T>
+	MOZ_INLINE T* Alloc(T*& dest, size_t count, const char*, const unsigned) {
+		dest = reinterpret_cast<T*>(moz_calloc(sizeof(T), count));
+		return new (dest) T[count]();
+	}
+	MOZ_INLINE void* Alloc(size_t size, size_t count, const char*, const unsigned) {
+		return moz_calloc(size, count);
+	}
+	MOZ_INLINE void MarkAlloc(void*, const char*, const unsigned) {}
+	template<typename T>
+	MOZ_INLINE void Free(T* buf) {
+		delete[] buf;
+	}
+	MOZ_INLINE void Free(void* buf) {
+		moz_free(buf);
+	}
+	MOZ_INLINE void MarkFree(void* buf) {}
+	#endif
+};
+
+
 ///////////////////////////////////////////////////////
 //
 // Helper classes for managing arrays of variants.
 class PythonTypeDescriptor; // Forward declare.
 
-class PYXPCOM_EXPORT PyXPCOM_InterfaceVariantHelper {
+class PYXPCOM_EXPORT PyXPCOM_InterfaceVariantHelper : public PyXPCOM_AllocHelper {
 public:
 	PyXPCOM_InterfaceVariantHelper(Py_nsISupports *parent);
 	~PyXPCOM_InterfaceVariantHelper();
@@ -430,28 +486,7 @@ protected:
 	/**
 	 * Clean up a single nsXPTCMiniVariant (free memory as appropriate)
 	 */
-	static void CleanupParam(void* p, nsXPTType& type);
-
-	// These are to help track down leaks
-	#ifdef DEBUG
-	template<typename T>
-	MOZ_INLINE T* Alloc(T*& dest, size_t count) {
-		dest = reinterpret_cast<T*>(moz_calloc(sizeof(T), count));
-		return new (dest) T[count]();
-	}
-	MOZ_INLINE void* Alloc(size_t size, size_t count) {
-		return moz_calloc(size, count);
-	}
-	template<typename T>
-	MOZ_INLINE void Free(T* buf) {
-		delete[] buf;
-	}
-	MOZ_INLINE void Free(void* buf) {
-		moz_free(buf);
-	}
-	#else
-	#error implement me
-	#endif
+	void CleanupParam(void* p, nsXPTType& type);
 
 	PyObject *m_pyparams; // sequence of actual params passed (ie, not including hidden)
 
@@ -618,7 +653,7 @@ public:
 
 
 // Helpers classes for our gateways.
-class PYXPCOM_EXPORT PyXPCOM_GatewayVariantHelper
+class PYXPCOM_EXPORT PyXPCOM_GatewayVariantHelper : public PyXPCOM_AllocHelper
 {
 public:
 	PyXPCOM_GatewayVariantHelper( PyG_Base *gateway,
@@ -661,8 +696,7 @@ private:
 	nsXPTCMiniVariant* m_params;
 	const XPTMethodDescriptor *m_info;
 	int m_method_index;
-	PythonTypeDescriptor *m_python_type_desc_array;
-	int m_num_type_descs;
+	nsTArray<PythonTypeDescriptor> mPyTypeDesc;
 	nsCOMPtr<nsIInterfaceInfo> m_interface_info;
 };
 
