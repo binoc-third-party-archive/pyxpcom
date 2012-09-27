@@ -929,6 +929,11 @@ static bool ProcessPythonTypeDescriptors(PythonTypeDescriptor *pdescs, int num,
 		MOZ_ASSERT_IF(ptd.IsDipper(), ptd.IsDipperType());
 		MOZ_ASSERT_IF(ptd.IsDipper(), !ptd.IsOut());
 		MOZ_ASSERT_IF(ptd.IsDipperType(), !ptd.IsOut());
+		if (ptd.IsDipper() && !(ptd.IsIn() || ptd.IsOut())) {
+			// This is broken. Dippers should be 'in'.  See the xptypelib spec.
+			ptd.param_flags |= XPT_PD_IN;
+		}
+		MOZ_ASSERT(ptd.IsIn() || ptd.IsOut());
 		if (ptd.IsIn() && ptd.IsRetval() && !ptd.IsDipper()) {
 			PyErr_Format(PyExc_ValueError,
 			             "'[retval] in' parameter in position %i makes no sense!",
@@ -984,6 +989,98 @@ static bool ProcessPythonTypeDescriptors(PythonTypeDescriptor *pdescs, int num,
 	return true;
 }
 
+#ifdef DEBUG
+// Allocator wrappers (to debug leaks)
+template<typename T>
+T* PyXPCOM_AllocHelper::Alloc(T*& dest, size_t count,
+										 const char* file, const unsigned line)
+{
+	mozilla::MutexAutoLock lock(mAllocMutex);
+	dest = reinterpret_cast<T*>(moz_calloc(sizeof(T), count));
+	//fprintf(stderr, "ALLOC: %12p [%12p/%12p] @%u\n", dest, this, &mAllocations, __LINE__);
+	mAllocations.Put(reinterpret_cast<void*>(dest),
+			 new LineRef(file, line));
+	return new (dest) T[count]();
+}
+void* PyXPCOM_AllocHelper::Alloc(size_t size, size_t count,
+											const char* file, const unsigned line)
+{
+	mozilla::MutexAutoLock lock(mAllocMutex);
+	void* result = moz_calloc(size, count);
+	//fprintf(stderr, "ALLOC: %12p [%12p/%12p] @%u\n", result, this, &mAllocations, __LINE__);
+	mAllocations.Put(result,
+			 new LineRef(file, line));
+	return result;
+}
+void PyXPCOM_AllocHelper::MarkAlloc(void* buf, const char* file,
+											   const unsigned line)
+{
+	mozilla::MutexAutoLock lock(mAllocMutex);
+	//fprintf(stderr, "ALLOC: %12p [%12p/%12p] @%u\n", buf, this, &mAllocations, __LINE__);
+	mAllocations.Put(buf, new LineRef(file, line));
+}
+template<typename T>
+void PyXPCOM_AllocHelper::Free(T* buf) {
+	mozilla::MutexAutoLock lock(mAllocMutex);
+	//fprintf(stderr, "FREE: %12p [%12p/%12p] @%u\n", buf, this, &mAllocations, __LINE__);
+	mAllocations.Remove(reinterpret_cast<void*>(buf));
+	delete[] buf;
+}
+void PyXPCOM_AllocHelper::Free(void* buf) {
+	mozilla::MutexAutoLock lock(mAllocMutex);
+	//fprintf(stderr, "FREE: %12p [%12p/%12p] @%u\n", buf, this, &mAllocations, __LINE__);
+	mAllocations.Remove(buf);
+	moz_free(buf);
+}
+void PyXPCOM_AllocHelper::MarkFree(void* buf) {
+	mozilla::MutexAutoLock lock(mAllocMutex);
+	//fprintf(stderr, "FREE: %12p [%12p/%12p] @%u\n", buf, this, &mAllocations, __LINE__);
+	mAllocations.Remove(buf);
+}
+PLDHashOperator PyXPCOM_AllocHelper::ReadAllocation(void* key,
+													LineRef* value,
+													void* userData)
+{
+	fprintf(stderr, "ERROR: leaked %p @ %s:%u\n",
+			key, value->file, value->line);
+	return PLDHashOperator::PL_DHASH_NEXT;
+}
+
+PyXPCOM_AllocHelper::~PyXPCOM_AllocHelper() {
+	mozilla::MutexAutoLock lock(mAllocMutex);
+	mAllocations.EnumerateRead(ReadAllocation, nullptr);
+	MOZ_ASSERT(mAllocations.Count() == 0, "Did not free some things");
+}
+
+// Debugging helper; never called in code.  This will leak.
+char* PythonTypeDescriptor::Describe() const {
+	char* buf;
+	asprintf(&buf, "TD Type=%u ArrayType=%u [%s%s%s%s%s%s%s%s%s%s]",
+			 TypeTag(), ArrayTypeTag(),
+			 IsPointer() ? "pointer " : "",
+			 IsReference() ? "ref " : "",
+			 IsIn() ? "in " : "",
+			 IsOut() ? "out " : "",
+			 IsRetval() ? "retval " : "",
+			 IsShared() ? "shared " : "",
+			 IsDipper() ? (IsDipperType() ? "dipper " : "** DIPPER ** ") :
+						  (IsDipperType() ? "### NOT DIPPER ### " : ""),
+			 IsOptional() ? "optional " : "",
+			 IsAutoIn() ? (IsAutoSet() ? "*in " : "!in ") : "",
+			 IsAutoOut() ? (IsAutoSet() ? "*out " : "!out ") : ""
+			);
+	return buf;
+}
+char* PythonTypeDescriptor::Describe(const nsXPTCVariant& v) const {
+	char *buf;
+	asprintf(&buf, "%s[%s%s]",
+			 Describe(),
+			 v.DoesValNeedCleanup() ? "cleanup " : "",
+			 v.IsIndirect() ? "indirect " : "");
+	return buf;
+}
+#endif
+
 /*************************************************************************
 **************************************************************************
 
@@ -1009,8 +1106,28 @@ PyXPCOM_InterfaceVariantHelper::~PyXPCOM_InterfaceVariantHelper()
 	for (int i = 0; i < mDispatchParams.Length(); ++i) {
 		nsXPTCVariant &ns_v = mDispatchParams.ElementAt(i);
 
-		if (ns_v.type.TagPart() == nsXPTType::T_ARRAY) {
-			if (ns_v.DoesValNeedCleanup()) {
+		bool needsCleanup = ns_v.DoesValNeedCleanup();
+		nsXPTType type = ns_v.type;
+		if (type.IsArray()) {
+			type = nsXPTType(mPyTypeDesc[i].array_type);
+		}
+		if (mPyTypeDesc[i].IsOut()) {
+			MOZ_ASSERT(!mPyTypeDesc[i].IsDipper(), "We shouldn't have dipper outs!");
+			// For 'out'/'inout' params, we can't trust DoesValNeedCleanup() because
+			// it depends on what the callee did with it
+			if (type.IsArithmetic()) {
+				// These are stashed inside the nsXPTCVariant
+				needsCleanup = false;
+			} else {
+				needsCleanup = (ns_v.val.p != nullptr);
+			}
+		} else {
+			MOZ_ASSERT(mPyTypeDesc[i].IsIn(),
+					   "We got a param that's neither in nor out");
+		}
+
+		if (ns_v.type.IsArray()) {
+			if (needsCleanup) {
 				nsXPTType array_type(mPyTypeDesc[i].array_type);
 				uint32_t seq_size = GetLengthIs(i);
 				void** p = reinterpret_cast<void**>(ns_v.val.p);
@@ -1018,10 +1135,13 @@ PyXPCOM_InterfaceVariantHelper::~PyXPCOM_InterfaceVariantHelper()
 					CleanupParam(p[j], array_type);
 				}
 			}
-			moz_free(ns_v.val.p);
+			Free(ns_v.val.p);
 		} else {
-			if (ns_v.DoesValNeedCleanup()) {
+			if (needsCleanup) {
 				CleanupParam(ns_v.val.p, ns_v.type);
+			} else {
+				MOZ_ASSERT(!mAllocations.Get(ns_v.val.p),
+						   "Claims to not need cleanup but we allocated it!");
 			}
 		}
 	}
@@ -1355,12 +1475,14 @@ bool PyXPCOM_InterfaceVariantHelper::FillInVariant(const PythonTypeDescriptor &t
 
 	  case XPTTypeDescriptorTags::TD_PNSIID: {
 		nsIID *iid;
-		if (!Alloc(iid, 1)) {
+		if (!Alloc(iid, 1, __FILE__, __LINE__)) {
 			PyErr_NoMemory();
 			BREAK_FALSE;
 		}
-		if (!Py_nsIID::IIDFromPyObject(val, iid))
+		if (!Py_nsIID::IIDFromPyObject(val, iid)) {
+			Free(iid);
 			BREAK_FALSE;
+		}
 		ns_v.val.p = iid;
 		ns_v.SetValNeedsCleanup();
 		break;
@@ -1368,7 +1490,7 @@ bool PyXPCOM_InterfaceVariantHelper::FillInVariant(const PythonTypeDescriptor &t
 	  case XPTTypeDescriptorTags::TD_ASTRING:
 	  case XPTTypeDescriptorTags::TD_DOMSTRING: {
 		nsString *s;
-		if (!Alloc(s, 1)) {
+		if (!Alloc(s, 1, __FILE__, __LINE__)) {
 			PyErr_NoMemory();
 			BREAK_FALSE;
 		}
@@ -1384,7 +1506,7 @@ bool PyXPCOM_InterfaceVariantHelper::FillInVariant(const PythonTypeDescriptor &t
 	  case XPTTypeDescriptorTags::TD_UTF8STRING: {
 		bool bIsUTF8 = ns_v.type.TagPart() == nsXPTType::T_UTF8STRING;
 		nsCString* str;
-		if (!Alloc(str, 1)) {
+		if (!Alloc(str, 1, __FILE__, __LINE__)) {
 			PyErr_NoMemory();
 			BREAK_FALSE;
 		}
@@ -1425,6 +1547,9 @@ bool PyXPCOM_InterfaceVariantHelper::FillInVariant(const PythonTypeDescriptor &t
 		MOZ_ASSERT(!td.IsDipper(), "PSTRING shouldn't be a dipper!");
 		if (!td.IsOut() && PyString_Check(val)) {
 			ns_v.val.p = PyString_AS_STRING(val);
+			MOZ_ASSERT(!ns_v.DoesValNeedCleanup());
+			MOZ_ASSERT(!mAllocations.Get(ns_v.val.p),
+					   "We didn't allocate that string from Python!");
 			// DO NOT need cleanup
 			break;
 		}
@@ -1439,7 +1564,7 @@ bool PyXPCOM_InterfaceVariantHelper::FillInVariant(const PythonTypeDescriptor &t
 		MOZ_ASSERT(PyString_Check(val_use), "PyObject_Str didn't return a string object!");
 
 		char* str;
-		if (!Alloc(str, PyString_GET_SIZE(val_use) + 1)) {
+		if (!Alloc(str, PyString_GET_SIZE(val_use) + 1, __FILE__, __LINE__)) {
 			PyErr_NoMemory();
 			BREAK_FALSE;
 		}
@@ -1477,6 +1602,7 @@ bool PyXPCOM_InterfaceVariantHelper::FillInVariant(const PythonTypeDescriptor &t
 			BREAK_FALSE;
 		if (ns_v.val.p) {
 			// We have added a reference - flag as such for cleanup.
+			MarkAlloc(ns_v.val.p, __FILE__, __LINE__);
 			ns_v.SetValNeedsCleanup();
 		}
 		break;
@@ -1508,6 +1634,7 @@ bool PyXPCOM_InterfaceVariantHelper::FillInVariant(const PythonTypeDescriptor &t
 		                                           true))
 			BREAK_FALSE;
 		// We have added a reference - flag as such for cleanup.
+		MarkAlloc(ns_v.val.p, __FILE__, __LINE__);
 		ns_v.SetValNeedsCleanup();
 		break;
 		}
@@ -1527,7 +1654,7 @@ bool PyXPCOM_InterfaceVariantHelper::FillInVariant(const PythonTypeDescriptor &t
 
 		char* str;
 		const Py_ssize_t size = PyString_GET_SIZE(val_use);
-		if (!Alloc(str, size + 1)) {
+		if (!Alloc(str, size + 1, __FILE__, __LINE__)) {
 			PyErr_NoMemory();
 			BREAK_FALSE;
 		}
@@ -1578,7 +1705,7 @@ bool PyXPCOM_InterfaceVariantHelper::FillInVariant(const PythonTypeDescriptor &t
 
 		PRUint32 element_size = GetArrayElementSize(td.ArrayTypeTag());
 		Py_ssize_t seq_length = PySequence_Length(val);
-		ns_v.val.p = Alloc(element_size, seq_length);
+		ns_v.val.p = Alloc(element_size, seq_length, __FILE__, __LINE__);
 		if (!ns_v.val.p) {
 			PyErr_NoMemory();
 			BREAK_FALSE;
@@ -1663,6 +1790,13 @@ bool PyXPCOM_InterfaceVariantHelper::PrepareOutVariant(const PythonTypeDescripto
 	// We can be out, inout, or in [dipper]; in all cases, we need to be indirect
 	ns_v.SetIndirect();
 
+	#if DEBUG
+	if (td.IsIn() && !nsXPTType(td.TypeTag()).IsArithmetic() && ns_v.val.p) {
+		// 'inout' param; this will be freed by the callee
+		MarkFree(ns_v.val.p);
+	}
+	#endif
+
 	// Special flags based on the data type
 	switch (ns_v.type.TagPart()) {
 	  case nsXPTType::T_I8:
@@ -1718,10 +1852,13 @@ bool PyXPCOM_InterfaceVariantHelper::PrepareOutVariant(const PythonTypeDescripto
 	  case nsXPTType::T_ARRAY:
 		if (!td.IsIn()) {
 			MOZ_ASSERT(!ns_v.val.p, "Garbage in our pointer?");
-			// We wait for the callee to allocate space
+			// Don't do anything; the callee will allocate
 		} else {
 			// We've already got space (i.e. inout)
 			// Don't worry about it
+			// if we need cleanup, we have to allocate something
+			MOZ_ASSERT_IF(ns_v.DoesValNeedCleanup(),
+						  ns_v.val.p);
 		}
 		break;
 	  case nsXPTType::T_PWSTRING_SIZE_IS:
@@ -1732,52 +1869,50 @@ bool PyXPCOM_InterfaceVariantHelper::PrepareOutVariant(const PythonTypeDescripto
 		if (!ns_v.DoesValNeedCleanup()) {
 			MOZ_ASSERT(!td.IsIn(), "got to an allocating type, but is in?");
 			MOZ_ASSERT(!ns_v.val.p, "Garbage in our pointer?");
-			//#warning This code is suspcious; double check what it's doing
-			ns_v.val.p = Alloc(sizeof(void*), 1);
-			ns_v.SetValNeedsCleanup();
+			// Don't do anything; the callee will allocate
 		} else {
 			// We've already got space (i.e. inout)
 			// Don't worry about it
+			MOZ_ASSERT(ns_v.val.p, "NeedsCleanup set but nothing there!");
 		}
 		break;
 	  case nsXPTType::T_DOMSTRING:
 	  case nsXPTType::T_ASTRING: {
-		  MOZ_ASSERT(ns_v.val.p == nullptr,
-					 "T_ASTRINGs can't be out and have a value (ie, no in/outs are allowed!");
-		  MOZ_ASSERT(td.IsDipper(),
-					 "out AStrings must really be in dippers!");
-		  MOZ_ASSERT(!ns_v.DoesValNeedCleanup(),
-					 "T_ASTRING shouldn't already need cleanup!");
-		  // Dippers are really treated like "in" params.
-		  nsString * str;
-		  if (!Alloc(str, 1)) {
+		MOZ_ASSERT(ns_v.val.p == nullptr,
+				   "T_ASTRINGs can't be out and have a value (ie, no in/outs are allowed!");
+		MOZ_ASSERT(td.IsDipper(),
+				   "out AStrings must really be in dippers!");
+		MOZ_ASSERT(!ns_v.DoesValNeedCleanup(),
+				   "T_ASTRING shouldn't already need cleanup!");
+		// Dippers are really treated like "in" params.
+		nsString * str;
+		if (!Alloc(str, 1, __FILE__, __LINE__)) {
 			PyErr_NoMemory();
 			return false;
-		  } else {
-			// ns_v.ptr is the one that is read, but we free ns_v.val.p, so...
-			ns_v.ptr = ns_v.val.p = str;
-		  }
-		  break;
+		}
+		// ns_v.ptr is the one that is read, but we free ns_v.val.p, so...
+		ns_v.ptr = ns_v.val.p = str;
+		ns_v.SetValNeedsCleanup();
+		break;
 		}
 	  case nsXPTType::T_CSTRING:
 	  case nsXPTType::T_UTF8STRING: {
-		  MOZ_ASSERT(ns_v.val.p == nullptr,
-					 "T_CSTRINGs can't be out and have a value (ie, no in/outs are allowed!");
-		  MOZ_ASSERT(td.IsDipper(),
-					 "out ACStrings must really be in dippers!");
-		  MOZ_ASSERT(!ns_v.DoesValNeedCleanup(),
-					 "T_CSTRING shouldn't already need cleanup!");
-		  ns_v.SetValNeedsCleanup();
-		  // Dippers are really treated like "in" params.
-		  nsCString * str;
-		  if (!Alloc(str, 1)) {
+		MOZ_ASSERT(ns_v.val.p == nullptr,
+				   "T_CSTRINGs can't be out and have a value (ie, no in/outs are allowed!");
+		MOZ_ASSERT(td.IsDipper(),
+				   "out ACStrings must really be in dippers!");
+		MOZ_ASSERT(!ns_v.DoesValNeedCleanup(),
+				   "T_CSTRING shouldn't already need cleanup!");
+		// Dippers are really treated like "in" params.
+		nsCString * str;
+		if (!Alloc(str, 1, __FILE__, __LINE__)) {
 			PyErr_NoMemory();
 			return false;
-		  } else {
-			// ns_v.ptr is the one that is read, but we free ns_v.val.p, so...
-			ns_v.ptr = ns_v.val.p = str;
-		  }
-		  break;
+		}
+		// ns_v.ptr is the one that is read, but we free ns_v.val.p, so...
+		ns_v.ptr = ns_v.val.p = str;
+		ns_v.SetValNeedsCleanup();
+		break;
 		}
 	  case nsXPTType::T_JSVAL:
 		PyErr_Format(PyExc_ValueError,
@@ -1907,6 +2042,8 @@ PyObject *PyXPCOM_InterfaceVariantHelper::MakeSinglePythonResult(int index)
 			ret = PyObject_FromVariant(m_parent, (nsIVariant *)iret);
 		else
 			ret = m_parent->MakeInterfaceResult(iret, td.iid);
+		NS_IF_RELEASE(iret);
+		ns_v.val.p = nullptr;
 		break;
 		}
 	  case nsXPTType::T_INTERFACE_IS: {
@@ -1932,12 +2069,15 @@ PyObject *PyXPCOM_InterfaceVariantHelper::MakeSinglePythonResult(int index)
 			NS_ERROR("Failed to get the IID for T_INTERFACE_IS!");
 			iid = NS_GET_IID(nsISupports);
 		}
+		MOZ_ASSERT(ns_v.ptr == &ns_v.val.p);
 		nsISupports *iret = *reinterpret_cast<nsISupports **>(ns_v.ptr);
 		if (iid.Equals(NS_GET_IID(nsIVariant))) {
 			ret = PyObject_FromVariant(m_parent, reinterpret_cast<nsIVariant *>(iret));
 		} else {
 			ret = m_parent->MakeInterfaceResult(iret, iid);
 		}
+		NS_IF_RELEASE(iret);
+		ns_v.val.p = nullptr;
 		break;
 		}
 	  case nsXPTType::T_ARRAY: {
@@ -2043,15 +2183,15 @@ PyObject *PyXPCOM_InterfaceVariantHelper::MakePythonResult()
 			if (!mPyTypeDesc[i].IsAutoOut()) {
 				if (mPyTypeDesc[i].IsOut() || mPyTypeDesc[i].IsDipper()) {
 					PyObject *val = MakeSinglePythonResult(i);
-					if (val==NULL) {
+					if (!val) {
 						Py_XDECREF(ret);
-						return NULL;
+						return nullptr;
 					}
 					if (n_results > 1) {
 						PyTuple_SET_ITEM(ret, ret_index, val);
 						ret_index++;
 					} else {
-						NS_ABORT_IF_FALSE(ret==NULL, "shouldnt already have a ret!");
+						MOZ_ASSERT(!ret, "shouldn't already have a ret!");
 						ret = val;
 					}
 				}
@@ -2062,7 +2202,6 @@ PyObject *PyXPCOM_InterfaceVariantHelper::MakePythonResult()
 	return ret;
 }
 
-/* static */
 void PyXPCOM_InterfaceVariantHelper::CleanupParam(void* p, nsXPTType& type)
 {
 	if (!p) {
@@ -2072,26 +2211,36 @@ void PyXPCOM_InterfaceVariantHelper::CleanupParam(void* p, nsXPTType& type)
         case XPTTypeDescriptorTags::TD_INTERFACE_TYPE:
         case XPTTypeDescriptorTags::TD_INTERFACE_IS_TYPE:
 			// MUST release thread-lock, incase a Python COM object that re-acquires.
+			MarkFree(p);
 			Py_BEGIN_ALLOW_THREADS;
 			reinterpret_cast<nsISupports*>(p)->Release();
+			MarkFree(p);
 			Py_END_ALLOW_THREADS;
 			break;
         case XPTTypeDescriptorTags::TD_ASTRING:
         case XPTTypeDescriptorTags::TD_DOMSTRING:
 			delete reinterpret_cast<const nsString*>(p);
+			MarkFree(p);
 			break;
         case XPTTypeDescriptorTags::TD_CSTRING:
         case XPTTypeDescriptorTags::TD_UTF8STRING:
-				delete reinterpret_cast<const nsCString*>(p);
+			delete reinterpret_cast<const nsCString*>(p);
+			MarkFree(p);
 			break;
         case XPTTypeDescriptorTags::TD_PNSIID:
-			moz_free(p);
+			Free(p);
 			break;
         case XPTTypeDescriptorTags::TD_ARRAY:
 			MOZ_NOT_REACHED("CleanupParam doesn't support arrays");
 			break;
         case XPTTypeDescriptorTags::TD_JSVAL:
 			MOZ_ASSERT(false, "PyXPCOM shouldn't be playing with jsvals");
+			break;
+        case XPTTypeDescriptorTags::TD_PSTRING:
+        case XPTTypeDescriptorTags::TD_PWSTRING:
+        case XPTTypeDescriptorTags::TD_PSTRING_SIZE_IS:
+        case XPTTypeDescriptorTags::TD_PWSTRING_SIZE_IS:
+			Free(p);
 			break;
         case XPTTypeDescriptorTags::TD_INT8:
         case XPTTypeDescriptorTags::TD_INT16:
@@ -2107,10 +2256,6 @@ void PyXPCOM_InterfaceVariantHelper::CleanupParam(void* p, nsXPTType& type)
         case XPTTypeDescriptorTags::TD_CHAR:
         case XPTTypeDescriptorTags::TD_WCHAR:
         case XPTTypeDescriptorTags::TD_VOID:
-        case XPTTypeDescriptorTags::TD_PSTRING:
-        case XPTTypeDescriptorTags::TD_PWSTRING:
-        case XPTTypeDescriptorTags::TD_PSTRING_SIZE_IS:
-        case XPTTypeDescriptorTags::TD_PWSTRING_SIZE_IS:
 			// These don't need to be freed
 			break;
 		default:
@@ -2127,7 +2272,10 @@ void PyXPCOM_InterfaceVariantHelper::CleanupParam(void* p, nsXPTType& type)
 **************************************************************************
 *************************************************************************/
 
-PyXPCOM_GatewayVariantHelper::PyXPCOM_GatewayVariantHelper( PyG_Base *gw, int method_index, const XPTMethodDescriptor *info, nsXPTCMiniVariant* params )
+PyXPCOM_GatewayVariantHelper::PyXPCOM_GatewayVariantHelper(PyG_Base *gw,
+                                                           int method_index,
+                                                           const XPTMethodDescriptor *info,
+                                                           nsXPTCMiniVariant* params)
 {
 	m_params = params;
 	m_info = info;
@@ -2135,53 +2283,46 @@ PyXPCOM_GatewayVariantHelper::PyXPCOM_GatewayVariantHelper( PyG_Base *gw, int me
 	// a single gateway invocation
 	m_gateway = gw; 
 	m_method_index = method_index;
-	m_python_type_desc_array = NULL;
-	m_num_type_descs = 0;
-	m_interface_info=nullptr;
 }
 
 PyXPCOM_GatewayVariantHelper::~PyXPCOM_GatewayVariantHelper()
 {
-	delete [] m_python_type_desc_array;
 }
 
 PyObject *PyXPCOM_GatewayVariantHelper::MakePyArgs()
 {
-	NS_PRECONDITION(sizeof(XPTParamDescriptor) == sizeof(nsXPTParamInfo),
-					"We depend on nsXPTParamInfo being a wrapper over the XPTParamDescriptor struct");
+	MOZ_STATIC_ASSERT(sizeof(XPTParamDescriptor) == sizeof(nsXPTParamInfo),
+	                  "We depend on nsXPTParamInfo being a wrapper over the XPTParamDescriptor struct");
 	// Setup our array of Python typedescs, and determine the number of objects we
 	// pass to Python.
-	m_num_type_descs = m_info->num_args;
-	m_python_type_desc_array = new PythonTypeDescriptor[m_num_type_descs];
-	if (!m_python_type_desc_array)
-		return PyErr_NoMemory();
+	mPyTypeDesc.SetLength(m_info->num_args);
 
 	// First loop to count the number of objects
 	// we pass to Python
 	int i;
 	for (i = 0; i < m_info->num_args; i++) {
-		XPTParamDescriptor *pi = m_info->params+i;
-		PythonTypeDescriptor &td = m_python_type_desc_array[i];
-		td.param_flags = pi->flags;
-		td.type_flags = pi->type.prefix.flags;
-		td.argnum = pi->type.argnum;
-		td.argnum2 = pi->type.argnum2;
+		XPTParamDescriptor &pi = m_info->params[i];
+		PythonTypeDescriptor &td = mPyTypeDesc[i];
+		td.param_flags = pi.flags;
+		td.type_flags = pi.type.prefix.flags;
+		td.argnum = pi.type.argnum;
+		td.argnum2 = pi.type.argnum2;
 	}
 	int min_num_params;
 	int max_num_params;
-	ProcessPythonTypeDescriptors(m_python_type_desc_array, m_num_type_descs,
+	ProcessPythonTypeDescriptors(mPyTypeDesc.Elements(), mPyTypeDesc.Length(),
 								 &min_num_params, &max_num_params);
 	PyObject *ret = PyTuple_New(max_num_params);
 	if (!ret)
 		return nullptr;
 	int this_arg = 0;
-	for (i = 0; i < m_num_type_descs; i++) {
-		PythonTypeDescriptor &td = m_python_type_desc_array[i];
+	for (i = 0; i < mPyTypeDesc.Length(); i++) {
+		PythonTypeDescriptor &td = mPyTypeDesc[i];
 		if (td.IsIn() && !td.IsAutoIn() && !td.IsDipper()) {
-			PyObject *sub = MakeSingleParam( i, td );
-			if (sub==NULL) {
+			PyObject *sub = MakeSingleParam(i, td);
+			if (!sub) {
 				Py_DECREF(ret);
-				return NULL;
+				return nullptr;
 			}
 			MOZ_ASSERT(this_arg >= 0 && this_arg < max_num_params,
 					   "We are going off the end of the array!");
@@ -2189,6 +2330,8 @@ PyObject *PyXPCOM_GatewayVariantHelper::MakePyArgs()
 			this_arg++;
 		}
 	}
+	MOZ_ASSERT(this_arg >= min_num_params,
+	           "We should have gotten at least the minimum number of params!");
 	if (this_arg < max_num_params && this_arg >= min_num_params) {
 		// There are optional parameters - resize the tuple.
 		_PyTuple_Resize(&ret, this_arg);
@@ -2198,43 +2341,48 @@ PyObject *PyXPCOM_GatewayVariantHelper::MakePyArgs()
 
 bool PyXPCOM_GatewayVariantHelper::CanSetSizeOrLengthIs(int var_index, bool is_size)
 {
-	MOZ_ASSERT(var_index < m_num_type_descs, "var_index param is invalid");
+	MOZ_ASSERT(var_index >= 0);
+	MOZ_ASSERT(var_index < mPyTypeDesc.Length(), "var_index param is invalid");
 	uint8_t argnum = is_size ?
-		m_python_type_desc_array[var_index].size_is :
-		m_python_type_desc_array[var_index].length_is;
-	MOZ_ASSERT(argnum < m_num_type_descs, "size_is param is invalid");
-	return m_python_type_desc_array[argnum].IsOut();
+		mPyTypeDesc[var_index].size_is :
+		mPyTypeDesc[var_index].length_is;
+	MOZ_ASSERT(argnum < mPyTypeDesc.Length(), "size_is param is invalid");
+	return mPyTypeDesc[argnum].IsOut();
 }
 
-bool PyXPCOM_GatewayVariantHelper::SetSizeOrLengthIs( int var_index, bool is_size, PRUint32 new_size)
+bool PyXPCOM_GatewayVariantHelper::SetSizeOrLengthIs(int var_index, bool is_size, uint32_t new_size)
 {
-	NS_ABORT_IF_FALSE(var_index < m_num_type_descs, "var_index param is invalid");
+	MOZ_ASSERT(var_index >= 0);
+	MOZ_ASSERT(var_index < mPyTypeDesc.Length(), "var_index param is invalid");
 	PRUint8 argnum = is_size ?
-		m_python_type_desc_array[var_index].size_is :
-		m_python_type_desc_array[var_index].length_is;
-	MOZ_ASSERT(argnum < m_num_type_descs, "size_is param is invalid");
-	PythonTypeDescriptor &td_size = m_python_type_desc_array[argnum];
+		mPyTypeDesc[var_index].size_is :
+		mPyTypeDesc[var_index].length_is;
+	MOZ_ASSERT(argnum < mPyTypeDesc.Length(), "size_is param is invalid");
+	PythonTypeDescriptor &td_size = mPyTypeDesc[argnum];
 	MOZ_ASSERT(td_size.IsOut(),
-			   "size param must be out if we want to set it!");
+	           "size param must be out if we want to set it!");
 	MOZ_ASSERT(td_size.IsAutoOut(),
-			   "Setting size_is, but param is not marked as auto!");
+	           "Setting size_is, but param is not marked as auto!");
 
 	nsXPTCMiniVariant &ns_v = m_params[argnum];
 	MOZ_ASSERT(td_size.TypeTag() == nsXPTType::T_U32,
-			   "size param must be Uint32");
+	           "size param must be Uint32");
 	MOZ_ASSERT(ns_v.val.p, "NULL pointer for size_is value!");
-	if (ns_v.val.p) {
-		if (!td_size.IsAutoSet()) {
-			*((PRUint32 *)ns_v.val.p) = new_size;
-			td_size.have_set_auto = true;
-		} else {
-			if (*((PRUint32 *)ns_v.val.p) != new_size ) {
-				PyErr_Format(PyExc_ValueError,
-							 "Array lengths inconsistent; array size previously set to %d, "
-								"but second array is of size %d",
-							 ns_v.val.u32, new_size);
-				return false;
-			}
+	if (!ns_v.val.p) {
+		PyErr_Format(PyExc_ValueError,
+		             "Invalid size_is value at position %d", var_index);
+		return false;
+	}
+	if (!td_size.IsAutoSet()) {
+		*reinterpret_cast<uint32_t*>(ns_v.val.p) = new_size;
+		td_size.have_set_auto = true;
+	} else {
+		if (*reinterpret_cast<uint32_t*>(ns_v.val.p) != new_size) {
+			PyErr_Format(PyExc_ValueError,
+			             "Array lengths inconsistent; array size previously set to %d, "
+			                 "but second array is of size %d",
+			             ns_v.val.u32, new_size);
+			return false;
 		}
 	}
 	return true;
@@ -2242,33 +2390,34 @@ bool PyXPCOM_GatewayVariantHelper::SetSizeOrLengthIs( int var_index, bool is_siz
 
 uint32_t PyXPCOM_GatewayVariantHelper::GetSizeOrLengthIs( int var_index, bool is_size)
 {
-	MOZ_ASSERT(var_index < m_num_type_descs, "var_index param is invalid");
+	MOZ_ASSERT(var_index < mPyTypeDesc.Length(), "var_index param is invalid");
 	PRUint8 argnum = is_size ?
-		m_python_type_desc_array[var_index].size_is :
-		m_python_type_desc_array[var_index].length_is ;
-	MOZ_ASSERT(argnum < m_num_type_descs, "size_is param is invalid");
-	if (argnum >= m_num_type_descs) {
+		mPyTypeDesc[var_index].size_is :
+		mPyTypeDesc[var_index].length_is ;
+	MOZ_ASSERT(argnum < mPyTypeDesc.Length(), "size_is param is invalid");
+	if (argnum >= mPyTypeDesc.Length()) {
 		PyErr_SetString(PyExc_ValueError,
 						"don't have a valid size_is indicator for this param");
 		return false;
 	}
-	PythonTypeDescriptor &ptd = m_python_type_desc_array[argnum];
+	PythonTypeDescriptor &ptd = mPyTypeDesc[argnum];
 	nsXPTCMiniVariant &ns_v = m_params[argnum];
 	MOZ_ASSERT(ptd.TypeTag() == nsXPTType::T_U32, "size param must be Uint32");
 	// for some reason, outparams are not pointers here...
 	MOZ_ASSERT(!ptd.IsPointer(), "size_is is a pointer");
-	return ptd.IsOut() ? *((PRUint32 *)ns_v.val.p) : ns_v.val.u32;
+	return ptd.IsOut() ? *reinterpret_cast<uint32_t*>(ns_v.val.p) : ns_v.val.u32;
 }
 
 #undef DEREF_IN_OR_OUT
-#define DEREF_IN_OR_OUT( element, ret_type ) (ret_type)(is_out ? *((ret_type *)ns_v.val.p) : (ret_type)(element))
+#define DEREF_IN_OR_OUT( element, ret_type ) \
+	(is_out ? *reinterpret_cast<ret_type*>(ns_v.val.p) : static_cast<ret_type>(element))
 
 PyObject *PyXPCOM_GatewayVariantHelper::MakeSingleParam(int index, PythonTypeDescriptor &td)
 {
 	NS_PRECONDITION(XPT_PD_IS_IN(td.param_flags), "Must be an [in] param!");
 	nsXPTCMiniVariant &ns_v = m_params[index];
 	PyObject *ret = NULL;
-	bool is_out = XPT_PD_IS_OUT(td.param_flags);
+	bool is_out = td.IsOut();
 
 	switch (td.TypeTag()) {
 	  case nsXPTType::T_I8:
@@ -2440,8 +2589,8 @@ nsresult PyXPCOM_GatewayVariantHelper::GetArrayType(PRUint8 index,
 {
 	nsCOMPtr<nsIInterfaceInfoManager> iim(do_GetService(
 	                     NS_INTERFACEINFOMANAGER_SERVICE_CONTRACTID));
-	NS_ABORT_IF_FALSE(iim != nullptr, "Cant get interface from IIM!");
-	if (iim==nullptr)
+	MOZ_ASSERT(iim != nullptr, "Cant get interface from IIM!");
+	if (!iim)
 		return NS_ERROR_FAILURE;
 
 	nsCOMPtr<nsIInterfaceInfo> ii;
@@ -2518,11 +2667,13 @@ nsIInterfaceInfo *PyXPCOM_GatewayVariantHelper::GetInterfaceInfo()
 nsresult PyXPCOM_GatewayVariantHelper::BackFillVariant( PyObject *val, int index)
 {
 	const nsXPTParamInfo& pi = m_info->params[index];
-	NS_ABORT_IF_FALSE(pi.IsOut() || pi.IsDipper(), "The value must be marked as [out] (or a dipper) to be back-filled!");
-	NS_ABORT_IF_FALSE(!pi.IsShared(), "Don't know how to back-fill a shared out param");
+	MOZ_ASSERT(pi.IsOut() || pi.IsDipper(),
+	           "The value must be marked as [out] (or a dipper) to be back-filled!");
+	MOZ_ASSERT(!pi.IsShared(),
+	           "Don't know how to back-fill a shared out param");
 	nsXPTCMiniVariant &ns_v = m_params[index];
 
-	nsXPTType typ = pi.GetType();
+	nsXPTType type = pi.GetType();
 	PyObject* val_use = NULL;
 
 	// Ignore out params backed by a NULL pointer. The caller isn't
@@ -2530,11 +2681,11 @@ nsresult PyXPCOM_GatewayVariantHelper::BackFillVariant( PyObject *val, int index
 	// https://bugzilla.mozilla.org/show_bug.cgi?id=495441
 	if (pi.IsOut() && !ns_v.val.p) return NS_OK;
 
-	NS_ABORT_IF_FALSE(pi.IsDipper() || ns_v.val.p, "No space for result!");
+	MOZ_ASSERT(pi.IsDipper() || ns_v.val.p, "No space for result!");
 	if (!pi.IsDipper() && !ns_v.val.p) return NS_ERROR_INVALID_POINTER;
 
 	bool rc = true;
-	switch (XPT_TDP_TAG(typ)) {
+	switch (XPT_TDP_TAG(type)) {
 	  case nsXPTType::T_I8:
 		if ((val_use=PyNumber_Int(val))==NULL) BREAK_FALSE;
 		FILL_SIMPLE_POINTER( PRInt8, PyInt_AsLong(val_use) );
@@ -2954,7 +3105,7 @@ nsresult PyXPCOM_GatewayVariantHelper::BackFillVariant( PyObject *val, int index
 	  default:
 		// try and limp along in this case.
 		// leave rc TRUE
-		PyXPCOM_LogWarning("Converting Python object for an [out] param - The object type (0x%x) is unknown - leaving param alone!\n", XPT_TDP_TAG(typ));
+		PyXPCOM_LogWarning("Converting Python object for an [out] param - The object type (0x%x) is unknown - leaving param alone!\n", type.TagPart());
 		break;
 	}
 	Py_XDECREF(val_use);
@@ -2992,9 +3143,9 @@ nsresult PyXPCOM_GatewayVariantHelper::ProcessPythonResult(PyObject *ret_ob)
 	int num_results = 0;
 	int last_result = -1; // optimization if we only have one - this is it!
 	int index_retval = -1;
-	for (i=0;i<m_num_type_descs;i++) {
+	for (i = 0; i < mPyTypeDesc.Length(); ++i) {
 		nsXPTParamInfo *pi = (nsXPTParamInfo *)m_info->params+i;
-		if (!m_python_type_desc_array[i].IsAutoOut()) {
+		if (!mPyTypeDesc[i].IsAutoOut()) {
 			if (pi->IsOut() || pi->IsDipper()) {
 				num_results++;
 				last_result = i;
@@ -3008,7 +3159,8 @@ nsresult PyXPCOM_GatewayVariantHelper::ProcessPythonResult(PyObject *ret_ob)
 		; // do nothing
 	} else if (num_results==1) {
 		// May or may not be the nominated retval - who cares!
-		NS_ABORT_IF_FALSE(last_result >=0 && last_result < m_num_type_descs, "Have one result, but don't know its index!");
+		MOZ_ASSERT(last_result >=0 && last_result < mPyTypeDesc.Length(),
+		           "Have one result, but don't know its index!");
 		rc = BackFillVariant( user_result, last_result );
 	} else {
 		// Loop over each one, filling as we go.
@@ -3046,7 +3198,7 @@ nsresult PyXPCOM_GatewayVariantHelper::ProcessPythonResult(PyObject *ret_ob)
 		}
 		for (i=0;NS_SUCCEEDED(rc) && i<m_info->num_args;i++) {
 			// If we've already done it, or don't need to do it!
-			if (i == index_retval || m_python_type_desc_array[i].IsAutoOut())
+			if (i == index_retval || mPyTypeDesc[i].IsAutoOut())
 				continue;
 			XPTParamDescriptor *pi = m_info->params+i;
 			if (XPT_PD_IS_OUT(pi->flags)) {
