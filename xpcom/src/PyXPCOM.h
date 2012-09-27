@@ -512,10 +512,10 @@ public:
 	#if DEBUG
 	bool IsDipperType() const {
 		switch (TypeTag()) {
-			case XPTTypeDescriptorTags::TD_DOMSTRING:
-			case XPTTypeDescriptorTags::TD_UTF8STRING:
-			case XPTTypeDescriptorTags::TD_CSTRING:
-			case XPTTypeDescriptorTags::TD_ASTRING:
+			case TD_DOMSTRING:
+			case TD_UTF8STRING:
+			case TD_CSTRING:
+			case TD_ASTRING:
 				return true;
 			default:
 				return false;

@@ -311,7 +311,7 @@ bool FillSingleArray(void *array_ptr, PyObject *sequence_ob, PRUint32 sequence_s
 	// We handle T_U8 specially as a string/Unicode.
 	// If it is NOT a string, we just fall through and allow the standard
 	// sequence unpack code process it (just slower!)
-	if (array_type == XPTTypeDescriptorTags::TD_UINT8 &&
+	if (array_type == TD_UINT8 &&
 		(PyString_Check(sequence_ob) || PyUnicode_Check(sequence_ob))) {
 
 		bool release_seq;
@@ -335,51 +335,51 @@ bool FillSingleArray(void *array_ptr, PyObject *sequence_ob, PRUint32 sequence_s
 		if (val == nullptr)
 			return false;
 		switch(array_type) {
-			  case XPTTypeDescriptorTags::TD_INT8:
+			  case TD_INT8:
 				if ((val_use=PyNumber_Int(val)) == NULL) BREAK_FALSE;
 				FILL_SIMPLE_POINTER(PRInt8, PyInt_AsLong(val_use));
 				break;
-			  case XPTTypeDescriptorTags::TD_INT16:
+			  case TD_INT16:
 				if ((val_use=PyNumber_Int(val)) == NULL) BREAK_FALSE;
 				FILL_SIMPLE_POINTER(PRInt16, PyInt_AsLong(val_use));
 				break;
-			  case XPTTypeDescriptorTags::TD_INT32:
+			  case TD_INT32:
 				if ((val_use=PyNumber_Int(val)) == NULL) BREAK_FALSE;
 				FILL_SIMPLE_POINTER(PRInt32, PyInt_AsLong(val_use));
 				break;
-			  case XPTTypeDescriptorTags::TD_INT64:
+			  case TD_INT64:
 				if ((val_use=PyNumber_Long(val)) == NULL) BREAK_FALSE;
 				FILL_SIMPLE_POINTER(PRInt64, PyLong_AsLongLong(val_use));
 				break;
-			  case XPTTypeDescriptorTags::TD_UINT8:
+			  case TD_UINT8:
 				if ((val_use=PyNumber_Int(val)) == NULL) BREAK_FALSE;
 				FILL_SIMPLE_POINTER(PRUint8, PyInt_AsLong(val_use));
 				break;
-			  case XPTTypeDescriptorTags::TD_UINT16:
+			  case TD_UINT16:
 				if ((val_use=PyNumber_Int(val)) == NULL) BREAK_FALSE;
 				FILL_SIMPLE_POINTER(PRUint16, PyInt_AsLong(val_use));
 				break;
-			  case XPTTypeDescriptorTags::TD_UINT32:
+			  case TD_UINT32:
 				if ((val_use=PyNumber_Int(val)) == NULL) BREAK_FALSE;
 				FILL_SIMPLE_POINTER(PRUint32, PyInt_AsLong(val_use));
 				break;
-			  case XPTTypeDescriptorTags::TD_UINT64:
+			  case TD_UINT64:
 				if ((val_use=PyNumber_Long(val)) == NULL) BREAK_FALSE;
 				FILL_SIMPLE_POINTER(PRUint64, PyLong_AsUnsignedLongLong(val_use));
 				break;
-			  case XPTTypeDescriptorTags::TD_FLOAT:
+			  case TD_FLOAT:
 				if ((val_use=PyNumber_Float(val)) == NULL) BREAK_FALSE
 				FILL_SIMPLE_POINTER(float, PyFloat_AsDouble(val_use));
 				break;
-			  case XPTTypeDescriptorTags::TD_DOUBLE:
+			  case TD_DOUBLE:
 				if ((val_use=PyNumber_Float(val)) == NULL) BREAK_FALSE
 				FILL_SIMPLE_POINTER(double, PyFloat_AsDouble(val_use));
 				break;
-			  case XPTTypeDescriptorTags::TD_BOOL:
+			  case TD_BOOL:
 				if ((val_use=PyNumber_Int(val)) == NULL) BREAK_FALSE
 				FILL_SIMPLE_POINTER(bool, PyInt_AsLong(val_use) != 0);
 				break;
-			  case XPTTypeDescriptorTags::TD_CHAR:
+			  case TD_CHAR:
 				if (!PyString_Check(val) && !PyUnicode_Check(val)) {
 					PyErr_SetString(PyExc_TypeError, "This parameter must be a string or Unicode object");
 					BREAK_FALSE;
@@ -392,7 +392,7 @@ bool FillSingleArray(void *array_ptr, PyObject *sequence_ob, PRUint32 sequence_s
 				FILL_SIMPLE_POINTER(char, *PyString_AS_STRING(val_use));
 				break;
 
-			  case XPTTypeDescriptorTags::TD_WCHAR:
+			  case TD_WCHAR:
 				if (!PyString_Check(val) && !PyUnicode_Check(val)) {
 					PyErr_SetString(PyExc_TypeError, "This parameter must be a string or Unicode object");
 					BREAK_FALSE;
@@ -407,7 +407,7 @@ bool FillSingleArray(void *array_ptr, PyObject *sequence_ob, PRUint32 sequence_s
 						   "Lossy cast of Unicode value to PRUnichar");
 				break;
 
-			  case XPTTypeDescriptorTags::TD_PNSIID: {
+			  case TD_PNSIID: {
 				nsIID **pp = reinterpret_cast<nsIID **>(pthis);
 				MOZ_ASSERT(*pp == nullptr, "Existing IID"); // the memory should be fresh, no?
 				// If there is an existing IID, free it.
@@ -426,7 +426,7 @@ bool FillSingleArray(void *array_ptr, PyObject *sequence_ob, PRUint32 sequence_s
 				break;
 				}
 
-			  case XPTTypeDescriptorTags::TD_PSTRING: {
+			  case TD_PSTRING: {
 				// If it is an existing string, free it.
 				char **pp = (char **)pthis;
 				if (*pp) {
@@ -456,7 +456,7 @@ bool FillSingleArray(void *array_ptr, PyObject *sequence_ob, PRUint32 sequence_s
 				strncpy(*pp, sz, nch+1);
 				break;
 				}
-			  case XPTTypeDescriptorTags::TD_PWSTRING: {
+			  case TD_PWSTRING: {
 				// If it is an existing string, free it.
 				PRUnichar **pp = (PRUnichar **)pthis;
 				if (*pp)
@@ -475,8 +475,8 @@ bool FillSingleArray(void *array_ptr, PyObject *sequence_ob, PRUint32 sequence_s
 					BREAK_FALSE;
 				break;
 				}
-			  case XPTTypeDescriptorTags::TD_INTERFACE_IS_TYPE:
-			  case XPTTypeDescriptorTags::TD_INTERFACE_TYPE:  {
+			  case TD_INTERFACE_IS_TYPE:
+			  case TD_INTERFACE_TYPE:  {
 				// We do allow NULL here, even tho doing so will no-doubt crash some objects.
 				// (but there will certainly be objects out there that will allow NULL :-(
 				nsISupports *pnew;
@@ -492,15 +492,15 @@ bool FillSingleArray(void *array_ptr, PyObject *sequence_ob, PRUint32 sequence_s
 				*pp = pnew; // ref-count added by InterfaceFromPyObject
 				break;
 				}
-			  case XPTTypeDescriptorTags::TD_VOID:
-			  case XPTTypeDescriptorTags::TD_DOMSTRING:
-			  case XPTTypeDescriptorTags::TD_ARRAY:
-			  case XPTTypeDescriptorTags::TD_PSTRING_SIZE_IS:
-			  case XPTTypeDescriptorTags::TD_PWSTRING_SIZE_IS:
-			  case XPTTypeDescriptorTags::TD_UTF8STRING:
-			  case XPTTypeDescriptorTags::TD_CSTRING:
-			  case XPTTypeDescriptorTags::TD_ASTRING:
-			  case XPTTypeDescriptorTags::TD_JSVAL:
+			  case TD_VOID:
+			  case TD_DOMSTRING:
+			  case TD_ARRAY:
+			  case TD_PSTRING_SIZE_IS:
+			  case TD_PWSTRING_SIZE_IS:
+			  case TD_UTF8STRING:
+			  case TD_CSTRING:
+			  case TD_ASTRING:
+			  case TD_JSVAL:
 				// try and limp along in this case.
 				// leave rc TRUE
 				PyXPCOM_LogWarning("Converting Python object for an array element - The object type (0x%x) is unknown - leaving param alone!\n", array_type);
@@ -1377,16 +1377,16 @@ bool PyXPCOM_InterfaceVariantHelper::FillInVariant(const PythonTypeDescriptor &t
 	}
 	// Cast this to the enum so we can get warnings about missing cases
 	switch (static_cast<XPTTypeDescriptorTags>(ns_v.type.TagPart())) {
-	  case XPTTypeDescriptorTags::TD_INT8:
+	  case TD_INT8:
 		ASSIGN_INT(int8_t, i8, false);
 		break;
-	  case XPTTypeDescriptorTags::TD_INT16:
+	  case TD_INT16:
 		ASSIGN_INT(int16_t, i16, false);
 		break;
-	  case XPTTypeDescriptorTags::TD_INT32:
+	  case TD_INT32:
 		ASSIGN_INT(int32_t, i32, false);
 		break;
-	  case XPTTypeDescriptorTags::TD_INT64:
+	  case TD_INT64:
 		if (val == Py_None) {
 			ns_v.val.i64 = 0;
 			break;
@@ -1395,16 +1395,16 @@ bool PyXPCOM_InterfaceVariantHelper::FillInVariant(const PythonTypeDescriptor &t
 		ns_v.val.i64 = static_cast<int64_t>(PyLong_AsLongLong(val_use));
 		if (ns_v.val.i64 == (PY_LONG_LONG)-1 && PyErr_Occurred()) BREAK_FALSE
 		break;
-	  case XPTTypeDescriptorTags::TD_UINT8:
+	  case TD_UINT8:
 		ASSIGN_INT(uint8_t, u8, true);
 		break;
-	  case XPTTypeDescriptorTags::TD_UINT16:
+	  case TD_UINT16:
 		ASSIGN_INT(uint16_t, u16, true);
 		break;
-	  case XPTTypeDescriptorTags::TD_UINT32:
+	  case TD_UINT32:
 		ASSIGN_INT(uint32_t, u32, true);
 		break;
-	  case XPTTypeDescriptorTags::TD_UINT64:
+	  case TD_UINT64:
 		if (val == Py_None) {
 			ns_v.val.u64 = 0;
 			break;
@@ -1413,7 +1413,7 @@ bool PyXPCOM_InterfaceVariantHelper::FillInVariant(const PythonTypeDescriptor &t
 		ns_v.val.u64 = static_cast<uint64_t>(PyLong_AsUnsignedLongLong(val_use));
 		if (ns_v.val.u64 == (unsigned PY_LONG_LONG)-1 && PyErr_Occurred()) BREAK_FALSE
 		break;
-	  case XPTTypeDescriptorTags::TD_FLOAT:
+	  case TD_FLOAT:
 		if (val == Py_None) {
 			ns_v.val.f = 0;
 			break;
@@ -1421,7 +1421,7 @@ bool PyXPCOM_InterfaceVariantHelper::FillInVariant(const PythonTypeDescriptor &t
 		if ((val_use=PyNumber_Float(val)) == NULL) BREAK_FALSE
 		ns_v.val.f = static_cast<float>(PyFloat_AsDouble(val_use));
 		break;
-	  case XPTTypeDescriptorTags::TD_DOUBLE:
+	  case TD_DOUBLE:
 		if (val == Py_None) {
 			ns_v.val.d = 0;
 			break;
@@ -1429,7 +1429,7 @@ bool PyXPCOM_InterfaceVariantHelper::FillInVariant(const PythonTypeDescriptor &t
 		if ((val_use=PyNumber_Float(val)) == NULL) BREAK_FALSE
 		ns_v.val.d = PyFloat_AsDouble(val_use);
 		break;
-	  case XPTTypeDescriptorTags::TD_BOOL:
+	  case TD_BOOL:
 		if (val == Py_None) {
 			ns_v.val.b = false;
 			break;
@@ -1437,7 +1437,7 @@ bool PyXPCOM_InterfaceVariantHelper::FillInVariant(const PythonTypeDescriptor &t
 		if ((val_use=PyNumber_Int(val)) == NULL) BREAK_FALSE
 		ns_v.val.b = (0 != PyInt_AsLong(val_use));
 		break;
-	  case XPTTypeDescriptorTags::TD_CHAR:{
+	  case TD_CHAR:{
 		if (!PyString_Check(val) && !PyUnicode_Check(val)) {
 			PyErr_SetString(PyExc_TypeError, "This parameter must be a string or Unicode object");
 			BREAK_FALSE;
@@ -1455,7 +1455,7 @@ bool PyXPCOM_InterfaceVariantHelper::FillInVariant(const PythonTypeDescriptor &t
 		break;
 		}
 
-	  case XPTTypeDescriptorTags::TD_WCHAR: {
+	  case TD_WCHAR: {
 		if (!PyString_Check(val) && !PyUnicode_Check(val)) {
 			PyErr_SetString(PyExc_TypeError, "This parameter must be a string or Unicode object");
 			BREAK_FALSE;
@@ -1473,7 +1473,7 @@ bool PyXPCOM_InterfaceVariantHelper::FillInVariant(const PythonTypeDescriptor &t
 		break;
 		}
 
-	  case XPTTypeDescriptorTags::TD_PNSIID: {
+	  case TD_PNSIID: {
 		nsIID *iid;
 		if (!Alloc(iid, 1, __FILE__, __LINE__)) {
 			PyErr_NoMemory();
@@ -1487,8 +1487,8 @@ bool PyXPCOM_InterfaceVariantHelper::FillInVariant(const PythonTypeDescriptor &t
 		ns_v.SetValNeedsCleanup();
 		break;
 	  }
-	  case XPTTypeDescriptorTags::TD_ASTRING:
-	  case XPTTypeDescriptorTags::TD_DOMSTRING: {
+	  case TD_ASTRING:
+	  case TD_DOMSTRING: {
 		nsString *s;
 		if (!Alloc(s, 1, __FILE__, __LINE__)) {
 			PyErr_NoMemory();
@@ -1502,8 +1502,8 @@ bool PyXPCOM_InterfaceVariantHelper::FillInVariant(const PythonTypeDescriptor &t
 			BREAK_FALSE;
 		break;
 	  }
-	  case XPTTypeDescriptorTags::TD_CSTRING:
-	  case XPTTypeDescriptorTags::TD_UTF8STRING: {
+	  case TD_CSTRING:
+	  case TD_UTF8STRING: {
 		bool bIsUTF8 = ns_v.type.TagPart() == nsXPTType::T_UTF8STRING;
 		nsCString* str;
 		if (!Alloc(str, 1, __FILE__, __LINE__)) {
@@ -1537,7 +1537,7 @@ bool PyXPCOM_InterfaceVariantHelper::FillInVariant(const PythonTypeDescriptor &t
 		ns_v.SetValNeedsCleanup();
 		break;
 		}
-	  case XPTTypeDescriptorTags::TD_PSTRING: {
+	  case TD_PSTRING: {
 		if (val == Py_None) {
 			ns_v.val.p = nullptr;
 			break;
@@ -1574,7 +1574,7 @@ bool PyXPCOM_InterfaceVariantHelper::FillInVariant(const PythonTypeDescriptor &t
 		break;
 		}
 
-	  case XPTTypeDescriptorTags::TD_PWSTRING: {
+	  case TD_PWSTRING: {
 		if (val == Py_None) {
 			ns_v.val.p = nullptr;
 			break;
@@ -1594,7 +1594,7 @@ bool PyXPCOM_InterfaceVariantHelper::FillInVariant(const PythonTypeDescriptor &t
 		ns_v.SetValNeedsCleanup();
 		break;
 		}
-	  case XPTTypeDescriptorTags::TD_INTERFACE_TYPE:  {
+	  case TD_INTERFACE_TYPE:  {
 		if (!Py_nsISupports::InterfaceFromPyObject(val,
 		                                           td.iid,
 		                                           reinterpret_cast<nsISupports **>(&ns_v.val.p),
@@ -1607,15 +1607,15 @@ bool PyXPCOM_InterfaceVariantHelper::FillInVariant(const PythonTypeDescriptor &t
 		}
 		break;
 		}
-	  case XPTTypeDescriptorTags::TD_INTERFACE_IS_TYPE: {
+	  case TD_INTERFACE_IS_TYPE: {
 		nsIID iid;
 		nsXPTCVariant &ns_viid = mDispatchParams[td.iid_is];
-		MOZ_ASSERT(ns_viid.type.TagPart() == XPTTypeDescriptorTags::TD_PNSIID,
+		MOZ_ASSERT(ns_viid.type.TagPart() == TD_PNSIID,
 				   "The INTERFACE_IS iid describer isn't an IID!");
 		// This is a pretty serious problem, but not Python's fault!
 		// Just return an nsISupports and hope the caller does whatever
 		// QI they need before using it.
-		if (ns_viid.type.TagPart() == XPTTypeDescriptorTags::TD_PNSIID &&
+		if (ns_viid.type.TagPart() == TD_PNSIID &&
 			XPT_PD_IS_IN(ns_viid.type))
 		{
 			nsIID *piid = reinterpret_cast<nsIID *>(ns_viid.val.p);
@@ -1638,7 +1638,7 @@ bool PyXPCOM_InterfaceVariantHelper::FillInVariant(const PythonTypeDescriptor &t
 		ns_v.SetValNeedsCleanup();
 		break;
 		}
-	  case XPTTypeDescriptorTags::TD_PSTRING_SIZE_IS: {
+	  case TD_PSTRING_SIZE_IS: {
 		if (val==Py_None) {
 			ns_v.val.p = nullptr;
 			break;
@@ -1666,7 +1666,7 @@ bool PyXPCOM_InterfaceVariantHelper::FillInVariant(const PythonTypeDescriptor &t
 		break;
 		}
 
-	case XPTTypeDescriptorTags::TD_PWSTRING_SIZE_IS: {
+	case TD_PWSTRING_SIZE_IS: {
 		if (val==Py_None) {
 			ns_v.val.p = nullptr;
 			break;
@@ -1688,7 +1688,7 @@ bool PyXPCOM_InterfaceVariantHelper::FillInVariant(const PythonTypeDescriptor &t
 		rc = SetSizeIs(value_index, nch); // excludes terminating null
 		break;
 		}
-	case XPTTypeDescriptorTags::TD_ARRAY: {
+	case TD_ARRAY: {
 		if (val == Py_None) {
 			ns_v.val.p = nullptr;
 			break;
@@ -1723,8 +1723,8 @@ bool PyXPCOM_InterfaceVariantHelper::FillInVariant(const PythonTypeDescriptor &t
 			ns_v.SetValNeedsCleanup();
 		break;
 		}
-	case XPTTypeDescriptorTags::TD_VOID:
-	case XPTTypeDescriptorTags::TD_JSVAL:
+	case TD_VOID:
+	case TD_JSVAL:
 		PyErr_Format(PyExc_TypeError,
 					 "The object type (0x%x) is unknown", ns_v.type.TagPart());
 		rc = false;
@@ -1747,7 +1747,7 @@ bool PyXPCOM_InterfaceVariantHelper::FillInVariant(const PythonTypeDescriptor &t
 									   "Null interfaces should not need cleanup!");
 						}
 						break;
-					case XPTTypeDescriptorTags::TD_ARRAY: {
+					case TD_ARRAY: {
 						MOZ_ASSERT(val == Py_None || ns_v.val.p != nullptr,
 								   "Non-empty arrays should be allocated!");
 						// ns_v.DoesValNeedCleanup() checking is... harder
@@ -2208,8 +2208,8 @@ void PyXPCOM_InterfaceVariantHelper::CleanupParam(void* p, nsXPTType& type)
 		return; // nothing to clean up
 	}
 	switch (static_cast<XPTTypeDescriptorTags>(type.TagPart())) {
-        case XPTTypeDescriptorTags::TD_INTERFACE_TYPE:
-        case XPTTypeDescriptorTags::TD_INTERFACE_IS_TYPE:
+        case TD_INTERFACE_TYPE:
+        case TD_INTERFACE_IS_TYPE:
 			// MUST release thread-lock, incase a Python COM object that re-acquires.
 			MarkFree(p);
 			Py_BEGIN_ALLOW_THREADS;
@@ -2217,45 +2217,45 @@ void PyXPCOM_InterfaceVariantHelper::CleanupParam(void* p, nsXPTType& type)
 			MarkFree(p);
 			Py_END_ALLOW_THREADS;
 			break;
-        case XPTTypeDescriptorTags::TD_ASTRING:
-        case XPTTypeDescriptorTags::TD_DOMSTRING:
+        case TD_ASTRING:
+        case TD_DOMSTRING:
 			delete reinterpret_cast<const nsString*>(p);
 			MarkFree(p);
 			break;
-        case XPTTypeDescriptorTags::TD_CSTRING:
-        case XPTTypeDescriptorTags::TD_UTF8STRING:
+        case TD_CSTRING:
+        case TD_UTF8STRING:
 			delete reinterpret_cast<const nsCString*>(p);
 			MarkFree(p);
 			break;
-        case XPTTypeDescriptorTags::TD_PNSIID:
+        case TD_PNSIID:
 			Free(p);
 			break;
-        case XPTTypeDescriptorTags::TD_ARRAY:
+        case TD_ARRAY:
 			MOZ_NOT_REACHED("CleanupParam doesn't support arrays");
 			break;
-        case XPTTypeDescriptorTags::TD_JSVAL:
+        case TD_JSVAL:
 			MOZ_ASSERT(false, "PyXPCOM shouldn't be playing with jsvals");
 			break;
-        case XPTTypeDescriptorTags::TD_PSTRING:
-        case XPTTypeDescriptorTags::TD_PWSTRING:
-        case XPTTypeDescriptorTags::TD_PSTRING_SIZE_IS:
-        case XPTTypeDescriptorTags::TD_PWSTRING_SIZE_IS:
+        case TD_PSTRING:
+        case TD_PWSTRING:
+        case TD_PSTRING_SIZE_IS:
+        case TD_PWSTRING_SIZE_IS:
 			Free(p);
 			break;
-        case XPTTypeDescriptorTags::TD_INT8:
-        case XPTTypeDescriptorTags::TD_INT16:
-        case XPTTypeDescriptorTags::TD_INT32:
-        case XPTTypeDescriptorTags::TD_INT64:
-        case XPTTypeDescriptorTags::TD_UINT8:
-        case XPTTypeDescriptorTags::TD_UINT16:
-        case XPTTypeDescriptorTags::TD_UINT32:
-        case XPTTypeDescriptorTags::TD_UINT64:
-        case XPTTypeDescriptorTags::TD_FLOAT:
-        case XPTTypeDescriptorTags::TD_DOUBLE:
-        case XPTTypeDescriptorTags::TD_BOOL:
-        case XPTTypeDescriptorTags::TD_CHAR:
-        case XPTTypeDescriptorTags::TD_WCHAR:
-        case XPTTypeDescriptorTags::TD_VOID:
+        case TD_INT8:
+        case TD_INT16:
+        case TD_INT32:
+        case TD_INT64:
+        case TD_UINT8:
+        case TD_UINT16:
+        case TD_UINT32:
+        case TD_UINT64:
+        case TD_FLOAT:
+        case TD_DOUBLE:
+        case TD_BOOL:
+        case TD_CHAR:
+        case TD_WCHAR:
+        case TD_VOID:
 			// These don't need to be freed
 			break;
 		default:
