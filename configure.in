@@ -4283,7 +4283,7 @@ else
         dnl python is used on OSX, then it will be picked up first by
         dnl the logic above.
         if test "$MOZ_PYTHON_PREFIX" != "${MOZ_PYTHON_PREFIX/Python.framework/}"; then
-            MOZ_PYTHON_LIBS="-F ${MOZ_PYTHON_PREFIX%/Python.framework/*}"
+            MOZ_PYTHON_LIBS="-F${MOZ_PYTHON_PREFIX%/Python.framework/*}"
         fi
         MOZ_PYTHON_LIBS="${MOZ_PYTHON_LIBS} -framework Python"
     else
