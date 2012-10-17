@@ -995,7 +995,6 @@ template<typename T>
 T* PyXPCOM_AllocHelper::Alloc(T*& dest, size_t count,
 										 const char* file, const unsigned line)
 {
-	mozilla::MutexAutoLock lock(mAllocMutex);
 	dest = reinterpret_cast<T*>(moz_calloc(sizeof(T), count));
 	//fprintf(stderr, "ALLOC: %12p [%12p/%12p] @%u\n", dest, this, &mAllocations, __LINE__);
 	mAllocations.Put(reinterpret_cast<void*>(dest),
@@ -1005,7 +1004,6 @@ T* PyXPCOM_AllocHelper::Alloc(T*& dest, size_t count,
 void* PyXPCOM_AllocHelper::Alloc(size_t size, size_t count,
 											const char* file, const unsigned line)
 {
-	mozilla::MutexAutoLock lock(mAllocMutex);
 	void* result = moz_calloc(size, count);
 	//fprintf(stderr, "ALLOC: %12p [%12p/%12p] @%u\n", result, this, &mAllocations, __LINE__);
 	mAllocations.Put(result,
@@ -1015,25 +1013,21 @@ void* PyXPCOM_AllocHelper::Alloc(size_t size, size_t count,
 void PyXPCOM_AllocHelper::MarkAlloc(void* buf, const char* file,
 											   const unsigned line)
 {
-	mozilla::MutexAutoLock lock(mAllocMutex);
 	//fprintf(stderr, "ALLOC: %12p [%12p/%12p] @%u\n", buf, this, &mAllocations, __LINE__);
 	mAllocations.Put(buf, new LineRef(file, line));
 }
 template<typename T>
 void PyXPCOM_AllocHelper::Free(T* buf) {
-	mozilla::MutexAutoLock lock(mAllocMutex);
 	//fprintf(stderr, "FREE: %12p [%12p/%12p] @%u\n", buf, this, &mAllocations, __LINE__);
 	mAllocations.Remove(reinterpret_cast<void*>(buf));
 	delete[] buf;
 }
 void PyXPCOM_AllocHelper::Free(void* buf) {
-	mozilla::MutexAutoLock lock(mAllocMutex);
 	//fprintf(stderr, "FREE: %12p [%12p/%12p] @%u\n", buf, this, &mAllocations, __LINE__);
 	mAllocations.Remove(buf);
 	moz_free(buf);
 }
 void PyXPCOM_AllocHelper::MarkFree(void* buf) {
-	mozilla::MutexAutoLock lock(mAllocMutex);
 	//fprintf(stderr, "FREE: %12p [%12p/%12p] @%u\n", buf, this, &mAllocations, __LINE__);
 	mAllocations.Remove(buf);
 }
@@ -1047,7 +1041,6 @@ PLDHashOperator PyXPCOM_AllocHelper::ReadAllocation(void* key,
 }
 
 PyXPCOM_AllocHelper::~PyXPCOM_AllocHelper() {
-	mozilla::MutexAutoLock lock(mAllocMutex);
 	mAllocations.EnumerateRead(ReadAllocation, nullptr);
 	MOZ_ASSERT(mAllocations.Count() == 0, "Did not free some things");
 }

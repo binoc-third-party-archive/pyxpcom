@@ -105,7 +105,6 @@ typedef int Py_ssize_t;
 #ifdef DEBUG
 	/* for Alloc/Free (memory leak tracking) */
 #	include <nsClassHashtable.h>
-#	include <mozilla/Mutex.h>
 #endif
 
 // An IID we treat as NULL when passing as a reference.
@@ -390,7 +389,7 @@ public:
 class PyXPCOM_AllocHelper {
 protected:
 	#ifdef DEBUG
-	PyXPCOM_AllocHelper() : mAllocMutex("mAllocMutex") {
+	PyXPCOM_AllocHelper() {
 		mAllocations.Init();
 	}
 	~PyXPCOM_AllocHelper();
@@ -401,7 +400,6 @@ protected:
 			: file(aFile), line(aLine) {}
 	};
 	nsClassHashtable<nsPtrHashKey<void>, LineRef> mAllocations;
-	mozilla::Mutex mAllocMutex;
 	template<typename T> MOZ_INLINE
 	T* Alloc(T*& dest, size_t count, const char* file, const unsigned line);
 	MOZ_INLINE void* Alloc(size_t size, size_t count, const char* file, const unsigned line);
