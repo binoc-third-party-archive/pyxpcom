@@ -1295,6 +1295,8 @@ bool PyXPCOM_InterfaceVariantHelper::PrepareCall()
 		// stash the type_flags into the variant, and remember how many extra
 		// bits of info we have.
 		mDispatchParams[i].type = ptd.type_flags;
+		MOZ_ASSERT(mDispatchParams[i].val.p == nullptr);
+		MOZ_ASSERT(mDispatchParams[i].ptr == nullptr);
 		if (ptd.IsIn() && !ptd.IsAutoIn() && !ptd.IsDipper()) {
 			if (!FillInVariant(ptd, i, param_index))
 				return false;
@@ -1820,6 +1822,7 @@ bool PyXPCOM_InterfaceVariantHelper::FillInVariant(const PythonTypeDescriptor &t
 bool PyXPCOM_InterfaceVariantHelper::PrepareOutVariant(const PythonTypeDescriptor &td, int value_index)
 {
 	MOZ_ASSERT(td.IsDipper() == td.IsDipperType(), "inconsistent dipper usage");
+	MOZ_ASSERT(td.IsOut() || td.IsDipper(), "Shouldn't have gotten here");
 	if (!(td.IsOut() || td.IsDipper())) {
 		// No need to do anything here
 		return true;
@@ -1830,6 +1833,11 @@ bool PyXPCOM_InterfaceVariantHelper::PrepareOutVariant(const PythonTypeDescripto
 	MOZ_ASSERT(ns_v.ptr == nullptr, "already have a pointer!");
 	// We can be out, inout, or in [dipper]; in all cases, we need to be indirect
 	ns_v.SetIndirect();
+
+	if (td.IsDipper()) {
+		// Dippers must be empty
+		MOZ_ASSERT(!ns_v.val.p);
+	}
 
 	#if DEBUG
 	if (td.IsIn() && !nsXPTType(td.TypeTag()).IsArithmetic() && ns_v.val.p) {
@@ -1952,6 +1960,7 @@ bool PyXPCOM_InterfaceVariantHelper::PrepareOutVariant(const PythonTypeDescripto
 			PyErr_NoMemory();
 			return false;
 		}
+		MOZ_ASSERT(str->IsEmpty());
 		// ns_v.ptr is the one that is read, but we free ns_v.val.p, so...
 		ns_v.ptr = ns_v.val.p = str;
 		ns_v.SetValNeedsCleanup();
