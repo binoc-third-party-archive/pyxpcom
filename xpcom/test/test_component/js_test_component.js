@@ -45,6 +45,20 @@ function JSTestComponent() {
 
 JSTestComponent.prototype.run =
 function JSTestComponent_run() {
+  /**
+   * This is a wrapper around the main run() method, to force a GC after it's
+   * done running.  This prevents a leak of the python component (even though
+   * it should _really_ do nothing, since we should be getting GCs anyway...)
+   */
+  try {
+    this.run_inner();
+  } finally {
+    Cu.forceGC();
+  }
+}
+
+JSTestComponent.prototype.run_inner =
+function JSTestComponent_run_inner() {
   var c = Cc["Python.TestComponent"]
             .createInstance(Ci.nsIPythonTestInterfaceDOMStrings);
 
