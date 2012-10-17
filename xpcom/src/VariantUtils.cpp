@@ -1292,11 +1292,12 @@ bool PyXPCOM_InterfaceVariantHelper::PrepareCall()
 	MOZ_ASSERT(mPyTypeDesc.Length() == mDispatchParams.Length());
 	for (i = 0; i < mPyTypeDesc.Length(); ++i) {
 		PythonTypeDescriptor &ptd = mPyTypeDesc[i];
+		nsXPTCVariant &dp = mDispatchParams[i];
 		// stash the type_flags into the variant, and remember how many extra
 		// bits of info we have.
-		mDispatchParams[i].type = ptd.type_flags;
-		MOZ_ASSERT(mDispatchParams[i].val.p == nullptr);
-		MOZ_ASSERT(mDispatchParams[i].ptr == nullptr);
+		dp.type = ptd.type_flags;
+		MOZ_ASSERT(dp.val.p == nullptr || (ptd.IsAutoIn() && ptd.IsAutoSet()));
+		MOZ_ASSERT(dp.ptr == nullptr || (ptd.IsAutoIn() && ptd.IsAutoSet()));
 		if (ptd.IsIn() && !ptd.IsAutoIn() && !ptd.IsDipper()) {
 			if (!FillInVariant(ptd, i, param_index))
 				return false;
@@ -1343,7 +1344,8 @@ bool PyXPCOM_InterfaceVariantHelper::SetSizeOrLengthIs(int var_index, bool is_si
 		ns_v.type = td_size.type_flags;
 		ns_v.val.u32 = new_size;
 		// In case it is "out", setup the necessary pointers.
-		PrepareOutVariant(td_size, argnum);
+		if (td_size.IsOut())
+			PrepareOutVariant(td_size, argnum);
 		td_size.have_set_auto = true;
 	} else {
 		if (ns_v.val.u32 != new_size) {
@@ -1822,8 +1824,9 @@ bool PyXPCOM_InterfaceVariantHelper::FillInVariant(const PythonTypeDescriptor &t
 bool PyXPCOM_InterfaceVariantHelper::PrepareOutVariant(const PythonTypeDescriptor &td, int value_index)
 {
 	MOZ_ASSERT(td.IsDipper() == td.IsDipperType(), "inconsistent dipper usage");
-	MOZ_ASSERT(td.IsOut() || td.IsDipper(), "Shouldn't have gotten here");
-	if (!(td.IsOut() || td.IsDipper())) {
+	MOZ_ASSERT(td.IsOut() || td.IsDipper() || (td.IsAutoOut() && !td.IsAutoSet()),
+	           "Shouldn't have gotten here");
+	if (!(td.IsOut() || td.IsDipper() || (td.IsAutoOut() && !td.IsAutoSet()))) {
 		// No need to do anything here
 		return true;
 	}
