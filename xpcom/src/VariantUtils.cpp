@@ -993,7 +993,7 @@ static bool ProcessPythonTypeDescriptors(PythonTypeDescriptor *pdescs, int num,
 // Allocator wrappers (to debug leaks)
 template<typename T>
 T* PyXPCOM_AllocHelper::Alloc(T*& dest, size_t count,
-										 const char* file, const unsigned line)
+                              const char* file, const unsigned line)
 {
 	dest = reinterpret_cast<T*>(moz_calloc(sizeof(T), count));
 	//fprintf(stderr, "ALLOC: %12p [%12p/%12p] @%u\n", dest, this, &mAllocations, __LINE__);
@@ -1004,7 +1004,7 @@ T* PyXPCOM_AllocHelper::Alloc(T*& dest, size_t count,
 	return dest;
 }
 void* PyXPCOM_AllocHelper::Alloc(size_t size, size_t count,
-											const char* file, const unsigned line)
+                                 const char* file, const unsigned line)
 {
 	void* result = moz_calloc(size, count);
 	//fprintf(stderr, "ALLOC: %12p [%12p/%12p] @%u\n", result, this, &mAllocations, __LINE__);
@@ -1013,7 +1013,7 @@ void* PyXPCOM_AllocHelper::Alloc(size_t size, size_t count,
 	return result;
 }
 void PyXPCOM_AllocHelper::MarkAlloc(void* buf, const char* file,
-											   const unsigned line)
+                                    const unsigned line)
 {
 	//fprintf(stderr, "ALLOC: %12p [%12p/%12p] @%u\n", buf, this, &mAllocations, __LINE__);
 	mAllocations.Put(buf, new LineRef(file, line));
@@ -1034,8 +1034,8 @@ void PyXPCOM_AllocHelper::MarkFree(void* buf) {
 	mAllocations.Remove(buf);
 }
 PLDHashOperator PyXPCOM_AllocHelper::ReadAllocation(void* key,
-													LineRef* value,
-													void* userData)
+                                                    LineRef* value,
+                                                    void* userData)
 {
 	fprintf(stderr, "ERROR: leaked %p @ %s:%u\n",
 			key, value->file, value->line);
@@ -1939,13 +1939,13 @@ bool PyXPCOM_InterfaceVariantHelper::PrepareOutVariant(const PythonTypeDescripto
 		}
 	  case nsXPTType::T_CSTRING:
 	  case nsXPTType::T_UTF8STRING: {
-		MOZ_ASSERT(ns_v.val.p == nullptr,
-				   "T_CSTRINGs can't be out and have a value (ie, no in/outs are allowed!");
+		MOZ_ASSERT(!ns_v.val.p,
+		           "T_CSTRINGs can't be out and have a value (ie, no in/outs are allowed!");
 		MOZ_ASSERT(ns_v.ptr == &ns_v.val); // from ns_v.SetIndirect()
 		MOZ_ASSERT(td.IsDipper(),
-				   "out ACStrings must really be in dippers!");
+		           "out ACStrings must really be in dippers!");
 		MOZ_ASSERT(!ns_v.DoesValNeedCleanup(),
-				   "T_CSTRING shouldn't already need cleanup!");
+		           "T_CSTRING shouldn't already need cleanup!");
 		// Dippers are really treated like "in" params.
 		nsCString * str;
 		if (!Alloc(str, 1, __FILE__, __LINE__)) {
