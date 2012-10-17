@@ -528,7 +528,10 @@ def doit(num_loops = -1):
             if gc is not None:
                 gc.collect()
             num_refs = gettotalrefcount()
-            mem_usage = getmemusage()
+            try:
+                mem_usage = getmemusage()
+            except:
+                mem_usage = 0 # Failed to get memory usage
 
         if num_errors:
             break
@@ -545,7 +548,10 @@ def doit(num_loops = -1):
 
     # sleep to allow the OS to recover
     time.sleep(1)
-    mem_lost = getmemusage() - mem_usage
+    try:
+        mem_lost = getmemusage() - mem_usage
+    except:
+        mem_lost = 0 # failed to get memory usage
     # working set size is fickle, and when we were leaking strings, this test
     # would report a leak of 100MB.  So we allow a 3MB buffer - but even this
     # may still occasionally report spurious warnings.  If you are really
