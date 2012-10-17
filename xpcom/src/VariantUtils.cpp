@@ -77,6 +77,7 @@ PyUnicode_AsPRUnichar(PyObject *obj, PRUnichar **dest_out, PRUint32 *size_out)
 	PyObject *s;
 	PRUnichar *dest;
 
+	MOZ_ASSERT(PyGILState_GetThisThreadState());
 	MOZ_ASSERT(dest_out, "PyUnicode_AsPRUnichar: dest_out was null");
 
 	s = PyUnicode_AsUTF16String(obj);
@@ -116,6 +117,7 @@ PyUnicode_AsPRUnichar(PyObject *obj, PRUnichar **dest_out, PRUint32 *size_out)
 PyObject *
 PyObject_FromNSString( const nsACString &s, bool bAssumeUTF8 /*= false */)
 {
+	MOZ_ASSERT(PyGILState_GetThisThreadState());
 	PyObject *ret;
 	if (s.IsVoid()) {
 		ret = Py_None;
@@ -135,6 +137,7 @@ PyObject_FromNSString( const nsACString &s, bool bAssumeUTF8 /*= false */)
 PyObject *
 PyObject_FromNSString( const nsAString &s )
 {
+	MOZ_ASSERT(PyGILState_GetThisThreadState());
 	PyObject *ret;
 	if (s.IsVoid()) {
 		ret = Py_None;
@@ -150,6 +153,7 @@ PyObject *
 PyObject_FromNSString( const PRUnichar *s,
                        PRUint32 len /* = (PRUint32)-1*/)
 {
+	MOZ_ASSERT(PyGILState_GetThisThreadState());
 	return PyUnicode_FromPRUnichar(s,
 	           len==((PRUint32)-1)? NS_strlen(s) : len);
 }
@@ -157,6 +161,7 @@ PyObject_FromNSString( const PRUnichar *s,
 bool
 PyObject_AsNSString( PyObject *val, nsAString &aStr)
 {
+	MOZ_ASSERT(PyGILState_GetThisThreadState());
 	if (val == Py_None) {
 		aStr.SetIsVoid(true);
 		return true;
@@ -252,6 +257,7 @@ void FreeSingleArray(void *array_ptr, PRUint32 sequence_size, PRUint8 array_type
 {
 	// Free each array element - NOT the array itself
 	// Thus, we only need to free arrays or pointers.
+	MOZ_ASSERT(PyGILState_GetThisThreadState());
 	void **p = (void **)array_ptr;
 	PRUint32 i;
 	switch(array_type & XPT_TDP_TAGMASK) {
@@ -304,6 +310,7 @@ bool FillSingleArray(void *array_ptr, PyObject *sequence_ob, PRUint32 sequence_s
                      const nsIID &iid)
 {
 	PRUint8 *pthis = reinterpret_cast<uint8_t*>(array_ptr);
+	MOZ_ASSERT(PyGILState_GetThisThreadState());
 	MOZ_ASSERT(pthis, "Don't have a valid array to fill!");
 	MOZ_ASSERT((static_cast<uint8_t>(array_type) & XPT_TDP_FLAGMASK) == 0,
 			   "Array type should not have flags");
@@ -515,6 +522,7 @@ bool FillSingleArray(void *array_ptr, PyObject *sequence_ob, PRUint32 sequence_s
 static PyObject *UnpackSingleArray(Py_nsISupports *parent, void *array_ptr,
 				   PRUint32 sequence_size, XPTTypeDescriptorTags array_type, nsIID *iid)
 {
+	MOZ_ASSERT(PyGILState_GetThisThreadState());
 	if (array_ptr==NULL) {
 		Py_INCREF(Py_None);
 		return Py_None;
@@ -631,6 +639,7 @@ struct BVFTResult {
 
 static PRUint16 BestVariantTypeForPyObject( PyObject *ob, BVFTResult *pdata)
 {
+	MOZ_ASSERT(PyGILState_GetThisThreadState());
 	nsCOMPtr<nsISupports> ps = NULL;
 	nsIID iid;
 	MOZ_ASSERT(ob);
@@ -680,6 +689,7 @@ static PRUint16 BestVariantTypeForPyObject( PyObject *ob, BVFTResult *pdata)
 nsresult
 PyObject_AsVariant( PyObject *ob, nsIVariant **aRet)
 {
+	MOZ_ASSERT(PyGILState_GetThisThreadState());
 	nsresult nr = NS_OK;
 	nsCOMPtr<nsIWritableVariant> v = do_CreateInstance("@mozilla.org/variant;1", &nr);
 	NS_ENSURE_SUCCESS(nr, nr);
@@ -791,12 +801,13 @@ PyObject *PyObject_FromVariantArray( Py_nsISupports *parent, nsIVariant *v)
 {
 	nsresult nr;
 	NS_PRECONDITION(v, "NULL variant!");
+	MOZ_ASSERT(PyGILState_GetThisThreadState());
 	if (!v)
 		return PyXPCOM_BuildPyException(NS_ERROR_INVALID_POINTER);
 #ifdef NS_DEBUG
 	PRUint16 dt;
 	nr = v->GetDataType(&dt);
-	NS_ABORT_IF_FALSE(dt == nsIDataType::VTYPE_ARRAY, "expected an array variant");
+	MOZ_ASSERT(dt == nsIDataType::VTYPE_ARRAY, "expected an array variant");
 #endif
 	nsIID iid;
 	void *p;
@@ -814,6 +825,7 @@ PyObject *PyObject_FromVariantArray( Py_nsISupports *parent, nsIVariant *v)
 PyObject *
 PyObject_FromVariant( Py_nsISupports *parent, nsIVariant *v)
 {
+	MOZ_ASSERT(PyGILState_GetThisThreadState());
 	if (!v) {
 		Py_INCREF(Py_None);
 		return Py_None;
@@ -919,6 +931,7 @@ static bool ProcessPythonTypeDescriptors(PythonTypeDescriptor *pdescs, int num,
 	// Loop over the array, checking all the params marked as having an arg.
 	// If these args nominate another arg as the size_is param, then
 	// we reset the size_is param to _not_ requiring an arg.
+	MOZ_ASSERT(PyGILState_GetThisThreadState());
 	int i;
 	for (i = 0; i < num; i++) {
 		PythonTypeDescriptor &ptd = pdescs[i];
@@ -1127,6 +1140,7 @@ Helpers when CALLING interfaces.
 
 PyXPCOM_InterfaceVariantHelper::PyXPCOM_InterfaceVariantHelper(Py_nsISupports *parent)
 {
+	MOZ_ASSERT(PyGILState_GetThisThreadState());
 	MOZ_ASSERT(parent);
 	m_pyparams = nullptr;
 	// Parent should never die before we do, but let's not take the chance.
@@ -1136,6 +1150,7 @@ PyXPCOM_InterfaceVariantHelper::PyXPCOM_InterfaceVariantHelper(Py_nsISupports *p
 
 PyXPCOM_InterfaceVariantHelper::~PyXPCOM_InterfaceVariantHelper()
 {
+	MOZ_ASSERT(PyGILState_GetThisThreadState());
 	Py_DECREF(m_parent);
 	Py_XDECREF(m_pyparams);
 	MOZ_ASSERT(mDispatchParams.Length() == mPyTypeDesc.Length());
@@ -1198,6 +1213,7 @@ bool PyXPCOM_InterfaceVariantHelper::Init(PyObject *obParams)
 	int min_num_params = 0;
 	int max_num_params = 0;
 	int num_args_provided;
+	MOZ_ASSERT(PyGILState_GetThisThreadState());
 	if (!PySequence_Check(obParams) || PySequence_Length(obParams) != 2) {
 		PyErr_Format(PyExc_TypeError, "Param descriptors must be a sequence of exactly length 2");
 		return false;
@@ -1289,6 +1305,7 @@ bool PyXPCOM_InterfaceVariantHelper::PrepareCall()
 {
 	int param_index = 0;
 	int i;
+	MOZ_ASSERT(PyGILState_GetThisThreadState());
 	MOZ_ASSERT(mPyTypeDesc.Length() == mDispatchParams.Length());
 	for (i = 0; i < mPyTypeDesc.Length(); ++i) {
 		PythonTypeDescriptor &ptd = mPyTypeDesc[i];
@@ -1326,6 +1343,7 @@ bool PyXPCOM_InterfaceVariantHelper::PrepareCall()
 
 bool PyXPCOM_InterfaceVariantHelper::SetSizeOrLengthIs(int var_index, bool is_size, uint32_t new_size)
 {
+	MOZ_ASSERT(PyGILState_GetThisThreadState());
 	MOZ_ASSERT(var_index < mPyTypeDesc.Length(), "var_index param is invalid");
 	uint8_t argnum = is_size ?
 		mPyTypeDesc[var_index].size_is :
@@ -1360,6 +1378,7 @@ bool PyXPCOM_InterfaceVariantHelper::SetSizeOrLengthIs(int var_index, bool is_si
 
 uint32_t PyXPCOM_InterfaceVariantHelper::GetSizeOrLengthIs(int var_index, bool is_size)
 {
+	MOZ_ASSERT(PyGILState_GetThisThreadState());
 	MOZ_ASSERT(var_index < mPyTypeDesc.Length(), "var_index param is invalid");
 	PRUint8 argnum = is_size ?
 		mPyTypeDesc[var_index].size_is :
@@ -1395,6 +1414,7 @@ uint32_t PyXPCOM_InterfaceVariantHelper::GetSizeOrLengthIs(int var_index, bool i
 bool PyXPCOM_InterfaceVariantHelper::FillInVariant(const PythonTypeDescriptor &td, int value_index, int param_index)
 {
 	bool rc = true;
+	MOZ_ASSERT(PyGILState_GetThisThreadState());
 	// Get a reference to the variant we are filling for convenience.
 	nsXPTCVariant &ns_v = mDispatchParams[value_index];
 	MOZ_ASSERT(ns_v.type == td.type_flags,
@@ -1823,6 +1843,7 @@ bool PyXPCOM_InterfaceVariantHelper::FillInVariant(const PythonTypeDescriptor &t
 
 bool PyXPCOM_InterfaceVariantHelper::PrepareOutVariant(const PythonTypeDescriptor &td, int value_index)
 {
+	MOZ_ASSERT(PyGILState_GetThisThreadState());
 	MOZ_ASSERT(td.IsDipper() == td.IsDipperType(), "inconsistent dipper usage");
 	MOZ_ASSERT(td.IsOut() || td.IsDipper() || (td.IsAutoOut() && !td.IsAutoSet()),
 	           "Shouldn't have gotten here");
@@ -1986,7 +2007,8 @@ PyObject *PyXPCOM_InterfaceVariantHelper::MakeSinglePythonResult(int index)
 {
 	nsXPTCVariant &ns_v = mDispatchParams[index];
 	PyObject *ret = nullptr;
-	NS_ABORT_IF_FALSE(ns_v.IsPtrData(), "expecting a pointer if you want a result!");
+	MOZ_ASSERT(PyGILState_GetThisThreadState());
+	MOZ_ASSERT(ns_v.IsPtrData(), "expecting a pointer if you want a result!");
 
 	// Re-fetch the type descriptor.
 	PythonTypeDescriptor &td = mPyTypeDesc[index];
@@ -2197,6 +2219,7 @@ PyObject *PyXPCOM_InterfaceVariantHelper::MakePythonResult()
 	int n_results = 0;
 	PyObject *ret = NULL;
 	bool have_retval = false;
+	MOZ_ASSERT(PyGILState_GetThisThreadState());
 	for (i = 0; i < mPyTypeDesc.Length(); ++i) {
 		PythonTypeDescriptor &td = mPyTypeDesc[i];
 		if (!td.IsAutoOut()) {
