@@ -999,7 +999,9 @@ T* PyXPCOM_AllocHelper::Alloc(T*& dest, size_t count,
 	//fprintf(stderr, "ALLOC: %12p [%12p/%12p] @%u\n", dest, this, &mAllocations, __LINE__);
 	mAllocations.Put(reinterpret_cast<void*>(dest),
 			 new LineRef(file, line));
-	return new (dest) T[count]();
+	for (size_t i = 0; i < count; ++i)
+		new (&dest[i]) T();
+	return dest;
 }
 void* PyXPCOM_AllocHelper::Alloc(size_t size, size_t count,
 											const char* file, const unsigned line)
