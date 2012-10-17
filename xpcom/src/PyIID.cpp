@@ -202,9 +202,9 @@ Py_nsIID::PyTypeMethod_repr(PyObject *self)
 {
 	Py_nsIID *s_iid = (Py_nsIID *)self;
 	char buf[256];
-	char *sziid = s_iid->m_iid.ToString();
-	sprintf(buf, "_xpcom.IID('%s')", sziid);
-	nsMemory::Free(sziid);
+	char idstr[NSID_LENGTH];
+	s_iid->m_iid.ToProvidedString(idstr);
+	sprintf(buf, "_xpcom.IID('%s')", idstr);
 	return PyString_FromString(buf);
 }
 
@@ -212,9 +212,9 @@ Py_nsIID::PyTypeMethod_repr(PyObject *self)
 Py_nsIID::PyTypeMethod_str(PyObject *self)
 {
 	Py_nsIID *s_iid = (Py_nsIID *)self;
-	char *sziid = s_iid->m_iid.ToString();
-	PyObject *ret = PyString_FromString(sziid);
-	nsMemory::Free(sziid);
+	char idstr[NSID_LENGTH];
+	s_iid->m_iid.ToProvidedString(idstr);
+	PyObject *ret = PyString_FromStringAndSize(idstr, NSID_LENGTH - 1);
 	return ret;
 }
 
