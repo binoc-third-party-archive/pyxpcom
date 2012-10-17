@@ -55,6 +55,7 @@ PyXPCOM_XPTStub::PyXPCOM_XPTStub(PyObject *instance, const nsIID &iid)
 {
 	if (NS_FAILED(InitStub(iid)))
 		NS_ERROR("InitStub must not fail!");
+	MOZ_ASSERT(mXPTCStub);
 
 	{
 		// Temp scope for lock. Ensures some other thread isn't doing a
