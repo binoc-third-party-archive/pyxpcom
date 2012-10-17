@@ -85,10 +85,10 @@ class TestHandler(logging.Handler):
         self.reset()
     
     def reset(self):
-        self.count = 0
+        self.records = []
 
     def handle(self, record):
-        self.count += 1
+        self.records.append(self.format(record))
 
 class ExceptionTests(unittest.TestCase):
 
@@ -107,7 +107,12 @@ class ExceptionTests(unittest.TestCase):
                     raise
         finally:
             logger.handlers = old_handlers
-        self.failUnlessEqual(num_tracebacks, test_handler.count)
+        if num_tracebacks != len(test_handler.records):
+            print dir(logger)
+        self.failUnlessEqual(num_tracebacks, len(test_handler.records),
+                             "Expected %s tracebacks, got %s:\n\t%s" % (
+                                num_tracebacks, len(test_handler.records),
+                                "\n\t".join(test_handler.records)))
 
     def testEmAll(self):
         ob = WrapObject( PythonFailingComponent(), components.interfaces.nsIPythonTestInterfaceExtra)
