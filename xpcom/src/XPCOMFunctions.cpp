@@ -78,6 +78,10 @@
 
 #include "nsIEventTarget.h"
 
+#if PYXPCOM_DEBUG_INTERFACE_COUNT || PYXPCOM_DEBUG_GATEWAY_COUNT
+#include "prprf.h"
+#endif
+
 #define LOADER_LINKS_WITH_PYTHON
 
 // "boot-strap" methods - interfaces we need to get the base
@@ -298,6 +302,10 @@ PyXPCOMMethod_NS_ShutdownXPCOM(PyObject *self, PyObject *args)
 	Py_BEGIN_ALLOW_THREADS;
 	nr = NS_ShutdownXPCOM(nullptr);
 	Py_END_ALLOW_THREADS;
+	// NS_ShutdownXPCOM will dispose of various services, so that might
+	// itself release some things.  Only check for clean shutdown afterwards.
+	MOZ_ASSERT(_PyXPCOM_GetInterfaceCount() == 0);
+	MOZ_ASSERT(_PyXPCOM_GetGatewayCount() == 0);
 
 	// Dont raise an exception - as we are probably shutting down
 	// and dont really case - just return the status
@@ -433,6 +441,9 @@ static struct PyMethodDef xpcom_methods[]=
 	Py_DECREF(ob); \
 	}
 
+#if PYXPCOM_DEBUG_INTERFACE_COUNT || PYXPCOM_DEBUG_GATEWAY_COUNT
+	FILE *gDebugCountLog = nullptr;
+#endif /* PYXPCOM_DEBUG_INTERFACE_COUNT || PYXPCOM_DEBUG_GATEWAY_COUNT */
 
 ////////////////////////////////////////////////////////////
 // The module init code.
@@ -440,6 +451,24 @@ static struct PyMethodDef xpcom_methods[]=
 extern "C" NS_EXPORT
 bool
 init_xpcom_real() {
+    #if PYXPCOM_DEBUG_INTERFACE_COUNT || PYXPCOM_DEBUG_GATEWAY_COUNT
+    {
+        const char* tmpdir = PR_GetEnv("TEMP");
+        const char kLogName[] = "/pyxpcom.debug-count.log";
+        if (!tmpdir || !*tmpdir) {
+            tmpdir = PR_GetEnv("TMP");
+        }
+        if (!tmpdir || !*tmpdir) {
+            tmpdir = "/tmp";
+        }
+        size_t bufsize = strlen(tmpdir) + sizeof(kLogName) + 1;
+        char* buf = (char*)moz_xmalloc(bufsize);
+        PR_snprintf(buf, bufsize - 1, "%s%s", tmpdir, kLogName);
+        buf[bufsize - 1] = '\0';
+        gDebugCountLog = fopen(buf, "w");
+    }
+    #endif /* PYXPCOM_DEBUG_INTERFACE_COUNT || PYXPCOM_DEBUG_GATEWAY_COUNT */
+
     PyObject *oModule;
 
     // ensure the framework has valid state to work with.

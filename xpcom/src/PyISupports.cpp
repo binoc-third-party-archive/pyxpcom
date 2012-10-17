@@ -76,10 +76,47 @@ Py_nsISupports::Py_nsISupports(nsISupports *punk, const nsIID &iid, PyTypeObject
 	// refcnt of object managed by caller.
 	PR_AtomicIncrement(&cInterfaces);
 	_Py_NewReference(this);
+
+	#if PYXPCOM_DEBUG_INTERFACE_COUNT
+		if (gDebugCountLog) {
+			char iidbuf[NSID_LENGTH];
+			m_iid.ToProvidedString(iidbuf);
+			nsCOMPtr<nsIInterfaceInfoManager> iim(do_GetService(
+				NS_INTERFACEINFOMANAGER_SERVICE_CONTRACTID));
+			char* iid_name = nullptr, *iface_buf = nullptr;
+			nsresult rv = NS_ERROR_FAILURE;
+			if (iim)
+				rv = iim->GetNameForIID(&m_iid, &iid_name);
+			if (NS_SUCCEEDED(rv)) {
+				iface_buf = reinterpret_cast<char*>(moz_xmalloc(NSID_LENGTH + strlen(iid_name) + 2));
+				sprintf(iface_buf, "%s/%s", iidbuf, iid_name);
+				moz_free(iid_name);
+			} else {
+				iface_buf = reinterpret_cast<char*>(moz_xmalloc(NSID_LENGTH));
+				strcpy(iface_buf, iidbuf);
+			}
+			fprintf(gDebugCountLog,
+				"I ++ %s nsISupports=%p PyObject=%p total=%i\n",
+				iface_buf, m_obj.get(), this, cInterfaces);
+			moz_free(iface_buf);
+			fflush(gDebugCountLog);
+		}
+	#endif /* PYXPCOM_DEBUG_INTERFACE_COUNT */
 }
 
 Py_nsISupports::~Py_nsISupports()
 {
+	#if PYXPCOM_DEBUG_INTERFACE_COUNT
+		if (gDebugCountLog) {
+			char iidbuf[NSID_LENGTH];
+			m_iid.ToProvidedString(iidbuf);
+			fprintf(gDebugCountLog,
+			        "I -- %s nsISupports=%p PyObject=%p total=%i\n",
+			        iidbuf, m_obj.get(), this, cInterfaces - 1);
+			fflush(gDebugCountLog);
+		}
+	#endif /* PYXPCOM_DEBUG_INTERFACE_COUNT */
+
 	SafeRelease(this);
 	PR_AtomicDecrement(&cInterfaces);
 }

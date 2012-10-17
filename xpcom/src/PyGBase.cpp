@@ -160,6 +160,54 @@ PyG_Base::PyG_Base(PyObject *instance, const nsIID &iid)
 #ifdef DEBUG_FULL
 	LogF("PyGatewayBase: created %s", m_pPyObject ? m_pPyObject->ob_type->tp_name : "<NULL>");
 #endif
+
+	#if PYXPCOM_DEBUG_GATEWAY_COUNT
+		if (gDebugCountLog) {
+			char iidbuf[NSID_LENGTH];
+			m_iid.ToProvidedString(iidbuf);
+			// Try to get the interface name...
+			nsCOMPtr<nsIInterfaceInfoManager> iim(do_GetService(
+				NS_INTERFACEINFOMANAGER_SERVICE_CONTRACTID));
+			char *iid_name = nullptr, *iface_buf = nullptr;
+			nsresult rv = NS_ERROR_FAILURE;
+			if (iim)
+				rv = iim->GetNameForIID(&m_iid, &iid_name);
+			if (NS_SUCCEEDED(rv)) {
+				iface_buf = reinterpret_cast<char*>(moz_xmalloc(NSID_LENGTH + strlen(iid_name) + 2));
+				sprintf(iface_buf, "%s/%s", iidbuf, iid_name);
+				moz_free(iid_name);
+			} else {
+				iface_buf = reinterpret_cast<char*>(moz_xmalloc(NSID_LENGTH));
+				strcpy(iface_buf, iidbuf);
+			}
+			PyObject *real_instance = PyObject_GetAttrString(m_pPyObject, "_obj_");
+			char *obj_buf = nullptr;
+			const size_t ptr_size = sizeof(real_instance) * 2 + 1;
+			// Try to get the class name...
+			if (real_instance && PyInstance_Check(real_instance)) {
+				// old style classes
+				PyInstanceObject *inst = reinterpret_cast<PyInstanceObject*>(real_instance);
+				PyObject *cls_name = inst->in_class->cl_name;
+				if (PyString_Check(cls_name)) {
+					obj_buf = reinterpret_cast<char*>(moz_xmalloc(ptr_size + PyString_GET_SIZE(cls_name) + 1));
+					sprintf(obj_buf, "%p/%s", real_instance, PyString_AS_STRING(cls_name));
+				}
+			}
+			if (!obj_buf) {
+				const char *tp_name = real_instance->ob_type->tp_name;
+				size_t name_len = strlen(tp_name);
+				obj_buf = reinterpret_cast<char*>(moz_xmalloc(ptr_size + name_len + 1));
+				sprintf(obj_buf, "%p/%s", real_instance, tp_name);
+			}
+			fprintf(gDebugCountLog,
+				"G ++ %s Gateway=%p PyObject=%s total=%i\n",
+				iface_buf, this, obj_buf, cGateways);
+			moz_free(iface_buf);
+			moz_free(obj_buf);
+			Py_XDECREF(real_instance);
+			fflush(gDebugCountLog);
+		}
+	#endif /* PYXPCOM_DEBUG_GATEWAY_COUNT */
 }
 
 PyG_Base::~PyG_Base()
@@ -168,6 +216,21 @@ PyG_Base::~PyG_Base()
 #ifdef DEBUG_LIFETIMES
 	PYXPCOM_LOG_DEBUG("PyG_Base: deleted %p", this);
 #endif
+
+	#if PYXPCOM_DEBUG_GATEWAY_COUNT
+		if (gDebugCountLog) {
+			CEnterLeavePython _celp;
+			PyObject *real_instance = PyObject_GetAttrString(m_pPyObject, "_obj_");
+			char iidbuf[NSID_LENGTH];
+			m_iid.ToProvidedString(iidbuf);
+			fprintf(gDebugCountLog,
+				"G -- %s Gateway=%p PyObject=%p total=%i\n",
+				iidbuf, this, real_instance, cGateways);
+			Py_XDECREF(real_instance);
+			fflush(gDebugCountLog);
+		}
+	#endif /* PYXPCOM_DEBUG_GATEWAY_COUNT */
+
 	if ( m_pPyObject ) {
 		CEnterLeavePython celp;
 		Py_DECREF(m_pPyObject);

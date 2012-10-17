@@ -61,4 +61,15 @@
 #pragma warning ( disable: 4800 ) /* 'type' : forcing value to bool 'true' or 'false' (performance warning) */
 #endif
 
+// Debugging selection
+#ifdef DEBUG_marky
+#define PYXPCOM_DEBUG_INTERFACE_COUNT 1
+#define PYXPCOM_DEBUG_GATEWAY_COUNT 1
+#endif
+
+#if PYXPCOM_DEBUG_INTERFACE_COUNT || PYXPCOM_DEBUG_GATEWAY_COUNT
+#include <stdio.h>
+extern FILE* gDebugCountLog;
+#endif
+
 #include "PyXPCOM.h"
