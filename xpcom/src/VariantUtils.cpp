@@ -2296,12 +2296,12 @@ void PyXPCOM_InterfaceVariantHelper::CleanupParam(void* p, nsXPTType& type)
 			break;
         case TD_ASTRING:
         case TD_DOMSTRING:
-			delete reinterpret_cast<const nsString*>(p);
+			delete reinterpret_cast<nsString*>(p);
 			MarkFree(p);
 			break;
         case TD_CSTRING:
         case TD_UTF8STRING:
-			delete reinterpret_cast<const nsCString*>(p);
+			delete reinterpret_cast<nsCString*>(p);
 			MarkFree(p);
 			break;
         case TD_PNSIID:
