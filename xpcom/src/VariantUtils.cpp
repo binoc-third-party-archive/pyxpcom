@@ -2289,11 +2289,10 @@ void PyXPCOM_InterfaceVariantHelper::CleanupParam(void* p, nsXPTType& type)
         case TD_INTERFACE_TYPE:
         case TD_INTERFACE_IS_TYPE:
 			// MUST release thread-lock, incase a Python COM object that re-acquires.
-			MarkFree(p);
 			Py_BEGIN_ALLOW_THREADS;
 			reinterpret_cast<nsISupports*>(p)->Release();
-			MarkFree(p);
 			Py_END_ALLOW_THREADS;
+			MarkFree(p);
 			break;
         case TD_ASTRING:
         case TD_DOMSTRING:
