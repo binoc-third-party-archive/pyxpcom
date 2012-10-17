@@ -57,7 +57,6 @@
 #pragma clang diagnostic ignored "-Wdeprecated-writable-strings"
 #pragma clang diagnostic ignored "-Wcast-align"
 #elif defined(_MSC_VER)
-#pragma warning ( disable: 4482 ) /* nonstandard extension used: enum 'enum' used in qualified name */
 #pragma warning ( disable: 4800 ) /* 'type' : forcing value to bool 'true' or 'false' (performance warning) */
 #endif
 
