@@ -404,6 +404,24 @@ PyObject *LogConsoleMessage(PyObject *self, PyObject *args)
 	return Py_None;
 }
 
+#if DEBUG
+// Break into the (C++) debugger
+PyObject *PyXPCOMMethod__Break(PyObject *self, PyObject *args)
+{
+	#if defined(XP_WIN)
+		::DebugBreak();
+	#elif defined(XP_UNIX)
+		raise(SIGTRAP);
+	#else
+		PyErr_SetString(PyExc_RuntimeError,
+		                "_xpcom._Break is not implemented!");
+		return nullptr;
+	#endif
+	Py_INCREF(Py_None);
+	return Py_None;
+}
+#endif /* DEBUG */
+
 extern PyObject *PyXPCOMMethod_IID(PyObject *self, PyObject *args);
 
 static struct PyMethodDef xpcom_methods[]=
@@ -425,7 +443,9 @@ static struct PyMethodDef xpcom_methods[]=
 	{"LogConsoleMessage", LogConsoleMessage, 1, "Write a message to the xpcom console service"},
 	{"MakeVariant", PyXPCOMMethod_MakeVariant, 1},
 	{"GetVariantValue", PyXPCOMMethod_GetVariantValue, 1},
-	// These should no longer be used - just use the logging.getLogger('pyxpcom')...
+	#if DEBUG
+		{"_Break", PyXPCOMMethod__Break, 1, "Break into the C++ debugger"},
+	#endif
 	{ NULL }
 };
 
