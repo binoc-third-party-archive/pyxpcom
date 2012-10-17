@@ -1054,29 +1054,70 @@ PyXPCOM_AllocHelper::~PyXPCOM_AllocHelper() {
 
 // Debugging helper; never called in code.  This will leak.
 char* PythonTypeDescriptor::Describe() const {
-	char* buf;
-	asprintf(&buf, "TD Type=%u ArrayType=%u [%s%s%s%s%s%s%s%s%s%s]",
-			 TypeTag(), ArrayTypeTag(),
-			 IsPointer() ? "pointer " : "",
-			 IsReference() ? "ref " : "",
-			 IsIn() ? "in " : "",
-			 IsOut() ? "out " : "",
-			 IsRetval() ? "retval " : "",
-			 IsShared() ? "shared " : "",
-			 IsDipper() ? (IsDipperType() ? "dipper " : "** DIPPER ** ") :
-						  (IsDipperType() ? "### NOT DIPPER ### " : ""),
-			 IsOptional() ? "optional " : "",
-			 IsAutoIn() ? (IsAutoSet() ? "*in " : "!in ") : "",
-			 IsAutoOut() ? (IsAutoSet() ? "*out " : "!out ") : ""
-			);
+	static char buf[1024], typeTagBuf[0x10], arrayTypeTagBuf[0x10];
+	const char* kTypeTags[] = {
+		"TD_INT8",
+		"TD_INT16",
+		"TD_INT32",
+		"TD_INT64",
+		"TD_UINT8",
+		"TD_UINT16",
+		"TD_UINT32",
+		"TD_UINT64",
+		"TD_FLOAT",
+		"TD_DOUBLE",
+		"TD_BOOL",
+		"TD_CHAR",
+		"TD_WCHAR",
+		"TD_VOID",
+		"TD_PNSIID",
+		"TD_DOMSTRING",
+		"TD_PSTRING",
+		"TD_PWSTRING",
+		"TD_INTERFACE_TYPE",
+		"TD_INTERFACE_IS_TYPE",
+		"TD_ARRAY",
+		"TD_PSTRING_SIZE_IS",
+		"TD_PWSTRING_SIZE_IS",
+		"TD_UTF8STRING",
+		"TD_CSTRING",
+		"TD_ASTRING",
+		"TD_JSVAL"
+	};
+	const char *typeTag = typeTagBuf;
+	if (TypeTag() < 0 || TypeTag() > NS_ARRAY_LENGTH(kTypeTags)) {
+		sprintf(typeTagBuf, "%u", TypeTag());
+	} else {
+		typeTag = kTypeTags[TypeTag()];
+	}
+	const char *arrayTypeTag = arrayTypeTagBuf;
+	if (ArrayTypeTag() < 0 || ArrayTypeTag() > NS_ARRAY_LENGTH(kTypeTags)) {
+		sprintf(arrayTypeTagBuf, "%u", ArrayTypeTag());
+	} else {
+		arrayTypeTag = kTypeTags[ArrayTypeTag()];
+	}
+	sprintf(buf, "TD Type=%s ArrayType=%s [%s%s%s%s%s%s%s%s%s%s]",
+	        typeTag, arrayTypeTag,
+	        IsPointer() ? "pointer " : "",
+	        IsReference() ? "ref " : "",
+	        IsIn() ? "in " : "",
+	        IsOut() ? "out " : "",
+	        IsRetval() ? "retval " : "",
+	        IsShared() ? "shared " : "",
+	        IsDipper() ? (IsDipperType() ? "dipper " : "** DIPPER ** ") :
+	                     (IsDipperType() ? "### NOT DIPPER ### " : ""),
+	        IsOptional() ? "optional " : "",
+	        IsAutoIn() ? (IsAutoSet() ? "*in " : "!in ") : "",
+	        IsAutoOut() ? (IsAutoSet() ? "*out " : "!out ") : ""
+	       );
 	return buf;
 }
 char* PythonTypeDescriptor::Describe(const nsXPTCVariant& v) const {
-	char *buf;
-	asprintf(&buf, "%s[%s%s]",
-			 Describe(),
-			 v.DoesValNeedCleanup() ? "cleanup " : "",
-			 v.IsIndirect() ? "indirect " : "");
+	static char buf[1024];
+	sprintf(buf, "%s[%s%s]",
+	        Describe(),
+	        v.DoesValNeedCleanup() ? "cleanup " : "",
+	        v.IsIndirect() ? "indirect " : "");
 	return buf;
 }
 #endif
