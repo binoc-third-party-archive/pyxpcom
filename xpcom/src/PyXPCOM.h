@@ -108,7 +108,7 @@ typedef int Py_ssize_t;
 #endif
 
 // An IID we treat as NULL when passing as a reference.
-extern PYXPCOM_EXPORT nsIID Py_nsIID_NULL;
+extern nsIID Py_nsIID_NULL;
 
 class Py_nsISupports;
 
@@ -124,28 +124,28 @@ class Py_nsISupports;
   NS_ERROR_GENERATE_SUCCESS(NS_ERROR_MODULE_PYXPCOM, 0)
 
 // The exception object (loaded from the xpcom .py code)
-extern PYXPCOM_EXPORT PyObject *PyXPCOM_Error;
+extern PyObject *PyXPCOM_Error;
 
 // A boolean flag indicating if the _xpcom module has been successfully
 // imported.  Mainly used to handle errors at startup - if this module
 // hasn't been imported yet, we don't try and use the logging module
 // for error messages (as that process itself needs the module!)
-extern PYXPCOM_EXPORT bool PyXPCOM_ModuleInitialized;
+extern bool PyXPCOM_ModuleInitialized;
 
 // Client related functions - generally called by interfaces before
 // they return NULL back to Python to indicate the error.
 // All these functions return NULL so interfaces can generally
 // just "return PyXPCOM_BuildPyException(hr, punk, IID_IWhatever)"
-PYXPCOM_EXPORT PyObject *PyXPCOM_BuildPyException(nsresult res);
+PyObject *PyXPCOM_BuildPyException(nsresult res);
 
 // Used in gateways to handle the current Python exception
 // NOTE: this function assumes it is operating within the Python context
 PYXPCOM_EXPORT nsresult PyXPCOM_SetCOMErrorFromPyException();
 
 // Write current exception and traceback to a string.
-PYXPCOM_EXPORT bool PyXPCOM_FormatCurrentException(nsCString &streamout);
+bool PyXPCOM_FormatCurrentException(nsCString &streamout);
 // Write specified exception and traceback to a string.
-PYXPCOM_EXPORT bool PyXPCOM_FormatGivenException(nsCString &streamout,
+bool PyXPCOM_FormatGivenException(nsCString &streamout,
                                 PyObject *exc_typ, PyObject *exc_val,
                                 PyObject *exc_tb);
 
@@ -157,7 +157,7 @@ PYXPCOM_EXPORT bool PyXPCOM_FormatGivenException(nsCString &streamout,
 // they may care about, but nothing that prevents us actually
 // working.
 // As it's designed for user error/warning, it exists in non-debug builds.
-PYXPCOM_EXPORT void PyXPCOM_LogWarning(const char *fmt, ...);
+void PyXPCOM_LogWarning(const char *fmt, ...);
 
 // Log an error for the user - something that _has_ prevented
 // us working.  This is probably accompanied by a traceback.
@@ -165,12 +165,12 @@ PYXPCOM_EXPORT void PyXPCOM_LogWarning(const char *fmt, ...);
 PYXPCOM_EXPORT void PyXPCOM_LogError(const char *fmt, ...);
 
 // The raw one
-PYXPCOM_EXPORT void PyXPCOM_Log(const char *level, const nsCString &msg);
+void PyXPCOM_Log(const char *level, const nsCString &msg);
 
 #ifdef DEBUG
 // Mainly designed for developers of the XPCOM package.
 // Only enabled in debug builds.
-PYXPCOM_EXPORT void PyXPCOM_LogDebug(const char *fmt, ...);
+void PyXPCOM_LogDebug(const char *fmt, ...);
 #define PYXPCOM_LOG_DEBUG PyXPCOM_LogDebug
 #else
 #define PYXPCOM_LOG_DEBUG()
@@ -178,23 +178,23 @@ PYXPCOM_EXPORT void PyXPCOM_LogDebug(const char *fmt, ...);
 
 // Some utility converters
 // moz strings to PyObject.
-PYXPCOM_EXPORT PyObject *PyObject_FromNSString( const nsACString &s,
+PyObject *PyObject_FromNSString( const nsACString &s,
                                                 bool bAssumeUTF8 = false );
-PYXPCOM_EXPORT PyObject *PyObject_FromNSString( const nsAString &s );
-PYXPCOM_EXPORT PyObject *PyObject_FromNSString( const PRUnichar *s,
+PyObject *PyObject_FromNSString( const nsAString &s );
+PyObject *PyObject_FromNSString( const PRUnichar *s,
                                                 PRUint32 len = (PRUint32)-1);
 
 // PyObjects to moz strings.  As per the moz string guide, we pass a reference
 // to an abstract string
-PYXPCOM_EXPORT bool PyObject_AsNSString( PyObject *ob, nsAString &aStr);
+bool PyObject_AsNSString( PyObject *ob, nsAString &aStr);
 
 // Variants.
-PYXPCOM_EXPORT nsresult PyObject_AsVariant( PyObject *ob, nsIVariant **aRet);
-PYXPCOM_EXPORT PyObject *PyObject_FromVariant( Py_nsISupports *parent,
+nsresult PyObject_AsVariant( PyObject *ob, nsIVariant **aRet);
+PyObject *PyObject_FromVariant( Py_nsISupports *parent,
                                                nsIVariant *v);
 
 // Interfaces - these are the "official" functions
-PYXPCOM_EXPORT PyObject *PyObject_FromNSInterface( nsISupports *aInterface,
+PyObject *PyObject_FromNSInterface( nsISupports *aInterface,
                                                    const nsIID &iid, 
                                                    bool bMakeNicePyObject = true);
 
@@ -212,7 +212,7 @@ typedef Py_nsISupports* (* PyXPCOM_I_CTOR)(nsISupports *, const nsIID &);
 // class PyXPCOM_TypeObject
 // Base class for (most of) the type objects.
 
-class PYXPCOM_EXPORT PyXPCOM_TypeObject : public PyTypeObject {
+class PyXPCOM_TypeObject : public PyTypeObject {
 public:
 	PyXPCOM_TypeObject( 
 		const char *name, 
@@ -525,7 +525,7 @@ public:
 	#endif
 };
 
-class PYXPCOM_EXPORT PyXPCOM_InterfaceVariantHelper : public PyXPCOM_AllocHelper {
+class PyXPCOM_InterfaceVariantHelper : public PyXPCOM_AllocHelper {
 public:
 	PyXPCOM_InterfaceVariantHelper(Py_nsISupports *parent);
 	~PyXPCOM_InterfaceVariantHelper();
@@ -614,7 +614,7 @@ NS_DEFINE_STATIC_IID_ACCESSOR(nsIInternalPython, NS_IINTERNALPYTHON_IID)
 
 // This is roughly equivalent to PyGatewayBase in win32com
 //
-class PYXPCOM_EXPORT PyG_Base : public nsIInternalPython, public nsISupportsWeakReference
+class PyG_Base : public nsIInternalPython, public nsISupportsWeakReference
 {
 public:
 	NS_DECL_ISUPPORTS
@@ -676,7 +676,7 @@ protected:
 			va_list va);
 };
 
-class PYXPCOM_EXPORT PyXPCOM_XPTStub : public PyG_Base, public nsAutoXPTCStub
+class PyXPCOM_XPTStub : public PyG_Base, public nsAutoXPTCStub
 {
 friend class PyG_Base;
 public:
@@ -712,10 +712,10 @@ private:
 		return GATEWAY_BASE::ThisAsIID(iid);                       \
 	}                                                                  \
 
-extern PYXPCOM_EXPORT void AddDefaultGateway(PyObject *instance, nsISupports *gateway);
+extern void AddDefaultGateway(PyObject *instance, nsISupports *gateway);
 
-extern PYXPCOM_EXPORT PRInt32 _PyXPCOM_GetGatewayCount(void);
-extern PYXPCOM_EXPORT PRInt32 _PyXPCOM_GetInterfaceCount(void);
+extern PRInt32 _PyXPCOM_GetGatewayCount(void);
+extern PRInt32 _PyXPCOM_GetInterfaceCount(void);
 
 
 // Weak Reference class.  This is a true COM object, representing
@@ -727,7 +727,7 @@ extern PYXPCOM_EXPORT PRInt32 _PyXPCOM_GetInterfaceCount(void);
 // can live beyond the XPCOM object (possibly with a NULL pointer back to the 
 // "real" object, but as implemented, the weak reference will never be 
 // destroyed  before the object
-class PYXPCOM_EXPORT PyXPCOM_GatewayWeakReference : public nsIWeakReference {
+class PyXPCOM_GatewayWeakReference : public nsIWeakReference {
 public:
 	PyXPCOM_GatewayWeakReference(PyG_Base *base);
 	virtual ~PyXPCOM_GatewayWeakReference();
@@ -741,7 +741,7 @@ public:
 
 
 // Helpers classes for our gateways.
-class PYXPCOM_EXPORT PyXPCOM_GatewayVariantHelper : public PyXPCOM_AllocHelper
+class PyXPCOM_GatewayVariantHelper : public PyXPCOM_AllocHelper
 {
 public:
 	PyXPCOM_GatewayVariantHelper( PyG_Base *gateway,
@@ -826,8 +826,8 @@ void PyXPCOM_DLLRelease();
 // We also supply helper classes which make the usage of these locks a one-liner.
 
 // The "framework" lock, implemented as a PRLock
-PYXPCOM_EXPORT void PyXPCOM_AcquireGlobalLock(void);
-PYXPCOM_EXPORT void PyXPCOM_ReleaseGlobalLock(void);
+void PyXPCOM_AcquireGlobalLock(void);
+void PyXPCOM_ReleaseGlobalLock(void);
 
 // Helper class for the DLL global lock.
 //
@@ -888,7 +888,7 @@ extern struct PyMethodDef Methods[];                                      \
 class ClassName : public Py_nsISupports                                   \
 {                                                                         \
 public:                                                                   \
-	static PYXPCOM_EXPORT PyXPCOM_TypeObject *type;                                  \
+	static PyXPCOM_TypeObject *type;                                  \
 	static Py_nsISupports *Constructor(nsISupports *pInitObj, const nsIID &iid) { \
 		return new ClassName(pInitObj, iid);                      \
 	}                                                                 \
@@ -919,7 +919,7 @@ extern struct PyMethodDef Methods[];                                      \
 class ClassName : public Py_nsISupports                                   \
 {                                                                         \
 public:                                                                   \
-	static PYXPCOM_EXPORT PyXPCOM_TypeObject *type;                                  \
+	static PyXPCOM_TypeObject *type;                                  \
 	static Py_nsISupports *Constructor(nsISupports *pInitObj, const nsIID &iid) { \
 		return new ClassName(pInitObj, iid);                      \
 	}                                                                 \

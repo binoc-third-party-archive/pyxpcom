@@ -53,7 +53,7 @@
 static PRInt32 cInterfaces=0;
 static PyObject *g_obFuncMakeInterfaceCount = NULL; // XXX - never released!!!
 
-PYXPCOM_EXPORT PyObject *
+PyObject *
 PyObject_FromNSInterface(nsISupports *aInterface,
                          const nsIID &iid, 
                          bool bMakeNicePyObject /*= true */)
@@ -62,7 +62,7 @@ PyObject_FromNSInterface(nsISupports *aInterface,
 	                                             bMakeNicePyObject);
 }
 
-PYXPCOM_EXPORT PRInt32 
+PRInt32 
 _PyXPCOM_GetInterfaceCount(void)
 {
 	return cInterfaces;
@@ -80,7 +80,7 @@ Py_nsISupports::Py_nsISupports(nsISupports *punk, const nsIID &iid, PyTypeObject
 
 Py_nsISupports::~Py_nsISupports()
 {
-	SafeRelease(this);	
+	SafeRelease(this);
 	PR_AtomicDecrement(&cInterfaces);
 }
 

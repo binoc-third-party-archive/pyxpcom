@@ -66,8 +66,8 @@
 
 static PRLock *g_lockMain = nullptr;
 
-PYXPCOM_EXPORT PyObject *PyXPCOM_Error = NULL;
-PYXPCOM_EXPORT bool PyXPCOM_ModuleInitialized = false;
+PyObject *PyXPCOM_Error = NULL;
+bool PyXPCOM_ModuleInitialized = false;
 
 PyXPCOM_INTERFACE_DEFINE(Py_nsIComponentManager, nsIComponentManager, PyMethods_IComponentManager)
 PyXPCOM_INTERFACE_DEFINE(Py_nsIInterfaceInfoManager, nsIInterfaceInfoManager, PyMethods_IInterfaceInfoManager)
@@ -81,14 +81,14 @@ PyXPCOM_INTERFACE_DEFINE(Py_nsIVariant, nsIVariant, PyMethods_IVariant)
 ////////////////////////////////////////////////////////////
 // Lock/exclusion global functions.
 //
-PYXPCOM_EXPORT void
+void
 PyXPCOM_AcquireGlobalLock(void)
 {
 	NS_PRECONDITION(g_lockMain != nullptr, "Cant acquire a NULL lock!");
 	PR_Lock(g_lockMain);
 }
 
-PYXPCOM_EXPORT void
+void
 PyXPCOM_ReleaseGlobalLock(void)
 {
 	NS_PRECONDITION(g_lockMain != nullptr, "Cant release a NULL lock!");
@@ -152,7 +152,7 @@ void AddStandardPaths()
 static bool bIsInitialized = false;
 // Our 'entry point' into initialization - just call this any time you
 // like, and the world will be setup!
-PYXPCOM_EXPORT void
+void
 PyXPCOM_EnsurePythonEnvironment(void)
 {
 	// Must be thread-safe - but only while set to FALSE - so check for

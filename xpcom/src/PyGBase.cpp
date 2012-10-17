@@ -67,7 +67,7 @@ static PRLogModuleInfo *nsPyxpcomLog = PR_NewLogModule("nsPyxpcomLog");
 
 static PRInt32 cGateways = 0;
 
-PYXPCOM_EXPORT PRInt32 _PyXPCOM_GetGatewayCount(void)
+PRInt32 _PyXPCOM_GetGatewayCount(void)
 {
 	return cGateways;
 }
@@ -746,7 +746,7 @@ bool CheckDefaultGateway(PyObject *real_inst, REFNSIID iid, nsISupports **ret_ga
 	return false;
 }
 
-PYXPCOM_EXPORT void AddDefaultGateway(PyObject *instance, nsISupports *gateway)
+void AddDefaultGateway(PyObject *instance, nsISupports *gateway)
 {
 	// NOTE: Instance is the _policy_!
 	PyObject *real_inst = PyObject_GetAttrString(instance, "_obj_");

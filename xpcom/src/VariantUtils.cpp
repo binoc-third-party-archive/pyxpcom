@@ -113,7 +113,7 @@ PyUnicode_AsPRUnichar(PyObject *obj, PRUnichar **dest_out, PRUint32 *size_out)
 	return 0;
 }
 
-PYXPCOM_EXPORT PyObject *
+PyObject *
 PyObject_FromNSString( const nsACString &s, bool bAssumeUTF8 /*= false */)
 {
 	PyObject *ret;
@@ -132,7 +132,7 @@ PyObject_FromNSString( const nsACString &s, bool bAssumeUTF8 /*= false */)
 	return ret;
 }
 
-PYXPCOM_EXPORT PyObject *
+PyObject *
 PyObject_FromNSString( const nsAString &s )
 {
 	PyObject *ret;
@@ -146,7 +146,7 @@ PyObject_FromNSString( const nsAString &s )
 	return ret;
 }
 
-PYXPCOM_EXPORT PyObject *
+PyObject *
 PyObject_FromNSString( const PRUnichar *s,
                        PRUint32 len /* = (PRUint32)-1*/)
 {
@@ -154,7 +154,7 @@ PyObject_FromNSString( const PRUnichar *s,
 	           len==((PRUint32)-1)? NS_strlen(s) : len);
 }
 
-PYXPCOM_EXPORT bool
+bool
 PyObject_AsNSString( PyObject *val, nsAString &aStr)
 {
 	if (val == Py_None) {
@@ -677,7 +677,7 @@ static PRUint16 BestVariantTypeForPyObject( PyObject *ob, BVFTResult *pdata)
 	return (PRUint16)-1;
 }
 
-PYXPCOM_EXPORT nsresult
+nsresult
 PyObject_AsVariant( PyObject *ob, nsIVariant **aRet)
 {
 	nsresult nr = NS_OK;
@@ -811,7 +811,7 @@ PyObject *PyObject_FromVariantArray( Py_nsISupports *parent, nsIVariant *v)
 	return ret;
 }
 
-PYXPCOM_EXPORT PyObject *
+PyObject *
 PyObject_FromVariant( Py_nsISupports *parent, nsIVariant *v)
 {
 	if (!v) {

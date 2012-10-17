@@ -178,7 +178,7 @@ static void VLogF(const char *methodName, const char *fmt, va_list argptr)
 	LogMessage(methodName, buff);
 }
 
-PYXPCOM_EXPORT bool PyXPCOM_FormatCurrentException(nsCString &streamout)
+bool PyXPCOM_FormatCurrentException(nsCString &streamout)
 {
 	bool ok = false;
 	PyObject *exc_typ = NULL, *exc_val = NULL, *exc_tb = NULL;
@@ -192,7 +192,7 @@ PYXPCOM_EXPORT bool PyXPCOM_FormatCurrentException(nsCString &streamout)
 	return ok;
 }
 
-PYXPCOM_EXPORT bool PyXPCOM_FormatGivenException(nsCString &streamout,
+bool PyXPCOM_FormatGivenException(nsCString &streamout,
 				    PyObject *exc_typ, PyObject *exc_val,
 				    PyObject *exc_tb)
 {
@@ -228,7 +228,7 @@ PYXPCOM_EXPORT bool PyXPCOM_FormatGivenException(nsCString &streamout,
 	return true;
 }
 
-PYXPCOM_EXPORT void PyXPCOM_LogError(const char *fmt, ...)
+void PyXPCOM_LogError(const char *fmt, ...)
 {
 	va_list marker;
 	va_start(marker, fmt);
@@ -246,20 +246,20 @@ PYXPCOM_EXPORT void PyXPCOM_LogError(const char *fmt, ...)
 	LogMessage(LOGGER_ERROR, streamout);
 }
 
-PYXPCOM_EXPORT void PyXPCOM_LogWarning(const char *fmt, ...)
+void PyXPCOM_LogWarning(const char *fmt, ...)
 {
 	va_list marker;
 	va_start(marker, fmt);
 	VLogF(LOGGER_WARNING, fmt, marker);
 }
 
-PYXPCOM_EXPORT void PyXPCOM_Log(const char *level, const nsCString &msg)
+void PyXPCOM_Log(const char *level, const nsCString &msg)
 {
 	DoLogMessage(level, msg.get());
 }
 
 #ifdef DEBUG
-PYXPCOM_EXPORT void PyXPCOM_LogDebug(const char *fmt, ...)
+void PyXPCOM_LogDebug(const char *fmt, ...)
 {
 	va_list marker;
 	va_start(marker, fmt);
@@ -268,7 +268,7 @@ PYXPCOM_EXPORT void PyXPCOM_LogDebug(const char *fmt, ...)
 #endif
 
 
-PYXPCOM_EXPORT PyObject *PyXPCOM_BuildPyException(nsresult r)
+PyObject *PyXPCOM_BuildPyException(nsresult r)
 {
 	// Need the message etc.
 	PyObject *evalue = PyLong_FromUnsignedLong(r);
@@ -277,7 +277,7 @@ PYXPCOM_EXPORT PyObject *PyXPCOM_BuildPyException(nsresult r)
 	return NULL;
 }
 
-PYXPCOM_EXPORT nsresult PyXPCOM_SetCOMErrorFromPyException()
+nsresult PyXPCOM_SetCOMErrorFromPyException()
 {
 	if (!PyErr_Occurred())
 		// No error occurred
@@ -386,7 +386,7 @@ done:
 }
 
 // See comments in PyXPCOM.h for why we need this!
-PYXPCOM_EXPORT void PyXPCOM_MakePendingCalls()
+void PyXPCOM_MakePendingCalls()
 {
 	while (1) {
 		int rc = Py_MakePendingCalls();
