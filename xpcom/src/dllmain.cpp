@@ -192,14 +192,6 @@ PyXPCOM_EnsurePythonEnvironment(void)
 	}
 	// Get the Python interpreter state
 	PyGILState_STATE state = PyGILState_Ensure();
-#ifdef MOZ_TIMELINE
-	// If the timeline service is installed, see if we can install our hooks.
-	if (NULL==PyImport_ImportModule("timeline_hook")) {
-		if (!PyErr_ExceptionMatches(PyExc_ImportError))
-			PyXPCOM_LogError("Failed to import 'timeline_hook'");
-		PyErr_Clear(); // but don't care if we can't.
-	}
-#endif
 
 	// Make sure we have _something_ as sys.argv.
 	if (PySys_GetObject("argv")==NULL) {
