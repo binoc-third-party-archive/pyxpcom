@@ -1926,6 +1926,7 @@ bool PyXPCOM_InterfaceVariantHelper::PrepareOutVariant(const PythonTypeDescripto
 	  case nsXPTType::T_ASTRING: {
 		MOZ_ASSERT(ns_v.val.p == nullptr,
 				   "T_ASTRINGs can't be out and have a value (ie, no in/outs are allowed!");
+		MOZ_ASSERT(ns_v.ptr == &ns_v.val); // from ns_v.SetIndirect()
 		MOZ_ASSERT(td.IsDipper(),
 				   "out AStrings must really be in dippers!");
 		MOZ_ASSERT(!ns_v.DoesValNeedCleanup(),
@@ -1945,6 +1946,7 @@ bool PyXPCOM_InterfaceVariantHelper::PrepareOutVariant(const PythonTypeDescripto
 	  case nsXPTType::T_UTF8STRING: {
 		MOZ_ASSERT(ns_v.val.p == nullptr,
 				   "T_CSTRINGs can't be out and have a value (ie, no in/outs are allowed!");
+		MOZ_ASSERT(ns_v.ptr == &ns_v.val); // from ns_v.SetIndirect()
 		MOZ_ASSERT(td.IsDipper(),
 				   "out ACStrings must really be in dippers!");
 		MOZ_ASSERT(!ns_v.DoesValNeedCleanup(),
