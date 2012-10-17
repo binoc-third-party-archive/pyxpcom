@@ -143,8 +143,10 @@ PyXPCOMMethod_XPTI_GetInterfaceInfoManager(PyObject *self, PyObject *args)
 {
 	if (!PyArg_ParseTuple(args, ""))
 		return NULL;
-	nsCOMPtr<nsIInterfaceInfoManager> im(do_GetService(
-	                      NS_INTERFACEINFOMANAGER_SERVICE_CONTRACTID));
+	nsCOMPtr<nsIInterfaceInfoManager> im;
+	Py_BEGIN_ALLOW_THREADS;
+	im = do_GetService(NS_INTERFACEINFOMANAGER_SERVICE_CONTRACTID);
+	Py_END_ALLOW_THREADS;
 	if ( im == nullptr )
 		return PyXPCOM_BuildPyException(NS_ERROR_FAILURE);
 
@@ -363,7 +365,10 @@ PyObject *PyGetSpecialDirectory(PyObject *self, PyObject *args)
 	if (!PyArg_ParseTuple(args, "s:GetSpecialDirectory", &dirname))
 		return NULL;
 	nsCOMPtr<nsIFile> file;
-	nsresult r = NS_GetSpecialDirectory(dirname, getter_AddRefs(file));
+	nsresult r;
+	Py_BEGIN_ALLOW_THREADS;
+	NS_GetSpecialDirectory(dirname, getter_AddRefs(file));
+	Py_END_ALLOW_THREADS;
 	if ( NS_FAILED(r) )
 		return PyXPCOM_BuildPyException(r);
 	// returned object swallows our reference.
@@ -388,6 +393,7 @@ PyObject *LogConsoleMessage(PyObject *self, PyObject *args)
 	if (!PyArg_ParseTuple(args, "s", &msg))
 		return NULL;
 
+	Py_BEGIN_ALLOW_THREADS;
 	nsCOMPtr<nsIConsoleService> consoleService = do_GetService(NS_CONSOLESERVICE_CONTRACTID);
 	if (consoleService)
 		consoleService->LogStringMessage(NS_ConvertASCIItoUTF16(msg).get());
@@ -399,6 +405,7 @@ PyObject *LogConsoleMessage(PyObject *self, PyObject *args)
 	// still go to stderr or a logfile.
 		NS_WARNING("pyxpcom can't log console message.");
 	}
+	Py_END_ALLOW_THREADS;
 
 	Py_INCREF(Py_None);
 	return Py_None;
