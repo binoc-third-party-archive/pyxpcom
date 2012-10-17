@@ -272,12 +272,12 @@ done:
 static PyObject *
 PyXPCOMMethod_GetInterfaceCount(PyObject *self, PyObject *args)
 {
+	// @comm It is occasionally a good idea to call this function before your Python program
+	// terminates.  If this function returns non-zero, then you still have PythonCOM objects
+	// alive in your program (possibly in global variables).
 	if (!PyArg_ParseTuple(args, ":_GetInterfaceCount"))
 		return NULL;
 	return PyInt_FromLong(_PyXPCOM_GetInterfaceCount());
-	// @comm If is occasionally a good idea to call this function before your Python program
-	// terminates.  If this function returns non-zero, then you still have PythonCOM objects
-	// alive in your program (possibly in global variables).
 }
 
 // @pymethod int|pythoncom|_GetGatewayCount|Retrieves the number of gateway objects currently in existance
@@ -295,9 +295,6 @@ PyXPCOMMethod_GetGatewayCount(PyObject *self, PyObject *args)
 static PyObject *
 PyXPCOMMethod_NS_ShutdownXPCOM(PyObject *self, PyObject *args)
 {
-	// @comm This is the number of Python object that implement COM servers which
-	// are still alive (ie, serving a client).  The only way to reduce this count
-	// is to have the process which uses these PythonCOM servers release its references.
 	if (!PyArg_ParseTuple(args, ":NS_ShutdownXPCOM"))
 		return NULL;
 	nsresult nr;
