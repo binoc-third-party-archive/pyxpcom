@@ -49,6 +49,7 @@ XPIDL_MODULE	= pyxpcom_test
 REQUIRES	= xpcom string $(NULL)
 
 XPIDLSRCS	= py_test_component.idl
+NO_INTERFACES_MANIFEST = 1
 
 include $(topsrcdir)/config/config.mk
 
