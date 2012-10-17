@@ -47,6 +47,8 @@ include $(DEPTH)/config/autoconf.mk
 
 include $(topsrcdir)/config/rules.mk
 
+TEST_SCRIPT ?= regrtest
+
 check::
 	@echo "Running Python XPCOM tests"
 ifeq ($(OS_TARGET),WINNT)
@@ -54,10 +56,10 @@ ifeq ($(OS_TARGET),WINNT)
 	PATH="$(PATH):$(LIBXUL_DIST)/bin:$(abspath $(DIST)/bin)" \
 		PYXPCOM_APPDIR=$(abspath $(DIST)/bin) \
 		PYTHONPATH=$(abspath $(DIST)/bin/python) \
-		$(MOZ_PYTHON) $(srcdir)/regrtest.py
+		$(MOZ_PYTHON) $(srcdir)/$(basename $(TEST_SCRIPT)).py
 else
 	PYTHONPATH=$(abspath $(DIST)/bin/python) \
 		PYXPCOM_APPDIR=$(abspath $(DIST)/bin) \
 		$(LIBXUL_DIST)/bin/run-mozilla.sh $(RUN_MOZILLA_ARGS) \
-		$(MOZ_PYTHON)$(MOZ_PYTHON_DEBUG_SUFFIX) $(srcdir)/regrtest.py
+		$(MOZ_PYTHON)$(MOZ_PYTHON_DEBUG_SUFFIX) $(srcdir)/$(basename $(TEST_SCRIPT)).py
 endif
