@@ -142,16 +142,16 @@ PyXPCOM_TypeObject::Py_repr(PyObject *self)
 	char *iid_repr;
 	nsCOMPtr<nsIInterfaceInfoManager> iim(do_GetService(
 	                      NS_INTERFACEINFOMANAGER_SERVICE_CONTRACTID));
-	if (iim!=nullptr)
+	if (iim)
 		iim->GetNameForIID(&pis->m_iid, &iid_repr);
-	if (iid_repr==nullptr)
+	if (!iid_repr)
 		// no IIM available, or it doesn't know the name.
 		iid_repr = pis->m_iid.ToString();
 	// XXX - need some sort of buffer overflow.
 	char buf[512];
 	sprintf(buf, "<XPCOM object (%s) at 0x%p/0x%p>",
 	        iid_repr, (void *)self, (void *)pis->m_obj.get());
-	nsMemory::Free(iid_repr);
+	moz_free(iid_repr);
 	return PyString_FromString(buf);
 }
 
