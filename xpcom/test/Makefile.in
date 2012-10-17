@@ -51,10 +51,10 @@ check::
 	@echo "Running Python XPCOM tests"
 ifeq ($(OS_TARGET),WINNT)
 # on Windows, we need to set $PATH too to find the PyXPCOM DLLs
-	PATH="$(PATH):$(LIBXUL_DIST)/bin" \
+	PATH="$(PATH):$(LIBXUL_DIST)/bin:$(abspath $(DIST)/bin)" \
 		PYXPCOM_APPDIR=$(abspath $(DIST)/bin) \
 		PYTHONPATH=$(abspath $(DIST)/bin/python) \
-		$(MOZ_PYTHON)$(MOZ_PYTHON_DEBUG_SUFFIX) $(srcdir)/regrtest.py
+		$(MOZ_PYTHON) $(srcdir)/regrtest.py
 else
 	PYTHONPATH=$(abspath $(DIST)/bin/python) \
 		PYXPCOM_APPDIR=$(abspath $(DIST)/bin) \
