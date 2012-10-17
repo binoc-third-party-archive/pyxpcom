@@ -1271,8 +1271,13 @@ bool PyXPCOM_InterfaceVariantHelper::Init(PyObject *obParams)
 	// Init the parameters to pass to XPCOM
 	mDispatchParams.SetLength(numParams);
 	// We need to initialize params
-	for (Py_ssize_t i = 0; i < numParams; ++i) {
-		new (&mDispatchParams[i]) nsXPTCVariant();
+	{ /* scope */
+		nsXPTCMiniVariant mv;
+		memset(&mv, 0, sizeof(mv));
+		for (Py_ssize_t i = 0; i < numParams; ++i) {
+			mDispatchParams[i].Init(mv, nsXPTType::T_VOID, 0);
+			MOZ_ASSERT(!mDispatchParams[i].val.p);
+		}
 	}
 
 	ok = true;
