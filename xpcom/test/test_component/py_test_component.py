@@ -40,7 +40,7 @@
 # doesn't really make a good demo of a "simple component"
 
 
-from xpcom import components, verbose
+from xpcom import components, verbose, COMException, nsError
 
 class PythonTestComponent:
     # Note we only list the "child" interface, not our intermediate interfaces
@@ -230,6 +230,9 @@ class PythonTestComponent:
 
     def GetFixedString(self, count):
         # void GetFixedString(in PRUint32 count, [size_is(count)out string out_str);
+        if count > 1024:
+            # guard against PyXPCOM bugs eating memory
+            raise COMException(nsError.NS_ERROR_INVALID_ARG, "Count %s is too large" % (count,))
         return "A" * count
 
     # DoubleWideString functions are identical to DoubleString, except use wide chars!
@@ -251,6 +254,9 @@ class PythonTestComponent:
     # Test we can get an "out" array with an "in" size (and the size is not used anywhere as a size for an in!)
     def GetFixedWideString(self, count):
         # void GetFixedWideString(in PRUint32 count, [size_is(count)out string out_str);
+        if count > 1024:
+            # guard against PyXPCOM bugs eating memory
+            raise COMException(nsError.NS_ERROR_INVALID_ARG, "Count %s is too large" % (count,))
         return u"A" * count
 
     def GetStrings(self):
@@ -385,11 +391,17 @@ class PythonTestComponent:
         # Result: DOMString &
         if length == -1:
             return None
+        if length > 1024:
+            # guard against PyXPCOM bugs eating memory
+            raise COMException(nsError.NS_ERROR_INVALID_ARG, "Length %s is too large" % (length,))
         return "P" * length
     def GetDOMStringOut( self, length ):
         # Result: DOMString &
         if length == -1:
             return None
+        if length > 1024:
+            # guard against PyXPCOM bugs eating memory
+            raise COMException(nsError.NS_ERROR_INVALID_ARG, "Length %s is too large" % (length,))
         return "y" * length
     def GetDOMStringLength( self, param0 ):
         # Result: uint32
