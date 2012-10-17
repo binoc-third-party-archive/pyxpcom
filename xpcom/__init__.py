@@ -55,7 +55,7 @@ class Exception(exceptions.Exception):
         exceptions.Exception.__init__(self, errno)
     def __str__(self):
         if not hr_map:
-            import nsError
+            from . import nsError
             for name, val in nsError.__dict__.items():
                 if isinstance(val, (int, long)):
                     hr_map[val] = str(name)
