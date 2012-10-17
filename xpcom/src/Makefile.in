@@ -86,6 +86,7 @@ CXXFLAGS += -DPYTHON_SO=\"libpython$(MOZ_PYTHON_VER_DOTTED).so\"
 # Enable this if you want useful debugging symbols.
 ifeq ($(OS_TARGET),WINNT)
 	CXXFLAGS += -Zi
+	LDFLAGS += -DEBUG
 else
 	CXXFLAGS += -g
 endif
