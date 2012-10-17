@@ -57,7 +57,7 @@ class Exception(exceptions.Exception):
         if not hr_map:
             import nsError
             for name, val in nsError.__dict__.items():
-                if isinstance(val, int):
+                if isinstance(val, (int, long)):
                     hr_map[val] = str(name)
         message = self.msg
         if message is None:

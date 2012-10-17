@@ -522,6 +522,10 @@ nsresult PyG_Base::HandleNativeGatewayError(const char *szMethodName)
 			// The exception handler has given us the nresult.
 			rc = PyInt_AsLong(err_result);
 			bProcessMainError = false;
+		} else if (PyLong_Check(err_result)) {
+			// The exception handler has given us the nresult.
+			rc = static_cast<nsresult>(PyLong_AsUnsignedLong(err_result));
+			bProcessMainError = false;
 		} else {
 			// The exception handler succeeded, but returned other than
 			// int or None.
