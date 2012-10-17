@@ -1314,7 +1314,7 @@ bool PyXPCOM_InterfaceVariantHelper::PrepareCall()
 	// Final loop to handle this.
 	for (i = 0; i < mPyTypeDesc.Length(); ++i) {
 		PythonTypeDescriptor &ptd = mPyTypeDesc[i];
-		if (ptd.IsAutoOut() && !ptd.IsAutoSet()) {
+		if (ptd.IsOut() && ptd.IsAutoOut() && !ptd.IsAutoSet()) {
 			// Call PrepareOutVariant to ensure buffers etc setup.
 			if (!PrepareOutVariant(ptd, i))
 				return false;
