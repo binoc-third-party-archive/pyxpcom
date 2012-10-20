@@ -183,13 +183,33 @@ void *hLibPyXPCOM; // handle to main pyxpcom library
 
 static already_AddRefed<nsIFile> GetAppDir() {
 	nsCOMPtr<nsIFile> app_dir;
+	nsresult rv;
 	char* app_path = PR_GetEnv("PYXPCOM_APPDIR");
-	if (!app_path || !*app_path) {
-		return nullptr;
+	if (app_path && *app_path) {
+		rv = XRE_GetFileFromPath(app_path,
+	                                 getter_AddRefs(app_dir));
+		if (NS_FAILED(rv)) {
+			app_dir = nullptr;
+		}
 	}
-	nsresult rv = XRE_GetFileFromPath(app_path,
-	                                  getter_AddRefs(app_dir));
-	if (NS_FAILED(rv) || !app_dir) {
+	if (!app_dir) {
+		// look in the GRE directory for pyxpcom.manifest
+		char manifestPath[MAXPATHLEN];
+		bool found = GetModulePath(manifestPath, "pyxpcom.manifest");
+		if (found) {
+			nsCOMPtr<nsIFile> leaf;
+			rv = XRE_GetFileFromPath(manifestPath,
+						 getter_AddRefs(leaf));
+			if (NS_SUCCEEDED(rv) && leaf) {
+				rv = leaf->GetParent(getter_AddRefs(app_dir));
+			}
+			if (NS_FAILED(rv)) {
+				app_dir = nullptr;
+			}
+		}
+	}
+	if (!app_dir) {
+		DUMP("Failed to find PyXPCOM application directory\n");
 		return nullptr;
 	}
 	#if defined(DEBUG)
