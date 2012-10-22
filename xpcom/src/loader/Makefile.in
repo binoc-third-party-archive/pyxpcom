@@ -54,7 +54,7 @@ LOCAL_INCLUDES = $(MOZ_PYTHON_INCLUDES)
 
 EXTRA_LIBS += $(MOZ_PYTHON_LIBS)
 
-EXTRA_LIBS += $(call EXPAND_LIBNAME_PATH,pyxpcom,$(DIST)/lib)
+EXTRA_LIBS += $(call EXPAND_LIBNAME_PATH,pyxpcom,..)
 
 CPPSRCS		=		   \
 		pyloader.cpp	   \
@@ -78,6 +78,11 @@ else
   EXTRA_LIBS += $(call EXPAND_LIBNAME,mozalloc)
 endif
 
+ifeq ($(OS_TARGET),Darwin)
+  # OSX wants to find the framework, not the lib dir... ugh, whatever
+  EXTRA_DSO_LDOPTS += -L$(MOZ_PYTHON_PREFIX)
+endif
+
 EXTRA_DSO_LDOPTS += $(XPCOM_GLUE_LDOPTS) \
                     $(MOZ_COMPONENT_LIBS) \
                     $(NULL)
@@ -89,7 +94,7 @@ ifeq ($(OS_TARGET),Darwin)
 fix-paths: $(SHARED_LIBRARY)
 	install_name_tool -change @executable_path/libpyxpcom.dylib \
 	    @loader_path/../libpyxpcom.dylib $(SHARED_LIBRARY)
-export:: fix-paths
+libs:: fix-paths
 .PHONY: fix-paths
 endif
 
