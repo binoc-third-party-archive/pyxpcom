@@ -96,6 +96,21 @@
 #endif
 #endif
 
+#if defined(DEBUG)
+	void DUMP(const char *fmt, ...) {
+		char *enabled = PR_GetEnv("PYXPCOM_DEBUG");
+		if (!enabled || !*enabled || *enabled != '1') {
+			return; /* default to being silent */
+		}
+		va_list marker;
+		va_start(marker, fmt);
+		vfprintf(stderr, fmt, marker);
+		va_end(marker);
+	}
+#else
+	#define DUMP(...) do { } while(0)
+#endif
+
 static bool GetModulePath(char dest[MAXPATHLEN], const char* moduleName) {
 	#if defined(XP_WIN)
 		// On Windows, we need to locate the Mozilla bin
@@ -112,10 +127,13 @@ static bool GetModulePath(char dest[MAXPATHLEN], const char* moduleName) {
 		}
 		GetModuleFileNameW(hmod, landmark, sizeof(landmark)/sizeof(landmark[0]));
 		landmark[sizeof(landmark)/sizeof(landmark[0]) - 1] = L'\0';
+		DUMP("landmark is %S\n", landmark);
 		wchar_t *end = wcsrchr(landmark, L'\\');
 		if (end) *end = L'\0';
+		DUMP("landmark is %S\n", landmark);
 		WideCharToMultiByte(CP_UTF8, 0, landmark, -1, dest, MAXPATHLEN,
 				    NULL, NULL);
+		DUMP("dest is %s\n", dest);
 		strcat(dest, "\\");
 		strcat(dest, moduleName);
 	#elif defined(XP_UNIX)
@@ -174,8 +192,11 @@ static already_AddRefed<nsIFile> GetAppDir() {
 	if (NS_FAILED(rv) || !app_dir) {
 		return nullptr;
 	}
-	nsString path;
-	(void)app_dir->GetPath(path);
+	#if defined(DEBUG)
+		nsString path;
+		(void)app_dir->GetPath(path);
+		DUMP("Using appdir %s\n", NS_ConvertUTF16toUTF8(path).get());
+	#endif
 	return app_dir.forget();
 }
 
@@ -185,6 +206,7 @@ static already_AddRefed<nsIFile> GetAppDir() {
 // the pyxpcom test suite), hence it lives here...
 static bool EnsureXPCOM()
 {
+	DUMP("EnsureXPCOM...\n");
 	static bool bHaveInitXPCOM = false;
 	if (bHaveInitXPCOM) {
 		// already initialized
@@ -194,8 +216,10 @@ static bool EnsureXPCOM()
 	nsresult rv;
 	char libXPCOMPath[MAXPATHLEN] = {0};
 	if (!GetModulePath(libXPCOMPath, MOZ_DLL_PREFIX "xpcom" MOZ_DLL_SUFFIX)) {
+		DUMP("Failed to find " MOZ_DLL_PREFIX "xpcom" MOZ_DLL_SUFFIX "\n");
 		return false;
 	}
+	DUMP("Using libxpcom.so %s\n", libXPCOMPath);
 	rv = XPCOMGlueStartup(libXPCOMPath);
 	if (NS_FAILED(rv)) {
 		PyErr_SetString(PyExc_RuntimeError, "Failed to starting XPCOM glue");
@@ -227,6 +251,7 @@ static bool EnsureXPCOM()
 		return true;
 	}
 
+	DUMP("Trying to init xpcom...\n");
 
 	#if defined(XP_UNIX) && !defined(XP_MACOSX)
 		{
@@ -242,6 +267,7 @@ static bool EnsureXPCOM()
 				             "Failed to find _xpcom.so: %s", dlerror());
 				return false;
 			}
+			DUMP("Reloading %s\n", hash_info.dli_fname);
 			void *hlib_xpcom = dlopen(hash_info.dli_fname, RTLD_NOW | RTLD_GLOBAL | RTLD_NOLOAD);
 			if (!hlib_xpcom) {
 				PyErr_Format(PyExc_RuntimeError,
@@ -264,14 +290,18 @@ static bool EnsureXPCOM()
 	#endif
 	char* end = strrchr(libXPCOMPath, PATH_SEP);
 	*end = '\0';
+	DUMP("Using ns_bin_dir %s\n", libXPCOMPath);
 	rv = XRE_GetFileFromPath(libXPCOMPath, getter_AddRefs(ns_bin_dir));
 	if (NS_FAILED(rv)) {
 		PyErr_SetString(PyExc_RuntimeError, "Failed to get GRE directory");
 		return false;
 	}
 
+	DUMP("About to init xpcom\n");
 	rv = XRE_InitEmbedding2(ns_bin_dir, nullptr, nullptr);
+	DUMP("InitXPCOM2: %08x\n", rv);
 	if (NS_FAILED(rv)) {
+		DUMP("Failed to init xpcom: %08x\n", rv);
 		PyErr_Format(PyExc_RuntimeError,
 		             "The XPCOM subsystem could not be initialized: %08x", rv);
 		return false;
@@ -319,6 +349,7 @@ bool EnsurePyXPCOM(init_xpcom_realType* init_xpcom_real) {
 		rv = libpyxpcomFile->Exists(&exists);
 	}
 	if (NS_FAILED(rv) || !exists) {
+		DUMP("Trying alternative libpyxpcom path\n");
 		libpyxpcomFile = GetAppDir();
 		if (!libpyxpcomFile) {
 			PyErr_SetString(PyExc_RuntimeError, "Failed to find app dir");
@@ -333,6 +364,7 @@ bool EnsurePyXPCOM(init_xpcom_realType* init_xpcom_real) {
 	}
 	nsString libpyxpcomStr;
 	rv = libpyxpcomFile->GetPath(libpyxpcomStr);
+	DUMP("Loading libpyxpcom from %s\n", NS_ConvertUTF16toUTF8(libpyxpcomStr).get());
 
 	#if defined(XP_WIN)
 		hLibPyXPCOM = LoadLibraryExW(libpyxpcomStr.get(), NULL, LOAD_WITH_ALTERED_SEARCH_PATH);
@@ -342,6 +374,7 @@ bool EnsurePyXPCOM(init_xpcom_realType* init_xpcom_real) {
 				     GetLastError());
 			return false;
 		}
+		DUMP("hlibpyxpcom: %08x\n", hLibPyXPCOM);
 		*init_xpcom_real = (init_xpcom_realType)GetProcAddress((HMODULE)hLibPyXPCOM,
 		                                                       "init_xpcom_real");
 		if (!*init_xpcom_real) {
@@ -362,8 +395,10 @@ bool EnsurePyXPCOM(init_xpcom_realType* init_xpcom_real) {
 				     dlerror());
 			return false;
 		}
+		DUMP("got dl handle %p\n", hLibPyXPCOM);
 		*init_xpcom_real = (init_xpcom_realType)dlsym(hLibPyXPCOM, "init_xpcom_real");
 		if (!*init_xpcom_real) {
+			DUMP("dlsym returns %p: %s\n", *init_xpcom_real, dlerror());
 			PyErr_Format(PyExc_RuntimeError,
 				     "Failed to load %s entry point: %s",
 				     MOZ_DLL_PREFIX "pyxpcom" MOZ_DLL_SUFFIX,
@@ -373,6 +408,7 @@ bool EnsurePyXPCOM(init_xpcom_realType* init_xpcom_real) {
 	#else
 		#error Implment dlopen for this platform!
 	#endif
+	DUMP("init_xpcom_real loaded: %p\n", *init_xpcom_real);
 	return true;
 }
 
@@ -380,6 +416,7 @@ bool EnsurePyXPCOM(init_xpcom_realType* init_xpcom_real) {
  * Register AppInfo for PyXPCOM
  */
 bool RegisterPyAppInfo() {
+	DUMP("Attempting to register PyAppInfo\n");
 	nsresult rv;
 	nsCOMPtr<nsIComponentRegistrar> registrar;
 	rv = NS_GetComponentRegistrar(getter_AddRefs(registrar));
@@ -392,6 +429,7 @@ bool RegisterPyAppInfo() {
 	nsCOMPtr<nsIXULAppInfo> appInfo = do_GetService(kAppInfoContractId);
 	if (appInfo) {
 		// It's already there
+		DUMP("AppInfo already exists, ignoring\n");
 		return true;
 	}
 
@@ -414,6 +452,7 @@ bool RegisterPyAppInfo() {
 					"Python XPCOM App Info",
 					kAppInfoContractId,
 					appinfo);
+	DUMP("Register appinfo: %08x\n", rv);
 	// Ignore appinfo registration failure, and hope it's good enough
 	return true;
 }
@@ -422,6 +461,7 @@ bool RegisterPyAppInfo() {
  * Register PyXPCOM bits with XPCOM
  */
 bool RegisterPyXPCOMComponents() {
+	DUMP("Attempting to register pyxpcom components (loader etc)\n");
 	const char kPyLoaderContractId[] = "@mozilla.org/module-loader/python;1";
 	bool isRegistered;
 	nsCOMPtr<nsIComponentRegistrar> registrar;
@@ -433,6 +473,7 @@ bool RegisterPyXPCOMComponents() {
 	rv = registrar->IsContractIDRegistered(kPyLoaderContractId, &isRegistered);
 	if (NS_SUCCEEDED(rv) && isRegistered) {
 		// pyloader is already loaded, we're good
+		DUMP("PyLoader registered, skipping component registration\n");
 		return true;
 	}
 
@@ -449,13 +490,23 @@ bool RegisterPyXPCOMComponents() {
 		PyErr_SetString(PyExc_RuntimeError, "Can't find pyxpcom.manifest");
 		return false;
 	}
-	nsString path;
-	(void)app_manifest->GetPath(path);
+	#if defined(DEBUG)
+		nsString path;
+		(void)app_manifest->GetPath(path);
+		DUMP("pyxpcom.manifest at %s\n", NS_ConvertUTF16toUTF8(path).get());
+	#endif
 	rv = XRE_AddManifestLocation(NS_COMPONENT_LOCATION, app_manifest);
+	DUMP("pyxpcom.manifest registered: %08x\n", rv);
 
-	rv = registrar->IsContractIDRegistered("Python.TestComponent", &isRegistered);
+	#if defined(DEBUG)
+		rv = registrar->IsContractIDRegistered("Python.TestComponent", &isRegistered);
+		DUMP("Is Python.TestComponent registered? rv=%08x result=%s\n",
+		     rv, isRegistered ? "yes" : "no");
+	#endif
 
 	rv = registrar->IsContractIDRegistered(kPyLoaderContractId, &isRegistered);
+	DUMP("Is pyloader registered? rv=%08x result=%s\n",
+	     rv, isRegistered ? "yes" : "no");
 	if (NS_FAILED(rv) || !isRegistered) {
 		// pyloader is already loaded, we're good
 		PyErr_SetString(PyExc_RuntimeError, "Failed to register pyloader");
@@ -481,22 +532,28 @@ init_xpcom() {
 
 	// Ensure XPCOM has been initialized
 	if (!EnsureXPCOM()) {
+		DUMP("EnsureXPCOM failed\n");
 		return;
 	}
 
 	if (!RegisterPyAppInfo()) {
+		DUMP("RegisterPyAppInfo failed\n");
 		return;
 	}
 
 	if (!EnsurePyXPCOM(&init_xpcom_real)) {
+		DUMP("Failed to load libpyxpcom.so!\n");
 		return;
 	}
 
 	if (!RegisterPyXPCOMComponents()) {
+		DUMP("RegisterPyXPCOMComponents failed\n");
 		return;
 	}
 
+	DUMP("About to do real xpcom init\n");
 	init_xpcom_real();
+	DUMP("init_xpcom done\n");
 
 	// Close hLibPyXPCOM now that everything's loaded
 	#if defined(XP_WIN)
