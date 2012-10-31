@@ -80,7 +80,7 @@ NS_IMPL_THREADSAFE_ISUPPORTS1(nsPythonModuleLoader,
 nsresult
 nsPythonModuleLoader::Init()
 {
-    NS_ASSERTION(NS_IsMainThread(), "nsPythonModuleLoader::Init not on main thread?");
+    MOZ_ASSERT(NS_IsMainThread(), "nsPythonModuleLoader::Init not on main thread?");
 
     LOG(PR_LOG_DEBUG, ("nsPythonModuleLoader::Init()"));
 
@@ -112,9 +112,6 @@ done:
 const mozilla::Module*
 nsPythonModuleLoader::LoadModule(mozilla::FileLocation& aFileLocation)
 {
-    NS_ASSERTION(NS_IsMainThread(), "nsPythonModuleLoader::LoadModule not on main thread?");
-
-
     if (aFileLocation.IsZip()) {
         NS_ERROR("Python components cannot be loaded from JARs");
         return NULL;
@@ -164,7 +161,7 @@ done:
 void
 nsPythonModuleLoader::UnloadLibraries()
 {
-    NS_ASSERTION(NS_IsMainThread(), "nsPythonModuleLoader::UnloadLibraries not on main thread?");
+    MOZ_ASSERT(NS_IsMainThread(), "nsPythonModuleLoader::UnloadLibraries not on main thread?");
 }
 
 
