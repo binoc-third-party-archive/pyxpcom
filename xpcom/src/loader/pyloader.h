@@ -84,10 +84,8 @@ class nsPythonModuleLoader : public mozilla::ModuleLoader
         }
 
         ~PythonModule() {
-            if (mPyObjModule) {
-                Py_XDECREF(mPyObjModule);
-                mPyObjModule = NULL;
-            }
+            Py_XDECREF(mPyObjModule);
+            Py_XDECREF(mPyObjLocation);
         }
 
         PyObject *mPyObjModule;
