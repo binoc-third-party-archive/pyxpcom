@@ -185,13 +185,13 @@ nsPythonModuleLoader::PythonModule::GetFactory(const mozilla::Module& module,
         LOG(PR_LOG_DEBUG, ("nsPythonModuleLoader::PythonModule::GetFactory for cid: %s", idstr));
     }
 
+    CEnterLeavePython _celp;
     PyObject *obFactory = NULL;
     PyObject *obFnName = NULL;
     PyObject *obClsId = Py_nsIID::PyObjectFromIID(*(entry.cid));
     nsCOMPtr<nsIFactory> f;
     const PythonModule& pyMod = static_cast<const PythonModule&>(module);
 
-    CEnterLeavePython _celp;
     obFnName = PyString_FromString("getClassObject");
     obFactory = PyObject_CallMethodObjArgs(pyMod.mPyObjModule, obFnName, Py_None, obClsId, Py_None, NULL);
     if (obFactory!=NULL) {
