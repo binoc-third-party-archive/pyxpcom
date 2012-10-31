@@ -48,15 +48,15 @@ include $(DEPTH)/config/autoconf.mk
 LIBRARY_NAME	= _xpcom$(MOZ_PYTHON_DEBUG_SUFFIX)
 REQUIRES	= pyxpcom xpcom string $(NULL)
 FORCE_SHARED_LIB = 1 
-FORCE_USE_PIC = 1 
+FORCE_USE_PIC = 1
+NO_DIST_INSTALL = 1
 
 DLL_SUFFIX=$(MOZ_PYTHON_DLL_SUFFIX)
 LOCAL_INCLUDES = $(MOZ_PYTHON_INCLUDES)
 
 EXTRA_LIBS += $(MOZ_PYTHON_LIBS)
 
-EXTRA_LIBS += $(call EXPAND_LIBNAME_PATH,pyxpcom,$(DIST)/lib) \
-	      $(NULL)
+MOZALLOC_LIB = $(call EXPAND_LIBNAME_PATH,mozalloc,$(LIBXUL_DIST)/lib)
 
 CPPSRCS= \
 	_xpcom.cpp \
@@ -68,6 +68,8 @@ DEFINES += \
 	-DOS_ARCH=$(OS_ARCH) \
 	-DMOZ_WIDGET_TOOLKIT=$(MOZ_WIDGET_TOOLKIT) \
 	-DTARGET_XPCOM_ABI=$(TARGET_XPCOM_ABI) \
+	-DXPCOM_GLUE \
+	-DMOZ_DLL_PREFIX=\"$(DLL_PREFIX)\" \
 	$(NULL)
 
 include $(topsrcdir)/config/config.mk
@@ -75,38 +77,32 @@ include $(topsrcdir)/config/rules.mk
 
 ifeq ($(OS_ARCH),Darwin)
 # Don't use the EXTRA_DSO_LDOPTS from rules.mk, it breaks the python module
-  EXTRA_DSO_LDOPTS = -bundle $(XPCOM_GLUE_LDOPTS) \
-                     $(MOZ_COMPONENT_LIBS) \
-                     $(LIBXUL_DIST)/lib/XUL \
+  EXTRA_DSO_LDOPTS = -bundle $(XPCOM_STANDALONE_GLUE_LDOPTS) \
+                     $(NSPR_LIBS) \
+                     $(MOZALLOC_LIB) \
                      $(NULL)
 else ifeq ($(OS_ARCH),WINNT)
-  EXTRA_DSO_LDOPTS += $(XPCOM_GLUE_LDOPTS) \
-                      $(MOZ_COMPONENT_LIBS) \
-                      $(LIBXUL_DIST)/lib/mozalloc.$(LIB_SUFFIX) \
-                      $(LIBXUL_DIST)/lib/xul.$(LIB_SUFFIX) \
+  EXTRA_DSO_LDOPTS += $(XPCOM_STANDALONE_GLUE_LDOPTS) \
+                      $(NSPR_LIBS) \
+                      $(MOZALLOC_LIB) \
                       $(NULL)
 else
-  EXTRA_DSO_LDOPTS += $(XPCOM_GLUE_LDOPTS) \
-                      $(MOZ_COMPONENT_LIBS) \
-                      $(MKSHLIB_FORCE_ALL) \
-                          $(call EXPAND_LIBNAME_PATH,mozglue,$(DIST)/lib) \
-                      $(MKSHLIB_UNFORCE_ALL) \
-                      $(call EXPAND_LIBNAME_PATH,xul,$(DIST)/lib) \
-                      $(NULL)
+  EXTRA_LIBS += $(XPCOM_STANDALONE_GLUE_LDOPTS) \
+                $(call EXPAND_LIBNAME_PATH,mozglue,$(LIBXUL_DIST)/lib) \
+                $(NSPR_LIBS) \
+                $(MOZALLOC_LIB) \
+                $(NULL)
 endif
 IMPORT_LIBRARY		:= $(SHARED_LIBRARY:.pyd=.lib)
 
 # Install into our Python directory
-# default build installs into bin and lib - remove them
-libs::
+libs:: $(SHARED_LIBRARY)
 ifeq ($(OS_ARCH),WINNT)
 	$(INSTALL) $(SHARED_LIBRARY) $(DIST)/bin/python/xpcom
 else
 	$(INSTALL) $(SHARED_LIBRARY) $(DIST)/bin/python/xpcom
 	mv $(DIST)/bin/python/xpcom/$(SHARED_LIBRARY) $(DIST)/bin/python/xpcom/_xpcom.so
 endif
-	rm -f $(DIST)/bin/$(SHARED_LIBRARY)
-	rm -f $(DIST)/lib/$(IMPORT_LIBRARY)
 
 install::
 ifneq ($(OS_ARCH),WINNT)

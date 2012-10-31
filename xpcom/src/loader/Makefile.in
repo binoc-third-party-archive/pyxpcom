@@ -84,5 +84,14 @@ EXTRA_DSO_LDOPTS += $(XPCOM_GLUE_LDOPTS) \
 
 include $(topsrcdir)/config/rules.mk
 
+# on Darwin, we need to make sure we find libpyxpcom correctly
+ifeq ($(OS_TARGET),Darwin)
+fix-paths: $(SHARED_LIBRARY)
+	install_name_tool -change @executable_path/libpyxpcom.dylib \
+	    @loader_path/../libpyxpcom.dylib $(SHARED_LIBRARY)
+export:: fix-paths
+.PHONY: fix-paths
+endif
+
 clobber::
 	rm -f *.ilk

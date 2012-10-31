@@ -11,7 +11,9 @@
 #include "nsIXULRuntime.h"
 #include "nsIFactory.h"
 
+#include "nsXPCOMGlue.h"
 #include "nsXREAppData.h"
+#include "nsXULAppAPI.h"
 
 class PyAppInfo: public nsIXULAppInfo,
                  public nsIXULRuntime,
@@ -32,4 +34,14 @@ private:
 protected:
     nsXREAppData mAppData;
     bool mLogConsoleErrors;
+
+    // Functions from libxul
+    bool EnsureXULFuncs();
+    enum XULFuncState {
+        XULFUNCS_UNINITIALIZED,
+        XULFUNCS_LOADED,
+        XULFUNCS_FAILED,
+    } mLoadedXULFuncs;
+    XRE_GetProcessTypeType XRE_GetProcessType;
+    XRE_ParseAppDataType XRE_ParseAppData;
 };

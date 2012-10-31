@@ -14,7 +14,8 @@ NS_IMPL_ISUPPORTS3(PyAppInfo,
                    nsIFactory)
 
 PyAppInfo::PyAppInfo(nsIFile* aAppDir) :
-    mLogConsoleErrors(false)
+    mLogConsoleErrors(false),
+    mLoadedXULFuncs(XULFUNCS_UNINITIALIZED)
 {
     memset(&mAppData, 0, sizeof(mAppData));
     if (!aAppDir) {
@@ -35,11 +36,16 @@ PyAppInfo::PyAppInfo(nsIFile* aAppDir) :
     if (NS_FAILED(rv) || !exists) {
         return;
     }
+    if (!EnsureXULFuncs()) {
+        return;
+    }
     rv = XRE_ParseAppData(appIni, &mAppData);
     if (NS_FAILED(rv)) {
         return;
     }
     NS_ADDREF(mAppData.directory = aAppDir);
+
+
 }
 
 PyAppInfo::~PyAppInfo() {
@@ -51,6 +57,19 @@ PyAppInfo* PyAppInfo::GetSingleton(nsIFile* aAppDir) {
         gAppInfo = new PyAppInfo(aAppDir);
     }
     return gAppInfo;
+}
+
+bool PyAppInfo::EnsureXULFuncs() {
+    if (mLoadedXULFuncs == XULFUNCS_UNINITIALIZED) {
+        const struct nsDynamicFunctionLoad kXULFuncs[] = {
+                {"XRE_GetProcessType", (NSFuncPtr*) &XRE_GetProcessType},
+                {"XRE_ParseAppData", (NSFuncPtr*) &XRE_ParseAppData},
+                {nullptr, nullptr },
+        };
+        nsresult rv = XPCOMGlueLoadXULFunctions(kXULFuncs);
+        mLoadedXULFuncs = (rv == NS_OK) ? XULFUNCS_LOADED : XULFUNCS_FAILED;
+    }
+    return (mLoadedXULFuncs == XULFUNCS_LOADED);
 }
 
 /* readonly attribute ACString vendor; */
@@ -203,6 +222,7 @@ NS_IMETHODIMP
 PyAppInfo::GetProcessType(uint32_t *aProcessType)
 {
     NS_ENSURE_ARG_POINTER(aProcessType);
+    NS_ENSURE_TRUE(EnsureXULFuncs(), NS_ERROR_NOT_INITIALIZED);
     *aProcessType = XRE_GetProcessType();
     return NS_OK;
 }

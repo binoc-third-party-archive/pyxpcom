@@ -78,6 +78,7 @@ CPPSRCS= \
 	TypeObject.cpp \
 	VariantUtils.cpp \
 	dllmain.cpp \
+	XPCOMFunctions.cpp \
 	$(NULL)
 
 include $(topsrcdir)/config/config.mk
@@ -91,17 +92,9 @@ else
 	CXXFLAGS += -g
 endif
 
-XPCOM_GLUE_LDOPTS=$(LIBXUL_DIST)/lib/$(LIB_PREFIX)xpcomglue_s.$(LIB_SUFFIX) \
-                  $(XPCOM_FROZEN_LDOPTS)
-
-ifeq ($(OS_TARGET),WINNT)
-  XPCOM_GLUE_LDOPTS += $(LIBXUL_DIST)/lib/$(LIB_PREFIX)mozalloc.$(LIB_SUFFIX)
-else
-  EXTRA_LIBS += $(call EXPANDLIBNAME,mozalloc)
-endif
-
 EXTRA_DSO_LDOPTS += $(XPCOM_GLUE_LDOPTS) \
                     $(MOZ_COMPONENT_LIBS) \
+                    $(call EXPAND_LIBNAME_PATH,mozalloc,$(LIBXUL_DIST)/lib) \
                     $(NULL)
 
 include $(topsrcdir)/config/rules.mk
