@@ -229,16 +229,11 @@ static nsresult PyxpcomModuleLoader(nsISupports* aOuter, REFNSIID aIID, void** a
     *aResult = nullptr;
     if (aOuter)
         return NS_ERROR_NO_AGGREGATION;
-    nsPythonModuleLoader* inst;
-    inst = new nsPythonModuleLoader();
-    if (NULL == inst) {
-        rv = NS_ERROR_OUT_OF_MEMORY;
-        return rv;
+    nsRefPtr<nsPythonModuleLoader> inst = new nsPythonModuleLoader();
+    if (!inst) {
+        return NS_ERROR_OUT_OF_MEMORY;
     }
-    NS_ADDREF(inst);
-    rv = inst->QueryInterface(aIID, aResult);
-    NS_RELEASE(inst);
-    return NS_OK;
+    return inst->QueryInterface(aIID, aResult);
 }
 
 
