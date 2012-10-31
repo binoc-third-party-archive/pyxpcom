@@ -74,8 +74,8 @@ nsPythonModuleLoader::nsPythonModuleLoader(): mPyLoader(NULL) {
 }
 nsPythonModuleLoader::~nsPythonModuleLoader() {}
 
-NS_IMPL_ISUPPORTS1(nsPythonModuleLoader,
-                   mozilla::ModuleLoader)
+NS_IMPL_THREADSAFE_ISUPPORTS1(nsPythonModuleLoader,
+                              mozilla::ModuleLoader)
 
 nsresult
 nsPythonModuleLoader::Init()
