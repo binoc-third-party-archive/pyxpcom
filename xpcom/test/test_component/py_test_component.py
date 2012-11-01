@@ -225,7 +225,7 @@ class PythonTestComponent:
     UpString2 = UpString
         # // UpString2 defines count as only "in", and a string as only "out"
         #     void UpString2(in PRUint32 count, 
-        #               [size_is(count)] inout string in_str,
+        #               [size_is(count)] in string in_str,
         #               [size_is(count)]out string out_str);
 
     def GetFixedString(self, count):
