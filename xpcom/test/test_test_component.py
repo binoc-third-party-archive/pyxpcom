@@ -35,7 +35,7 @@
 #
 # ***** END LICENSE BLOCK *****
 
-import sys, os, time
+import sys, os, time, traceback
 import xpcom.components
 import xpcom._xpcom
 import xpcom.nsError
@@ -135,10 +135,17 @@ def test_attribute_failure(ob, attr_name, new_value, expected_exception):
 def test_method(method, args, expected_results):
     if xpcom.verbose:
         print "Testing %s%s" % (method.__name__, `args`)
-    ret = method(*args)
-    if ret != expected_results:
-        print_error("calling method %s with %r - expected %r, but got %r" %
-                    (method.__name__, args, expected_results, ret))
+    try:
+        ret = method(*args)
+    except Exception, ex:
+        print_error("calling method %s with %r - exception:" %
+                    (method.__name__, args))
+        traceback.print_exc(None, sys.stdout)
+    else:
+        if ret != expected_results:
+            print_error("calling method %s with %r - expected %r, but got %r" %
+                        (method.__name__, args, expected_results, ret))
+    sys.stdout.flush()
 
 def test_int_method(meth):
     test_method(meth, (0,0), (0,0,0))
