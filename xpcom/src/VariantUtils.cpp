@@ -1776,8 +1776,8 @@ bool PyXPCOM_InterfaceVariantHelper::FillInVariant(const PythonTypeDescriptor &t
 			BREAK_FALSE;
 		}
 		rc = FillSingleArray(ns_v.val.p, val, seq_length,
-							 element_size, td.ArrayTypeTag(),
-							 td.iid);
+		                     element_size, td.ArrayTypeTag(),
+		                     td.iid);
 		rc &= SetLengthIs(value_index, seq_length);
 		if (!rc) {
 			Free(ns_v.val.p);
@@ -1928,10 +1928,29 @@ bool PyXPCOM_InterfaceVariantHelper::PrepareOutVariant(const PythonTypeDescripto
 			// Don't do anything; the callee will allocate
 		} else {
 			// We've already got space (i.e. inout)
-			// Don't worry about it
-			// if we need cleanup, we have to allocate something
-			MOZ_ASSERT_IF(ns_v.DoesValNeedCleanup(),
-						  ns_v.val.p);
+			// Make sure that we _did_ allocate something; XPConnect
+			// will expect some place to dump the result into
+			if (!ns_v.DoesValNeedCleanup()) {
+				if (!ns_v.val.p) {
+					PRUint32 element_size = GetArrayElementSize(td.ArrayTypeTag());
+					uint32_t size = GetSizeIs(value_index);
+					ns_v.val.p = Alloc(element_size, size, __FILE__, __LINE__);
+					if (!ns_v.val.p) {
+						PyErr_NoMemory();
+						return false;
+					}
+					memset(ns_v.val.p, 0, element_size * size);
+					if (!static_cast<nsXPTType>(td.ArrayTypeTag()).IsArithmetic())
+						ns_v.SetValNeedsCleanup();
+					#if DEBUG
+						// callee will free for us (length can change)
+						MarkFree(ns_v.val.p);
+					#endif
+				}
+			} else {
+				// we have allocated space due to the |in| part
+				MOZ_ASSERT(ns_v.val.p);
+			}
 		}
 		break;
 	  case nsXPTType::T_PWSTRING_SIZE_IS:
@@ -2474,8 +2493,8 @@ uint32_t PyXPCOM_GatewayVariantHelper::GetSizeOrLengthIs( int var_index, bool is
 	MOZ_ASSERT(argnum < mPyTypeDesc.Length(), "size_is param is invalid");
 	if (argnum >= mPyTypeDesc.Length()) {
 		PyErr_SetString(PyExc_ValueError,
-						"don't have a valid size_is indicator for this param");
-		return false;
+		                "don't have a valid size_is indicator for this param");
+		return static_cast<uint32_t>(-1);
 	}
 	PythonTypeDescriptor &ptd = mPyTypeDesc[argnum];
 	nsXPTCMiniVariant &ns_v = m_params[argnum];

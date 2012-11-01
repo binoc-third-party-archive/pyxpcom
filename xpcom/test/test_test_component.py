@@ -412,7 +412,9 @@ def test_derived_interface(c, test_flat = 0, isJS = False):
     test_method(c.GetArrays, (), ( [1,2,3], [4,5,6] ) )
     test_method(c.CopyArray, ([1,2,3],), [1,2,3] )
     test_method(c.CopyAndDoubleArray, ([1,2,3],), [1,2,3,1,2,3] )
-    test_method(c.AppendArray, ([1,2,3],), [1,2,3])
+    # for the next call, the second arg (None) is automatically converted to an array [0,0,0]
+    # because we can't pass null to inout args
+    test_method(c.AppendArray, ([1,2,3],), [1,2,3,0,0,0])
     test_method(c.AppendArray, ([1,2,3],[4,5,6]), [1,2,3,4,5,6])
 
     test_method(c.CopyVariant, ([],), [])
