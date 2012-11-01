@@ -56,10 +56,14 @@ ifeq ($(OS_TARGET),WINNT)
 	PATH="$(PATH):$(LIBXUL_DIST)/bin:$(abspath $(DIST)/bin)" \
 		PYXPCOM_APPDIR=$(abspath $(DIST)/bin) \
 		PYTHONPATH=$(abspath $(DIST)/bin/python) \
-		$(MOZ_PYTHON) $(srcdir)/$(basename $(TEST_SCRIPT)).py
+		$(MOZ_PYTHON) \
+		$(srcdir)/$(basename $(TEST_SCRIPT)).py \
+		$(TEST_SCRIPT_ARGS)
 else
 	PYTHONPATH=$(abspath $(DIST)/bin/python) \
 		PYXPCOM_APPDIR=$(abspath $(DIST)/bin) \
 		$(LIBXUL_DIST)/bin/run-mozilla.sh $(RUN_MOZILLA_ARGS) \
-		$(MOZ_PYTHON)$(MOZ_PYTHON_DEBUG_SUFFIX) $(srcdir)/$(basename $(TEST_SCRIPT)).py
+		$(MOZ_PYTHON)$(MOZ_PYTHON_DEBUG_SUFFIX) \
+		$(srcdir)/$(basename $(TEST_SCRIPT)).py \
+		$(TEST_SCRIPT_ARGS)
 endif
