@@ -57,6 +57,8 @@ EXTRA_COMPONENTS = \
 		py_test_component.manifest \
 		py_test_component.py \
 		js_test_component.js \
+		js_test_driver.jsm \
+		js_test_impl.jsm \
 		$(NULL)
 
 include $(topsrcdir)/config/rules.mk

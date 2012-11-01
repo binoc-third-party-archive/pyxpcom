@@ -156,7 +156,7 @@ def test_constant(ob, cname, val):
     except AttributeError:
         pass
 
-def test_base_interface(c):
+def test_base_interface(c, isJS=False):
     test_attribute(c, "boolean_value", 1, 0)
     test_attribute(c, "boolean_value", 1, -1, 1) # Set a bool to anything, you should always get back 0 or 1
     test_attribute(c, "boolean_value", 1, 4, 1) # Set a bool to anything, you should always get back 0 or 1
@@ -332,23 +332,29 @@ def test_base_interface(c):
     test_constant(i, "BigLong", 0x7FFFFFFF)
     test_constant(i, "BigULong", 0xFFFFFFFF)
 
-def test_derived_interface(c, test_flat = 0):
+def test_derived_interface(c, test_flat = 0, isJS = False):
     val = "Hello\0there"
     expected = val * 2
 
-    test_method(c.DoubleString, (val,), expected)
-    test_method(c.DoubleString2, (val,), expected)
-    test_method(c.DoubleString3, (val,), expected)
-    test_method(c.DoubleString4, (val,), expected)
+    if not isJS:
+        # Don't test from JS, it can't deal with nulls in |string|s
+        # (it _can_ deal with nulls in AStrings/ACStrings)
+        test_method(c.DoubleString, (val,), expected)
+        test_method(c.DoubleString2, (val,), expected)
+        test_method(c.DoubleString3, (val,), expected)
+        test_method(c.DoubleString4, (val,), expected)
     test_method(c.UpString, (val,), val.upper())
     test_method(c.UpString2, (val,), val.upper())
     test_method(c.GetFixedString, (20,), "A"*20)
     val = u"Hello\0there"
     expected = val * 2
-    test_method(c.DoubleWideString, (val,), expected)
-    test_method(c.DoubleWideString2, (val,), expected)
-    test_method(c.DoubleWideString3, (val,), expected)
-    test_method(c.DoubleWideString4, (val,), expected)
+    if not isJS:
+        # Don't test from JS, it can't deal with nulls in |string|s
+        # (it _can_ deal with nulls in AStrings/ACStrings)
+        test_method(c.DoubleWideString, (val,), expected)
+        test_method(c.DoubleWideString2, (val,), expected)
+        test_method(c.DoubleWideString3, (val,), expected)
+        test_method(c.DoubleWideString4, (val,), expected)
     test_method(c.UpWideString, (val,), val.upper())
     test_method(c.UpWideString2, (val,), val.upper())
     test_method(c.GetFixedWideString, (20,), u"A"*20)
@@ -481,27 +487,37 @@ def test_failures():
     # This extra stack-frame ensures Python cleans up sys.last_traceback etc
     do_test_failures()
 
-def test_all():
+def test_component(contractid=contractid, isJS=False):
+
     c = xpcom.client.Component(contractid, Ci.nsIPythonTestInterface)
-    test_base_interface(c)
+    test_base_interface(c, isJS=isJS)
     # Now create an instance using the derived IID, and test that.
     c = xpcom.client.Component(contractid, Ci.nsIPythonTestInterfaceExtra)
-    test_base_interface(c)
-    test_derived_interface(c)
+    test_base_interface(c, isJS=isJS)
+    test_derived_interface(c, isJS=isJS)
     # Now create an instance and test interface flattening.
-    c = Cc[contractid].createInstance()
-    test_base_interface(c)
-    test_derived_interface(c, test_flat=1)
+    if not isJS:
+        c = Cc[contractid].createInstance()
+        test_base_interface(c)
+        test_derived_interface(c, test_flat=1)
 
     # We had a bug where a "set" of an attribute before a "get" failed.
     # Don't let it happen again :)
-    c = Cc[contractid].createInstance()
+    c = Cc[contractid].createInstance(Ci.nsIPythonTestInterface)
     c.boolean_value = 0
     
     # This name is used in exceptions etc - make sure we got it from nsIClassInfo OK.
-    assert c._object_name_ == "Python.TestComponent"
+    assert c._object_name_ == contractid
 
+def test_all():
+    print "Testing Python -> Python"
+    try:
+        test_component(contractid)
+    finally:
+        print "End testing Python -> Python"
     test_failures()
+    test_from_js()
+    test_from_python_to_js()
 
 try:
     from sys import gettotalrefcount
@@ -513,8 +529,19 @@ except ImportError:
 from pyxpcom_test_tools import getmemusage
 
 def test_from_js():
-    c = Cc["JavaScript.TestComponent"].createInstance(Ci.nsIRunnable)
-    c.run() # throws on failure
+    print "Testing JS -> Python:"
+    try:
+        c = Cc["JavaScript.TestComponent"].createInstance(Ci.nsIRunnable)
+        c.run() # throws on failure
+    finally:
+        print "End testing JS -> Python"
+
+def test_from_python_to_js():
+    print "Testing Python -> JS:"
+    try:
+        test_component("JavaScript.TestComponent", isJS=True)
+    finally:
+        print "End testing Python -> JS"
 
 def doit(num_loops = -1):
     # Do the test lots of times - can help shake-out ref-count bugs.
@@ -564,7 +591,7 @@ def doit(num_loops = -1):
 
 def suite():
     from pyxpcom_test_tools import suite_from_functions
-    return suite_from_functions(doit, test_from_js)
+    return suite_from_functions(doit)
 
 if __name__=='__main__':
     num_iters = 10 # times times is *lots* - we do a fair bit of work!
@@ -577,8 +604,6 @@ if __name__=='__main__':
     print "Testing the Python.TestComponent component"
     doit(num_iters)
     print "The Python test component worked."
-    test_from_js()
-    print "JS successfully used our Python test component."
     xpcom._xpcom.NS_ShutdownXPCOM()
     ni = xpcom._xpcom._GetInterfaceCount()
     ng = xpcom._xpcom._GetGatewayCount()
