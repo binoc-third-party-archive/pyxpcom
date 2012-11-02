@@ -412,7 +412,9 @@ protected:
 	template<typename T>
 	MOZ_INLINE T* Alloc(T*& dest, size_t count, const char*, const unsigned) {
 		dest = reinterpret_cast<T*>(moz_calloc(sizeof(T), count));
-		return new (dest) T[count]();
+		for (size_t i = 0; i < count; ++i)
+			new (&dest[i]) T();
+		return dest;
 	}
 	MOZ_INLINE void* Alloc(size_t size, size_t count, const char*, const unsigned) {
 		return moz_calloc(size, count);
