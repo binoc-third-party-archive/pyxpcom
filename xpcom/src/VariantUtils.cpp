@@ -2562,7 +2562,11 @@ PyObject *PyXPCOM_GatewayVariantHelper::MakeSingleParam(int index, PythonTypeDes
 		ret = PyUnicode_FromPRUnichar(&temp, 1);
 		break;
 		}
-//	  case nsXPTType::T_VOID:
+	  case nsXPTType::T_VOID:
+		// we really can't do anything useful with this; just pass it to
+		// Python as an integer and hope it's close enough
+		ret = PyLong_FromVoidPtr( *((void **)ns_v.ptr));
+		break;
 	  case nsXPTType::T_IID: {
 		  ret = Py_nsIID::PyObjectFromIID( * DEREF_IN_OR_OUT(ns_v.val.p, const nsIID *) );
 		  break;
