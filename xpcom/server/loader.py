@@ -88,8 +88,8 @@ def FindCOMComponents(py_module):
 
 def register_self(klass, compMgr, location, registryLocation, componentType):
     pcl = ModuleLoader
-    from xpcom import _xpcom
-    svc = _xpcom.GetServiceManager().getServiceByContractID("@mozilla.org/categorymanager;1", components.interfaces.nsICategoryManager)
+    svc = components.classes["@mozilla.org/categorymanager;1"]. \
+            getService(components.interfaces.nsICategoryManager)
     # The category 'module-loader' is special - the component manager uses it
     # to create the nsIModuleLoader for a given component type.
     svc.addCategoryEntry("module-loader", pcl._reg_component_type_, pcl._reg_contractid_, 1, 1)
@@ -107,9 +107,28 @@ class ModuleLoader:
         self.com_modules = {} # Keyed by module's FQN as obtained from nsIFile.path
         self.moduleFactory = module.Module
         xpcom.shutdown.register(self._on_shutdown)
+        # Register for profile startup notification.
+        svc = components.classes["@mozilla.org/observer-service;1"]. \
+                getService(components.interfaces.nsIObserverService)
+        svc.addObserver(self, "profile-after-change", False)
+
+    def observe(self, subject, topic, data):
+        if topic == "profile-after-change":
+            # Add the pylib paths for the user profile extensions.
+            self._registred_pylib_paths = False
+            self._setupPythonPaths()
+            svc = components.classes["@mozilla.org/observer-service;1"]. \
+                    getService(components.interfaces.nsIObserverService)
+            svc.removeObserver(self, "profile-after-change")
 
     def _on_shutdown(self):
         self.com_modules.clear()
+        svc = components.classes["@mozilla.org/observer-service;1"]. \
+                getService(components.interfaces.nsIObserverService)
+        try:
+            svc.removeObserver(self, "profile-after-change")
+        except COMException:
+            pass  # Already removed itself.
 
     def loadModule(self, aLocalFile):
         return self._getCOMModuleForLocation(aLocalFile)
@@ -149,14 +168,27 @@ class ModuleLoader:
         directorySvc =  components.classes["@mozilla.org/file/directory_service;1"].\
                             getService(components.interfaces.nsIProperties)
         extensionDirs = []
+        enum = directorySvc.get("XREExtDL", components.interfaces.nsISimpleEnumerator)
+        while enum.hasMoreElements():
+            nsifile = enum.getNext().QueryInterface(components.interfaces.nsIFile)
+            path = nsifile.path
+            if path not in extensionDirs:
+                extensionDirs.append(path)
+
+        # Allow a custom directory service to provide additional extension
+        # directories using the special "PyxpcomExtDirList" key.
         try:
-            enum = directorySvc.get("XREExtDL", components.interfaces.nsISimpleEnumerator)
+            enum = directorySvc.get("PyxpcomExtDirList",
+                                    components.interfaces.nsISimpleEnumerator)
             while enum.hasMoreElements():
                 nsifile = enum.getNext().QueryInterface(components.interfaces.nsIFile)
-                extensionDirs.append(nsifile)
-        except:
-            # Ignore if the directory is not available.
-            sys.stderr.write("ModuleLoader: could not fetch extension directories.\n")
+                path = nsifile.path
+                if path not in extensionDirs:
+                    extensionDirs.append(path)
+        except COMException as e:
+            # Okay, no one provides that key; that's okay.
+            pass
+
         return extensionDirs
 
     def _getPossiblePlatformNames(self):
@@ -173,7 +205,17 @@ class ModuleLoader:
         return self._platform_names
 
     ##
-    # Register all the extension pylib paths.
+    # Register all the extension pylib paths. This supports the following pylib
+    # paths within an extension, which are added to sys.path automatically.
+    # Version paths are added first, where 27 is the Python major/minor version
+    # number):
+    #
+    #    ext/pylib27
+    #    ext/platform/Linux_x86-gcc3/pylib27
+    #    ext/platform/Linux_x86/pylib27
+    #    ext/pylib
+    #    ext/platform/Linux_x86-gcc3/pylib
+    #    ext/platform/Linux_x86/pylib
     #
     def _setupPythonPaths(self):
         """Add 'pylib' directies for the application and each extension to
@@ -189,20 +231,22 @@ class ModuleLoader:
             extDirs = self._getExtenionDirectories()
         except COMException:
             extDirs = []
+        pyverstr = "%d%d" % (sys.version_info.major, sys.version_info.minor)
         for extDir in extDirs:
-            pylibPath = join(extDir.path, "pylib")
-            if exists(pylibPath) and pylibPath not in sys.path:
-                if verbose:
-                    print "pyXPCOMExtensionHelper:: Adding pylib to sys.path:" \
-                          " %r" % (pylibPath, )
-                sys.path.append(pylibPath)
+            for pylibName in ("pylib" + pyverstr, "pylib"):
+                pylibPath = join(extDir, pylibName)
+                if exists(pylibPath) and pylibPath not in sys.path:
+                    if verbose:
+                        print "pyXPCOMExtensionHelper:: Adding pylib to sys.path:" \
+                              " %r" % (pylibPath, )
+                    sys.path.append(pylibPath)
 
-            platformPylibPath = join(extDir.path, "platform")
-            if exists(platformPylibPath):
-                for platform_name in self._getPossiblePlatformNames():
-                    pylibPath = join(platformPylibPath, platform_name, "pylib")
-                    if exists(pylibPath) and pylibPath not in sys.path:
-                        if verbose:
-                            print "pyXPCOMExtensionHelper:: Adding pylib to sys.path:" \
-                                  " %r" % (pylibPath, )
-                        sys.path.append(pylibPath)
+                platformPylibPath = join(extDir, "platform")
+                if exists(platformPylibPath):
+                    for platform_name in self._getPossiblePlatformNames():
+                        pylibPath = join(platformPylibPath, platform_name, pylibName)
+                        if exists(pylibPath) and pylibPath not in sys.path:
+                            if verbose:
+                                print "pyXPCOMExtensionHelper:: Adding pylib to sys.path:" \
+                                      " %r" % (pylibPath, )
+                            sys.path.append(pylibPath)
