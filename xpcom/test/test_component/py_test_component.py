@@ -216,11 +216,15 @@ class PythonTestComponent:
         return val * 2
     def DoubleString4(self, val):
         # void DoubleString4([size_is(count)] in string in_str, inout PRUint32 count, [size_is(count)] out string out_str);
+        if not isinstance(val, str):
+            raise COMException(nsError.NS_ERROR_INVALID_ARG, "string %s is not a str, it's a %s" % (val, type(val)))
         return val * 2
     def UpString(self, val):
         # // UpString defines the count as only "in" - meaning the result must be the same size
         # void UpString(in PRUint32 count, 
         #               [size_is(count)] inout string str);
+        if not isinstance(val, str):
+            raise COMException(nsError.NS_ERROR_INVALID_ARG, "string %s is not a str, it's a %s" % (val, type(val)))
         return val.upper()
     UpString2 = UpString
         # // UpString2 defines count as only "in", and a string as only "out"
@@ -248,8 +252,12 @@ class PythonTestComponent:
         return val.upper()
     UpWideString2 = UpWideString
     def CopyUTF8String(self, v):
+        if not isinstance(v, unicode):
+            raise COMException(nsError.NS_ERROR_INVALID_ARG, "string %s is not a unicode, it's a %s" % (v, type(v)))
         return v
     def CopyUTF8String2(self, v):
+        if not isinstance(v, unicode):
+            raise COMException(nsError.NS_ERROR_INVALID_ARG, "string %s is not a unicode, it's a %s" % (v, type(v)))
         return v.encode("utf8")
     # Test we can get an "out" array with an "in" size (and the size is not used anywhere as a size for an in!)
     def GetFixedWideString(self, count):

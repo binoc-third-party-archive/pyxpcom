@@ -73,47 +73,50 @@ def print_error(error):
     global num_errors
     num_errors = num_errors + 1
 
-def _test_value(what, got, expecting):
+def _test_value(what, got, expecting, expected_type = None):
     ok = got == expecting
     if type(got)==type(expecting)==type(0.0):
         ok = abs(got-expecting) < 0.001
     if not ok:
         print_error("*** Error %s - got '%r', but expecting '%r'" % (what, got, expecting))
+    if expected_type is not None:
+        if not isinstance(got, expected_type):
+            print_error("*** Error %s - got type '%s', but expecting '%s'" % (what, type(got), expected_type))
 
-def test_attribute(ob, attr_name, expected_init, new_value, new_value_really = None):
+def test_attribute(ob, attr_name, expected_init, new_value, new_value_really = None, expected_type = None):
     if xpcom.verbose:
         print "Testing attribute %s" % (attr_name,)
     if new_value_really is None:
         new_value_really = new_value # Handy for eg bools - set a BOOL to 2, you still get back 1!
         
-    _test_value( "getting initial attribute value (%s)" % (attr_name,), getattr(ob, attr_name), expected_init)
+    _test_value( "getting initial attribute value (%s)" % (attr_name,), getattr(ob, attr_name), expected_init, expected_type=expected_type)
     setattr(ob, attr_name, new_value)
-    _test_value( "getting new attribute value (%s)" % (attr_name,), getattr(ob, attr_name), new_value_really)
+    _test_value( "getting new attribute value (%s)" % (attr_name,), getattr(ob, attr_name), new_value_really, expected_type=expected_type)
     # And set it back to the expected init.
     setattr(ob, attr_name, expected_init)
-    _test_value( "getting back initial attribute value after change (%s)" % (attr_name,), getattr(ob, attr_name), expected_init)
+    _test_value( "getting back initial attribute value after change (%s)" % (attr_name,), getattr(ob, attr_name), expected_init, expected_type=expected_type)
 
-def test_string_attribute(ob, attr_name, expected_init, is_dumb_sz = False, ascii_only = False):
-    test_attribute(ob, attr_name, expected_init, "normal value")
+def test_string_attribute(ob, attr_name, expected_init, is_dumb_sz = False, ascii_only = False, expected_type = None):
+    test_attribute(ob, attr_name, expected_init, "normal value", expected_type=expected_type)
     val = "a null >\0<"
     if is_dumb_sz:
         expected = "a null >" # dumb strings are \0 terminated.
     else:
         expected = val
-    test_attribute(ob, attr_name, expected_init, val, expected)
-    test_attribute(ob, attr_name, expected_init, "")
-    test_attribute(ob, attr_name, expected_init, really_big_string)
-    test_attribute(ob, attr_name, expected_init, u"normal unicode value")
+    test_attribute(ob, attr_name, expected_init, val, expected, expected_type=expected_type)
+    test_attribute(ob, attr_name, expected_init, "", expected_type=expected_type)
+    test_attribute(ob, attr_name, expected_init, really_big_string, expected_type=expected_type)
+    test_attribute(ob, attr_name, expected_init, u"normal unicode value", expected_type=expected_type)
     val = u"a null >\0<"
     if is_dumb_sz:
         expected = "a null >" # dumb strings are \0 terminated.
     else:
         expected = val
-    test_attribute(ob, attr_name, expected_init, val, expected)
-    test_attribute(ob, attr_name, expected_init, u"")
-    test_attribute(ob, attr_name, expected_init, really_big_wstring)
+    test_attribute(ob, attr_name, expected_init, val, expected, expected_type=expected_type)
+    test_attribute(ob, attr_name, expected_init, u"", expected_type=expected_type)
+    test_attribute(ob, attr_name, expected_init, really_big_wstring, expected_type=expected_type)
     if not ascii_only:
-        test_attribute(ob, attr_name, expected_init, extended_unicode_string)
+        test_attribute(ob, attr_name, expected_init, extended_unicode_string, expected_type=expected_type)
 
 def test_attribute_failure(ob, attr_name, new_value, expected_exception):
     try:
@@ -132,7 +135,7 @@ def test_attribute_failure(ob, attr_name, new_value, expected_exception):
             print_error("*** Wrong exception setting '%s' to '%r'- got '%s: %s', expected '%s'" % (attr_name, new_value, exc_typ, exc_val, expected_exception))
 
 
-def test_method(method, args, expected_results):
+def test_method(method, args, expected_results, expected_type = None):
     if xpcom.verbose:
         print "Testing %s%s" % (method.__name__, `args`)
     try:
@@ -145,6 +148,10 @@ def test_method(method, args, expected_results):
         if ret != expected_results:
             print_error("calling method %s with %r - expected %r, but got %r" %
                         (method.__name__, args, expected_results, ret))
+        if expected_type is not None:
+            if type(ret) is not expected_type:
+                print_error("calling method %s with %r - expected type %r, but got %r" %
+                            (method.__name__, args, expected_type, type(ret)))
     sys.stdout.flush()
 
 def test_int_method(meth):
@@ -164,52 +171,53 @@ def test_constant(ob, cname, val):
         pass
 
 def test_base_interface(c, isJS=False):
-    test_attribute(c, "boolean_value", 1, 0)
-    test_attribute(c, "boolean_value", 1, -1, 1) # Set a bool to anything, you should always get back 0 or 1
-    test_attribute(c, "boolean_value", 1, 4, 1) # Set a bool to anything, you should always get back 0 or 1
-    test_attribute(c, "boolean_value", 1, "1", 1) # This works by virtual of PyNumber_Int - not sure I agree, but...
+    test_attribute(c, "boolean_value", 1, 0, expected_type=bool)
+    test_attribute(c, "boolean_value", 1, -1, 1, expected_type=bool) # Set a bool to anything, you should always get back 0 or 1
+    test_attribute(c, "boolean_value", 1, 4, 1, expected_type=bool) # Set a bool to anything, you should always get back 0 or 1
+    test_attribute(c, "boolean_value", 1, "1", 1, expected_type=bool) # This works by virtual of PyNumber_Int - not sure I agree, but...
     test_attribute_failure(c, "boolean_value", "boo", ValueError)
     test_attribute_failure(c, "boolean_value", test_base_interface, TypeError)
 
-    test_attribute(c, "octet_value", 2, 5)
-    test_attribute(c, "octet_value", 2, 0)
-    test_attribute(c, "octet_value", 2, 128) # octet is unsigned 8 bit
-    test_attribute(c, "octet_value", 2, 255) # octet is unsigned 8 bit
+    test_attribute(c, "octet_value", 2, 5, expected_type=int)
+    test_attribute(c, "octet_value", 2, 0, expected_type=int)
+    test_attribute(c, "octet_value", 2, 128, expected_type=int) # octet is unsigned 8 bit
+    test_attribute(c, "octet_value", 2, 255, expected_type=int) # octet is unsigned 8 bit
     test_attribute_failure(c, "octet_value", 256, OverflowError) # can't fit into unsigned
     test_attribute_failure(c, "octet_value", -1, OverflowError) # can't fit into unsigned
     test_attribute_failure(c, "octet_value", "boo", ValueError)
 
-    test_attribute(c, "short_value", 3, 10)
-    test_attribute(c, "short_value", 3, -1) # 16 bit signed
-    test_attribute(c, "short_value", 3, 0L)
-    test_attribute(c, "short_value", 3, 1L)
-    test_attribute(c, "short_value", 3, -1L)
+    test_attribute(c, "short_value", 3, 10, expected_type=int)
+    test_attribute(c, "short_value", 3, -1, expected_type=int) # 16 bit signed
+    test_attribute(c, "short_value", 3, 0L, expected_type=int)
+    test_attribute(c, "short_value", 3, 1L, expected_type=int)
+    test_attribute(c, "short_value", 3, -1L, expected_type=int)
     test_attribute_failure(c, "short_value", 0xFFFF, OverflowError) # 16 bit signed
     test_attribute_failure(c, "short_value", "boo", ValueError)
 
-    test_attribute(c, "ushort_value",  4, 5)
-    test_attribute(c, "ushort_value",  4, 0)
-    test_attribute(c, "ushort_value",  4, 0xFFFF) # 16 bit signed
-    test_attribute(c, "ushort_value",  4, 0L)
-    test_attribute(c, "ushort_value",  4, 1L)
+    test_attribute(c, "ushort_value",  4, 5, expected_type=int)
+    test_attribute(c, "ushort_value",  4, 0, expected_type=int)
+    test_attribute(c, "ushort_value",  4, 0xFFFF, expected_type=int) # 16 bit signed
+    test_attribute(c, "ushort_value",  4, 0L, expected_type=int)
+    test_attribute(c, "ushort_value",  4, 1L, expected_type=int)
     test_attribute_failure(c, "ushort_value",  -1, OverflowError) # 16 bit signed
     test_attribute_failure(c, "ushort_value", "boo", ValueError)
 
-    test_attribute(c, "long_value",  5, 7)
-    test_attribute(c, "long_value",  5, 0)
-    test_attribute(c, "long_value",  5, -1, -1) # 32 bit signed.
-    test_attribute(c, "long_value",  5, -1) # 32 bit signed.
-    test_attribute(c, "long_value",  5, 0L)
-    test_attribute(c, "long_value",  5, 1L)
-    test_attribute(c, "long_value",  5, -1L)
+    test_attribute(c, "long_value",  5, 7, expected_type=int)
+    test_attribute(c, "long_value",  5, 0, expected_type=int)
+    test_attribute(c, "long_value",  5, -1, -1, expected_type=int) # 32 bit signed.
+    test_attribute(c, "long_value",  5, -1, expected_type=int) # 32 bit signed.
+    test_attribute(c, "long_value",  5, 0L, expected_type=int)
+    test_attribute(c, "long_value",  5, 1L, expected_type=int)
+    test_attribute(c, "long_value",  5, -1L, expected_type=int)
     test_attribute_failure(c, "long_value", 0xFFFFL * 0xFFFF, OverflowError) # long int too long to convert
     test_attribute_failure(c, "long_value", "boo", ValueError)
 
-    test_attribute(c, "ulong_value", 6, 7)
-    test_attribute(c, "ulong_value", 6, 0)
+    test_attribute(c, "ulong_value", 6, 7, expected_type=int)
+    test_attribute(c, "ulong_value", 6, 0, expected_type=int)
     test_attribute_failure(c, "ulong_value", -1, OverflowError) # 32 bit signed.
     test_attribute_failure(c, "ulong_value", "boo", ValueError)
     
+    # don't check type on long long; they are int on 64-bit systems, and long on 32-bit
     test_attribute(c, "long_long_value", 7, 8)
     test_attribute(c, "long_long_value", 7, 0)
     test_attribute(c, "long_long_value", 7, -1)
@@ -223,47 +231,47 @@ def test_base_interface(c, isJS=False):
     test_attribute_failure(c, "ulong_long_value", "boo", ValueError)
     test_attribute_failure(c, "ulong_long_value", -1, UnsignedMismatchException) # can't convert negative value to unsigned long)
     
-    test_attribute(c, "float_value", 9.0, 10.2)
-    test_attribute(c, "float_value", 9.0, 0)
-    test_attribute(c, "float_value", 9.0, -1)
-    test_attribute(c, "float_value", 9.0, 1L)
+    test_attribute(c, "float_value", 9.0, 10.2, expected_type=float)
+    test_attribute(c, "float_value", 9.0, 0, expected_type=float)
+    test_attribute(c, "float_value", 9.0, -1, expected_type=float)
+    test_attribute(c, "float_value", 9.0, 1L, expected_type=float)
     test_attribute_failure(c, "float_value", "boo", ValueError)
 
-    test_attribute(c, "double_value", 10.0, 9.0)
-    test_attribute(c, "double_value", 10.0, 0)
-    test_attribute(c, "double_value", 10.0, -1)
-    test_attribute(c, "double_value", 10.0, 1L)
+    test_attribute(c, "double_value", 10.0, 9.0, expected_type=float)
+    test_attribute(c, "double_value", 10.0, 0, expected_type=float)
+    test_attribute(c, "double_value", 10.0, -1, expected_type=float)
+    test_attribute(c, "double_value", 10.0, 1L, expected_type=float)
     test_attribute_failure(c, "double_value", "boo", ValueError)
     
-    test_attribute(c, "char_value", "a", "b")
-    test_attribute(c, "char_value", "a", "\0")
+    test_attribute(c, "char_value", "a", "b", expected_type=str)
+    test_attribute(c, "char_value", "a", "\0", expected_type=str)
     test_attribute_failure(c, "char_value", "xy", ValueError)
-    test_attribute(c, "char_value", "a", u"c")
-    test_attribute(c, "char_value", "a", u"\0")
+    test_attribute(c, "char_value", "a", u"c", expected_type=str)
+    test_attribute(c, "char_value", "a", u"\0", expected_type=str)
     test_attribute_failure(c, "char_value", u"xy", ValueError)
     
-    test_attribute(c, "wchar_value", "b", "a")
-    test_attribute(c, "wchar_value", "b", "\0")
+    test_attribute(c, "wchar_value", "b", "a", expected_type=unicode)
+    test_attribute(c, "wchar_value", "b", "\0", expected_type=unicode)
     test_attribute_failure(c, "wchar_value", "hi", ValueError)
-    test_attribute(c, "wchar_value", "b", u"a")
-    test_attribute(c, "wchar_value", "b", u"\0")
+    test_attribute(c, "wchar_value", "b", u"a", expected_type=unicode)
+    test_attribute(c, "wchar_value", "b", u"\0", expected_type=unicode)
     test_attribute_failure(c, "wchar_value", u"hi", ValueError)
     
-    test_string_attribute(c, "string_value", "cee", is_dumb_sz = True, ascii_only = True)
-    test_string_attribute(c, "wstring_value", "dee", is_dumb_sz = True)
-    test_string_attribute(c, "astring_value", "astring")
-    test_string_attribute(c, "acstring_value", "acstring", ascii_only = True)
+    test_string_attribute(c, "string_value", "cee", is_dumb_sz = True, ascii_only = True, expected_type=str)
+    test_string_attribute(c, "wstring_value", "dee", is_dumb_sz = True, expected_type=unicode)
+    test_string_attribute(c, "astring_value", "astring", expected_type=unicode)
+    test_string_attribute(c, "acstring_value", "acstring", ascii_only = True, expected_type=str)
 
     # Test NULL astring values are supported.
     # https://bugzilla.mozilla.org/show_bug.cgi?id=450784
     c.astring_value = None
-    test_string_attribute(c, "astring_value", None)
+    test_string_attribute(c, "astring_value", None, expected_type=(type(None), unicode))
     c.astring_value = "astring"
-    test_string_attribute(c, "astring_value", "astring")
+    test_string_attribute(c, "astring_value", "astring", expected_type=unicode)
 
-    test_string_attribute(c, "utf8string_value", "utf8string")
+    test_string_attribute(c, "utf8string_value", "utf8string", expected_type=unicode)
     # Test a string already encoded gets through correctly.
-    test_attribute(c, "utf8string_value", "utf8string", extended_unicode_string.encode("utf8"), extended_unicode_string)
+    test_attribute(c, "utf8string_value", "utf8string", extended_unicode_string.encode("utf8"), extended_unicode_string, expected_type=unicode)
 
     # This will fail internal string representation :(  Test we don't crash
     try:
@@ -346,34 +354,34 @@ def test_derived_interface(c, test_flat = 0, isJS = False):
     if not isJS:
         # Don't test from JS, it can't deal with nulls in |string|s
         # (it _can_ deal with nulls in AStrings/ACStrings)
-        test_method(c.DoubleString, (val,), expected)
-        test_method(c.DoubleString2, (val,), expected)
-        test_method(c.DoubleString3, (val,), expected)
-        test_method(c.DoubleString4, (val,), expected)
-    test_method(c.UpString, (val,), val.upper())
-    test_method(c.UpString2, (val,), val.upper())
-    test_method(c.GetFixedString, (20,), "A"*20)
+        test_method(c.DoubleString, (val,), expected, expected_type=str)
+        test_method(c.DoubleString2, (val,), expected, expected_type=str)
+        test_method(c.DoubleString3, (val,), expected, expected_type=str)
+        test_method(c.DoubleString4, (val,), expected, expected_type=str)
+    test_method(c.UpString, (val,), val.upper(), expected_type=str)
+    test_method(c.UpString2, (val,), val.upper(), expected_type=str)
+    test_method(c.GetFixedString, (20,), "A"*20, expected_type=str)
     val = u"Hello\0there"
     expected = val * 2
     if not isJS:
         # Don't test from JS, it can't deal with nulls in |string|s
         # (it _can_ deal with nulls in AStrings/ACStrings)
-        test_method(c.DoubleWideString, (val,), expected)
-        test_method(c.DoubleWideString2, (val,), expected)
-        test_method(c.DoubleWideString3, (val,), expected)
-        test_method(c.DoubleWideString4, (val,), expected)
-    test_method(c.UpWideString, (val,), val.upper())
-    test_method(c.UpWideString2, (val,), val.upper())
-    test_method(c.GetFixedWideString, (20,), u"A"*20)
+        test_method(c.DoubleWideString, (val,), expected, expected_type=unicode)
+        test_method(c.DoubleWideString2, (val,), expected, expected_type=unicode)
+        test_method(c.DoubleWideString3, (val,), expected, expected_type=unicode)
+        test_method(c.DoubleWideString4, (val,), expected, expected_type=unicode)
+    test_method(c.UpWideString, (val,), val.upper(), expected_type=unicode)
+    test_method(c.UpWideString2, (val,), val.upper(), expected_type=unicode)
+    test_method(c.GetFixedWideString, (20,), u"A"*20, expected_type=unicode)
     val = extended_unicode_string
-    test_method(c.CopyUTF8String, ("foo",), "foo")
-    test_method(c.CopyUTF8String, (u"foo",), "foo")
-    test_method(c.CopyUTF8String, (val,), val)
-    test_method(c.CopyUTF8String, (val.encode("utf8"),), val)
-    test_method(c.CopyUTF8String2, ("foo",), "foo")
-    test_method(c.CopyUTF8String2, (u"foo",), "foo")
-    test_method(c.CopyUTF8String2, (val,), val)
-    test_method(c.CopyUTF8String2, (val.encode("utf8"),), val)
+    test_method(c.CopyUTF8String, ("foo",), u"foo", expected_type=unicode)
+    test_method(c.CopyUTF8String, (u"foo",), u"foo", expected_type=unicode)
+    test_method(c.CopyUTF8String, (val,), val, expected_type=unicode)
+    test_method(c.CopyUTF8String, (val.encode("utf8"),), val, expected_type=unicode)
+    test_method(c.CopyUTF8String2, ("foo",), u"foo", expected_type=unicode)
+    test_method(c.CopyUTF8String2, (u"foo",), u"foo", expected_type=unicode)
+    test_method(c.CopyUTF8String2, (val,), val, expected_type=unicode)
+    test_method(c.CopyUTF8String2, (val.encode("utf8"),), val, expected_type=unicode)
     items = [1,2,3,4,5]
     test_method(c.MultiplyEachItemInIntegerArray, (3, items,), map(lambda i:i*3, items))
 
@@ -396,10 +404,10 @@ def test_derived_interface(c, test_flat = 0, isJS = False):
     test_method(c.GetStrings, (), expected)
 
     val = "Hello\0there"
-    test_method(c.UpOctetArray, (val,), val.upper())
-    test_method(c.UpOctetArray, (unicode(val),), val.upper())
+    test_method(c.UpOctetArray, (val,), val.upper(), expected_type=bytes)
+    test_method(c.UpOctetArray, (unicode(val),), val.upper(), expected_type=bytes)
     # Passing Unicode objects here used to cause us grief.
-    test_method(c.UpOctetArray2, (val,), val.upper())
+    test_method(c.UpOctetArray2, (val,), val.upper(), expected_type=bytes)
 
     test_method(c.CheckInterfaceArray, ((c, c),), 1)
     test_method(c.CheckInterfaceArray, ((c, None),), 0)
@@ -461,26 +469,26 @@ def test_derived_interface(c, test_flat = 0, isJS = False):
         c = c.queryInterface(xpcom.components.interfaces.nsIPythonTestInterfaceDOMStrings)
 # NULL DOM strings don't work yet.
 #    test_method(c.GetDOMStringResult, (-1,), None)
-    test_method(c.GetDOMStringResult, (3,), "PPP")
+    test_method(c.GetDOMStringResult, (3,), "PPP", expected_type=unicode)
 #    test_method(c.GetDOMStringOut, (-1,), None)
-    test_method(c.GetDOMStringOut, (4,), "yyyy")
+    test_method(c.GetDOMStringOut, (4,), "yyyy", expected_type=unicode)
     val = "Hello there"
-    test_method(c.GetDOMStringLength, (val,), len(val))
-    test_method(c.GetDOMStringRefLength, (val,), len(val))
-    test_method(c.GetDOMStringPtrLength, (val,), len(val))
-    test_method(c.ConcatDOMStrings, (val,val), val+val)
-    test_attribute(c, "domstring_value", "dom", "new dom")
+    test_method(c.GetDOMStringLength, (val,), len(val), expected_type=int)
+    test_method(c.GetDOMStringRefLength, (val,), len(val), expected_type=int)
+    test_method(c.GetDOMStringPtrLength, (val,), len(val), expected_type=int)
+    test_method(c.ConcatDOMStrings, (val,val), val+val, expected_type=unicode)
+    test_attribute(c, "domstring_value", "dom", "new dom", expected_type=unicode)
     if c.domstring_value_ro != "dom":
-        print "Read-only DOMString not correct - got", c.domstring_ro
+        print_error("Read-only DOMString not correct - got %s" % (c.domstring_ro,))
     try:
         c.dom_string_ro = "new dom"
-        print "Managed to set a readonly attribute - eek!"
+        print_error("Managed to set a readonly attribute - eek!")
     except AttributeError:
         pass
     except:
-        print "Unexpected exception when setting readonly attribute: %s: %s" % (sys.exc_info()[0], sys.exc_info()[1])
+        print_error("Unexpected exception when setting readonly attribute: %s: %s" % (sys.exc_info()[0], sys.exc_info()[1]))
     if c.domstring_value_ro != "dom":
-        print "Read-only DOMString not correct after failed set attempt - got", c.domstring_ro
+        print_error("Read-only DOMString not correct after failed set attempt - got %s" % (c.domstring_ro,))
 
 def do_test_failures():
     c = xpcom.client.Component(contractid, xpcom.components.interfaces.nsIPythonTestInterfaceExtra)

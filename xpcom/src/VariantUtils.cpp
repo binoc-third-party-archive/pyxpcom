@@ -134,6 +134,23 @@ PyObject_FromNSString( const nsACString &s, bool bAssumeUTF8 /*= false */)
 	return ret;
 }
 
+/**
+ * Create a python str object (PyString) from a NS CString
+ */
+PyObject *
+PyString_FromNSString( const nsACString &s )
+{
+	MOZ_ASSERT(PyGILState_GetThisThreadState());
+	PyObject *ret;
+	if (s.IsVoid()) {
+		ret = Py_None;
+		Py_INCREF(Py_None);
+	} else {
+		ret = PyString_FromStringAndSize(s.BeginReading(), s.Length());
+	}
+	return ret;
+}
+
 PyObject *
 PyObject_FromNSString( const nsAString &s )
 {
@@ -880,7 +897,7 @@ PyObject_FromVariant( Py_nsISupports *parent, nsIVariant *v)
 		case nsIDataType::VTYPE_CSTRING: {
 			nsCAutoString s;
 			if (NS_FAILED(nr=v->GetAsACString(s))) goto done;
-			ret = PyObject_FromNSString(s);
+			ret = PyString_FromNSString(s);
 			break;
 		}
 		case nsIDataType::VTYPE_WCHAR:
@@ -2105,11 +2122,14 @@ PyObject *PyXPCOM_InterfaceVariantHelper::MakeSinglePythonResult(int index)
 		ret = PyObject_FromNSString(*rs);
 		break;
 		}
-	  case nsXPTType::T_UTF8STRING:
+	  case nsXPTType::T_UTF8STRING: {
+		nsCString *rs = reinterpret_cast<nsCString*>(ns_v.ptr);
+		ret = PyObject_FromNSString(*rs, true);
+		break;
+		}
 	  case nsXPTType::T_CSTRING: {
 		nsCString *rs = reinterpret_cast<nsCString*>(ns_v.ptr);
-		bool isUTF8 = (td.TypeTag() == nsXPTType::T_UTF8STRING);
-		ret = PyObject_FromNSString(*rs, isUTF8);
+		ret = PyString_FromNSString(*rs);
 		break;
 		}
 
@@ -2578,11 +2598,18 @@ PyObject *PyXPCOM_GatewayVariantHelper::MakeSingleParam(int index, PythonTypeDes
 		ret = PyObject_FromNSString(*rs);
 		break;
 		}
-	  case nsXPTType::T_CSTRING:
-	  case nsXPTType::T_UTF8STRING: {
-		NS_ABORT_IF_FALSE(is_out || !XPT_PD_IS_DIPPER(td.param_flags), "DOMStrings can't be inout");
+	  case nsXPTType::T_CSTRING: {
+		// CStrings get converted to str()
+		NS_ABORT_IF_FALSE(is_out || !XPT_PD_IS_DIPPER(td.param_flags), "ACStrings can't be inout");
 		const nsCString *rs = (const nsCString *)ns_v.val.p;
-		ret = PyObject_FromNSString(*rs, td.TypeTag() == nsXPTType::T_UTF8STRING);
+		ret = PyString_FromNSString(*rs);
+		break;
+		}
+	  case nsXPTType::T_UTF8STRING: {
+		// UTF8 strings get converted to unicode()
+		NS_ABORT_IF_FALSE(is_out || !XPT_PD_IS_DIPPER(td.param_flags), "AUTF8Strings can't be inout");
+		const nsCString *rs = (const nsCString *)ns_v.val.p;
+		ret = PyObject_FromNSString(*rs, true);
 		break;
 		}
 	  case nsXPTType::T_CHAR_STR: {

@@ -164,7 +164,7 @@ interface nsIPythonTestInterfaceExtra : nsIPythonTestInterface
                       [size_is(count)] in wstring in_str,
                       [size_is(count)]out wstring out_str);
     // Test we can get an "out" array with an "in" size (and the size is not used anywhere as a size for an in!)
-    void GetFixedWideString(in unsigned long count, [size_is(count)]out string out_str);
+    void GetFixedWideString(in unsigned long count, [size_is(count)]out wstring out_str);
 
     void GetStrings(out unsigned long count,
                     [retval, array, size_is(count)] out string str);
