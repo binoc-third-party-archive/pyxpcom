@@ -583,7 +583,7 @@ nsresult PyG_Base::HandleNativeGatewayError(const char *szMethodName)
 			;
 		} else if (PyInt_Check(err_result)) {
 			// The exception handler has given us the nresult.
-			rc = PyInt_AsLong(err_result);
+			rc = (nsresult)PyInt_AsLong(err_result);
 			bProcessMainError = false;
 		} else if (PyLong_Check(err_result)) {
 			// The exception handler has given us the nresult.
@@ -757,10 +757,10 @@ PyG_Base *GetDefaultGateway(PyObject *policy)
 	if (ob_existing_weak != NULL) {
 		bool ok = true;
 		nsCOMPtr<nsIWeakReference> pWeakRef;
-		ok = NS_SUCCEEDED(Py_nsISupports::InterfaceFromPyObject(ob_existing_weak, 
+		ok = Py_nsISupports::InterfaceFromPyObject(ob_existing_weak,
 		                                       NS_GET_IID(nsIWeakReference), 
 		                                       getter_AddRefs(pWeakRef),
-		                                       false));
+		                                       false);
 		Py_DECREF(ob_existing_weak);
 		nsISupports *pip;
 		if (ok) {
@@ -787,10 +787,10 @@ bool CheckDefaultGateway(PyObject *real_inst, REFNSIID iid, nsISupports **ret_ga
 		// may no longer be valid.  Check it.
 		bool ok = true;
 		nsCOMPtr<nsIWeakReference> pWeakRef;
-		ok = NS_SUCCEEDED(Py_nsISupports::InterfaceFromPyObject(ob_existing_weak, 
+		ok = Py_nsISupports::InterfaceFromPyObject(ob_existing_weak,
 		                                       NS_GET_IID(nsIWeakReference), 
 		                                       getter_AddRefs(pWeakRef), 
-		                                       false));
+		                                       false);
 		Py_DECREF(ob_existing_weak);
 		if (ok) {
 			Py_BEGIN_ALLOW_THREADS;

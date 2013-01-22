@@ -98,7 +98,7 @@ nsPythonModuleLoader::Init()
     if (func==NULL) goto done;
     mPyLoader = PyEval_CallObject(func, NULL);
 done:
-    nsresult nr = (mPyLoader != NULL);
+    nsresult nr = (mPyLoader != NULL) ? NS_OK : NS_ERROR_FAILURE;
     if (PyErr_Occurred()) {
             PyXPCOM_LogError("Obtaining the module object from Python failed.\n");
             nr = PyXPCOM_SetCOMErrorFromPyException();

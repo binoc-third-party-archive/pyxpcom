@@ -3256,7 +3256,7 @@ nsresult PyXPCOM_GatewayVariantHelper::ProcessPythonResult(PyObject *ret_ob)
 	// (ie, the policy is expected to return (NS_OK, user_retval),
 	// but can also return (say), NS_ERROR_FAILURE
 	if (PyInt_Check(ret_ob))
-		return PyInt_AsLong(ret_ob);
+		return (nsresult) PyInt_AsLong(ret_ob);
 	// Now it must be the tuple.
 	if (!PyTuple_Check(ret_ob) ||
 	    PyTuple_Size(ret_ob)!=2 ||

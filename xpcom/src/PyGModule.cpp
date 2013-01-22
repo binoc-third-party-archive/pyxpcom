@@ -90,7 +90,9 @@ PyG_nsIModule::GetClassObject(nsIComponentManager *aCompMgr,
 	Py_XDECREF(iid);
 	Py_XDECREF(clsid);
 	if (NS_SUCCEEDED(nr)) {
-		nr = Py_nsISupports::InterfaceFromPyObject(ret, aIID, (nsISupports **)r_classObj, false);
+		if (!Py_nsISupports::InterfaceFromPyObject(ret, aIID, (nsISupports **)r_classObj, false)) {
+			nr = NS_ERROR_FAILURE;
+		}
 		if (PyErr_Occurred())
 			nr = HandleNativeGatewayError(methodName);
 	}

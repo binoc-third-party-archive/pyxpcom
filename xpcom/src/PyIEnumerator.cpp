@@ -158,7 +158,7 @@ static PyObject *PyFetchBlock(PyObject *self, PyObject *args)
 		nsISupports *pNew;
 		r = pI->CurrentItem(&pNew);
 		if (NS_FAILED(r)) {
-			r = 0; // Normal enum end
+			r = NS_OK; // Normal enum end
 			break;
 		}
 		if (obIID) {
