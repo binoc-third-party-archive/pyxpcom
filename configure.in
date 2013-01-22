@@ -1344,7 +1344,7 @@ elif test "$SOLARIS_SUNPRO_CC"; then
     else
         DSO_PIC_CFLAGS='-KPIC'
     fi
-    _DEFINES_CFLAGS='$(ACDEFINES) -D_MOZILLA_CONFIG_H_ -DMOZILLA_CLIENT'
+    _DEFINES_CFLAGS='$(ACDEFINES) -FI $(LIBXUL_DIST)/include/mozilla-config.h -DMOZILLA_CLIENT'
 else
     MKSHLIB='$(LD) $(DSO_LDOPTS) -h $@ -o $@'
     MKCSHLIB='$(LD) $(DSO_LDOPTS) -h $@ -o $@'
@@ -1357,7 +1357,7 @@ else
 
     DSO_CFLAGS=''
     DSO_PIC_CFLAGS='-KPIC'
-    _DEFINES_CFLAGS='$(ACDEFINES) -D_MOZILLA_CONFIG_H_ -DMOZILLA_CLIENT'
+    _DEFINES_CFLAGS='$(ACDEFINES) -FI $(LIBXUL_DIST)/include/mozilla-config.h -DMOZILLA_CLIENT'
 fi
 
 if test "$GNU_CXX"; then
@@ -1398,7 +1398,7 @@ if test "$GNU_CXX"; then
         _WARNINGS_CXXFLAGS="${_WARNINGS_CXXFLAGS} ${_COMPILER_PREFIX}-Wno-invalid-offsetof"
     fi
 else
-    _DEFINES_CXXFLAGS='-DMOZILLA_CLIENT -D_MOZILLA_CONFIG_H_ $(ACDEFINES)'
+    _DEFINES_CXXFLAGS='-FI $(LIBXUL_DIST)/include/mozilla-config.h -DMOZILLA_CLIENT $(ACDEFINES)'
 fi
 
 dnl gcc can come with its own linker so it is better to use the pass-thru calls
@@ -4229,8 +4229,8 @@ if test "$_cpp_md_flag"; then
 else
   COMPILER_DEPEND=
   _USE_CPP_INCLUDE_FLAG=
-  _DEFINES_CFLAGS='$(ACDEFINES) -D_MOZILLA_CONFIG_H_ -DMOZILLA_CLIENT'
-  _DEFINES_CXXFLAGS='$(ACDEFINES) -D_MOZILLA_CONFIG_H_ -DMOZILLA_CLIENT'
+  _DEFINES_CFLAGS='$(ACDEFINES) -FI $(LIBXUL_DIST)/include/mozilla-config.h -DMOZILLA_CLIENT'
+  _DEFINES_CXXFLAGS='$(ACDEFINES) -FI $(LIBXUL_DIST)/include/mozilla-config.h -DMOZILLA_CLIENT'
 fi
 fi # MOZ_AUTO_DEPS
 MDDEPDIR='.deps'
