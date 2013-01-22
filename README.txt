@@ -49,3 +49,4 @@ $ export PYTHONPATH=`pwd`/python
 $ python
 >>> from xpcom import components
 >>> print components.classes["@mozilla.org/file/local;1"]
+
