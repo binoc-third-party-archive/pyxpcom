@@ -1483,8 +1483,33 @@ bool PyXPCOM_InterfaceVariantHelper::FillInVariant(const PythonTypeDescriptor &t
 	  case TD_UINT16:
 		ASSIGN_INT(uint16_t, u16, true);
 		break;
-	  case TD_UINT32:
-		ASSIGN_INT(uint32_t, u32, true);
+	  case TD_UINT32: {
+		if (val == Py_None) {
+			ns_v.val.u32 = 0;
+			break;
+		}
+		if (!(val_use = PyNumber_Int(val))) BREAK_FALSE
+		if (sizeof(long) <= sizeof(PRUint32) && PyLong_Check(val_use)) {
+			// Value doesn't fit in an int
+			unsigned long num = PyLong_AsUnsignedLong(val_use);
+			if (PyErr_Occurred()) {
+				// negative value, or something
+				BREAK_FALSE
+			}
+			ns_v.val.u32 = static_cast<uint32_t>(num);
+		} else {
+			// Value fits in a (signed) int
+			long num = PyInt_AsLong(val_use);
+			if (num == -1 && PyErr_Occurred()) BREAK_FALSE
+			if ((num < 0) || static_cast<uint32_t>(num) != num) {
+				PyErr_Format(PyExc_OverflowError,
+				             "param %d (%ld) does not fit in %s",
+				             value_index, num, "uint32_t");
+				BREAK_FALSE
+			}
+			ns_v.val.u32 = static_cast<uint32_t>(num);
+		}
+		}
 		break;
 	  case TD_UINT64:
 		if (val == Py_None) {
@@ -2078,7 +2103,12 @@ PyObject *PyXPCOM_InterfaceVariantHelper::MakeSinglePythonResult(int index)
 		ret = PyInt_FromLong( *((PRUint16 *)ns_v.ptr) );
 		break;
 	  case nsXPTType::T_U32:
-		ret = PyInt_FromLong( *((PRUint32 *)ns_v.ptr) );
+		if (*((long *)ns_v.ptr) >= 0) {
+			ret = PyInt_FromLong( *((PRUint32 *)ns_v.ptr) );
+		} else {
+			// Doesn't fit in an int, use a long
+			ret = PyLong_FromUnsignedLong( *((PRUint32 *)ns_v.ptr) );
+		}
 		break;
 	  case nsXPTType::T_U64:
 		ret = PyLong_FromUnsignedLongLong( *((PRUint64 *)ns_v.ptr) );
@@ -2559,7 +2589,11 @@ PyObject *PyXPCOM_GatewayVariantHelper::MakeSingleParam(int index, PythonTypeDes
 		ret = PyInt_FromLong( DEREF_IN_OR_OUT(ns_v.val.u16, PRUint16) );
 		break;
 	  case nsXPTType::T_U32:
-		ret = PyInt_FromLong( DEREF_IN_OR_OUT(ns_v.val.u32, PRUint32) );
+		if (DEREF_IN_OR_OUT(ns_v.val.u32, long) >= 0) {
+			ret = PyInt_FromLong( DEREF_IN_OR_OUT(ns_v.val.u32, PRUint32) );
+		} else {
+			ret = PyLong_FromUnsignedLong( DEREF_IN_OR_OUT(ns_v.val.u32, PRUint32) );
+		}
 		break;
 	  case nsXPTType::T_U64:
 		ret = PyLong_FromUnsignedLongLong( DEREF_IN_OR_OUT(ns_v.val.u64, PRUint64) );
@@ -2839,7 +2873,15 @@ nsresult PyXPCOM_GatewayVariantHelper::BackFillVariant( PyObject *val, int index
 		break;
 	  case nsXPTType::T_U32:
 		if ((val_use=PyNumber_Int(val))==NULL) BREAK_FALSE;
-		FILL_SIMPLE_POINTER( PRUint32, PyInt_AsLong(val_use) );
+		if (sizeof(long) <= sizeof(PRUint32) && PyLong_Check(val_use)) {
+			// Can't fit in a long
+			*((PRUint32 *)ns_v.val.p) = (PRUint32)(PyLong_AsUnsignedLong(val_use));
+		} else {
+			*((PRUint32 *)ns_v.val.p) = (PRUint32)(PyInt_AsLong(val_use));
+		}
+		if (PyErr_Occurred()) {
+			BREAK_FALSE
+		}
 		break;
 	  case nsXPTType::T_U64:
 		if ((val_use=PyNumber_Long(val))==NULL) BREAK_FALSE;

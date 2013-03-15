@@ -214,7 +214,9 @@ def test_base_interface(c, isJS=False):
 
     test_attribute(c, "ulong_value", 6, 7, expected_type=int)
     test_attribute(c, "ulong_value", 6, 0, expected_type=int)
+    test_attribute(c, "ulong_value", 6, 0x80004004L) # should fit 32 bits on 32 bit machines
     test_attribute_failure(c, "ulong_value", -1, OverflowError) # 32 bit signed.
+    test_attribute_failure(c, "ulong_value", 0x100010002L, OverflowError) # Needs 33 bits
     test_attribute_failure(c, "ulong_value", "boo", ValueError)
     
     # don't check type on long long; they are int on 64-bit systems, and long on 32-bit
@@ -228,8 +230,11 @@ def test_base_interface(c, isJS=False):
     
     test_attribute(c, "ulong_long_value", 8, 9)
     test_attribute(c, "ulong_long_value", 8, 0)
+    if not isJS:
+        test_attribute(c, "ulong_long_value", 8, 0x8000700060005000L) # 64-bit unsigned int should fit 64 bits
     test_attribute_failure(c, "ulong_long_value", "boo", ValueError)
     test_attribute_failure(c, "ulong_long_value", -1, UnsignedMismatchException) # can't convert negative value to unsigned long)
+    test_attribute_failure(c, "ulong_long_value", 0x10001000200030004L, OverflowError) # Needs 65 bits
     
     test_attribute(c, "float_value", 9.0, 10.2, expected_type=float)
     test_attribute(c, "float_value", 9.0, 0, expected_type=float)

@@ -182,7 +182,8 @@ PyG_Base::PyG_Base(PyObject *instance, const nsIID &iid)
 			}
 			PyObject *real_instance = PyObject_GetAttrString(m_pPyObject, "_obj_");
 			char *obj_buf = nullptr;
-			const size_t ptr_size = sizeof(real_instance) * 2 + 1;
+			// on Linux, %p prints 0x........, so we need the +2 here; the +1 is for the null.
+			const size_t ptr_size = sizeof(real_instance) * 2 + 2 + 1;
 			// Try to get the class name...
 			if (real_instance && PyInstance_Check(real_instance)) {
 				// old style classes
