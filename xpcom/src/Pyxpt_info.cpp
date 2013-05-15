@@ -96,7 +96,7 @@ PyObject *PyObject_FromXPTMethodDescriptor( const XPTMethodDescriptor *d)
 		return NULL;
 	for (int i=0;i<d->num_args;i++)
 		PyTuple_SET_ITEM(ob_params, i, PyObject_FromXPTParamDescriptor(d->params+i));
-	PyObject *ob_ret = PyObject_FromXPTParamDescriptor(d->result);
+	PyObject *ob_ret = PyObject_FromXPTParamDescriptor(&d->result);
 	PyObject *ret = Py_BuildValue("bsOO", d->flags, d->name, ob_params, ob_ret);
 	Py_XDECREF(ob_ret);
 	Py_XDECREF(ob_params);
