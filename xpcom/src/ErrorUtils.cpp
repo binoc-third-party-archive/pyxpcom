@@ -271,7 +271,7 @@ void PyXPCOM_LogDebug(const char *fmt, ...)
 PyObject *PyXPCOM_BuildPyException(nsresult r)
 {
 	// Need the message etc.
-	PyObject *evalue = PyLong_FromUnsignedLong(r);
+	PyObject *evalue = PyLong_FromUnsignedLong(static_cast<uint32_t>(r));
 	PyErr_SetObject(PyXPCOM_Error, evalue);
 	Py_XDECREF(evalue);
 	return NULL;

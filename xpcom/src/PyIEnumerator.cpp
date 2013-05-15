@@ -71,7 +71,7 @@ static PyObject *PyFirst(PyObject *self, PyObject *args)
 	Py_BEGIN_ALLOW_THREADS;
 	r = pI->First();
 	Py_END_ALLOW_THREADS;
-	return PyInt_FromLong(r);
+	return PyInt_FromLong(static_cast<uint32_t>(r));
 }
 
 static PyObject *PyNext(PyObject *self, PyObject *args)
@@ -87,7 +87,7 @@ static PyObject *PyNext(PyObject *self, PyObject *args)
 	Py_BEGIN_ALLOW_THREADS;
 	r = pI->Next();
 	Py_END_ALLOW_THREADS;
-	return PyInt_FromLong(r);
+	return PyInt_FromLong(static_cast<uint32_t>(r));
 }
 
 static PyObject *PyCurrentItem(PyObject *self, PyObject *args)

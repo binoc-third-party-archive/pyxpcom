@@ -308,7 +308,7 @@ PyXPCOMMethod_NS_ShutdownXPCOM(PyObject *self, PyObject *args)
 
 	// Dont raise an exception - as we are probably shutting down
 	// and dont really case - just return the status
-	return PyInt_FromLong(nr);
+	return PyInt_FromLong(static_cast<uint32_t>(nr));
 }
 
 static PyObject *
