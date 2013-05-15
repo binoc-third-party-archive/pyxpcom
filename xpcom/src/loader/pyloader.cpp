@@ -126,7 +126,7 @@ nsPythonModuleLoader::LoadModule(mozilla::FileLocation& aFileLocation)
     #endif
 
     if (PR_LOG_TEST(nsPythonModuleLoaderLog, PR_LOG_DEBUG)) {
-        nsCAutoString filePath;
+        nsAutoCString filePath;
         file->GetNativePath(filePath);
         LOG(PR_LOG_DEBUG,
             ("nsPythonModuleLoader::LoadModule(\"%s\")", filePath.get()));

@@ -895,7 +895,7 @@ PyObject_FromVariant( Py_nsISupports *parent, nsIVariant *v)
 		case nsIDataType::VTYPE_CHAR_STR:
 		case nsIDataType::VTYPE_STRING_SIZE_IS:
 		case nsIDataType::VTYPE_CSTRING: {
-			nsCAutoString s;
+			nsAutoCString s;
 			if (NS_FAILED(nr=v->GetAsACString(s))) goto done;
 			ret = PyString_FromNSString(s);
 			break;

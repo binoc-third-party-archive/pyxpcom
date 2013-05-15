@@ -131,7 +131,7 @@ void AddStandardPaths()
 	Py_XDECREF(newStr);
 	// And now try and get Python to process this directory as a "site dir" 
 	// - ie, look for .pth files, etc
-	nsCAutoString cmdBuf(NS_LITERAL_CSTRING("import site;site.addsitedir(r'"));
+	nsAutoCString cmdBuf(NS_LITERAL_CSTRING("import site;site.addsitedir(r'"));
 	cmdBuf.Append(pathCBuf);
 	cmdBuf.Append(NS_LITERAL_CSTRING("')\n"));
 	if (0 != PyRun_SimpleString((char *)cmdBuf.get())) {

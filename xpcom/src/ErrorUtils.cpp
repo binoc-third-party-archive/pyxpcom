@@ -67,7 +67,7 @@ static void _PanicErrorWrite(const char *msg)
 // Called when our "normal" error logger fails.
 static void HandleLogError(const char *pszMessageText)
 {
-	nsCAutoString streamout;
+	nsAutoCString streamout;
 
 	_PanicErrorWrite("Failed to log an error record");
 	if (PyXPCOM_FormatCurrentException(streamout))
@@ -130,7 +130,7 @@ void DoLogMessage(const char *methodName, const char *pszMessageText)
 // We will execute:
 //  import logging
 //  logging.getLogger('xpcom').{warning/error/etc}("%s", {msg_text})
-	nsCAutoString c("import logging\nlogging.getLogger('xpcom').");
+	nsAutoCString c("import logging\nlogging.getLogger('xpcom').");
 	c += methodName;
 	c += "('%s', ";
 	// Pull a trick to ensure a valid string - use Python repr!
@@ -241,7 +241,7 @@ void PyXPCOM_LogError(const char *fmt, ...)
 	char buff[512];
 	PR_vsnprintf(buff, sizeof(buff), fmt, marker);
 	// If we have a Python exception, also log that:
-	nsCAutoString streamout(buff);
+	nsAutoCString streamout(buff);
 	PyXPCOM_FormatCurrentException(streamout);
 	LogMessage(LOGGER_ERROR, streamout);
 }
