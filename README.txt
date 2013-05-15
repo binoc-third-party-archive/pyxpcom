@@ -12,7 +12,7 @@ XPCOM or embed Gecko from a Python application.
 
 Requirements
 ------------
-* requires Python 2.x (most tested with Python 2.6)
+* requires Python 2.x (most tested with Python 2.7)
 * requires Mozilla XULRunner SDK (version 18.0)
 * autoconf 2.13
 
