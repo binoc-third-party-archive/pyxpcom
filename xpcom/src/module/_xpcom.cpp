@@ -143,7 +143,7 @@ static bool GetModulePath(char dest[MAXPATHLEN], const char* moduleName) {
 			snprintf(dest, MAXPATHLEN, "%s/%s",
 			         mozFiveHome, moduleName);
 		} else {
-			// no MOZILLA_FIVE_HOME, try finding libxpcom
+			// no MOZILLA_FIVE_HOME, try finding libxul
 			char buf[MAXPATHLEN];
 			bool found = false;
 			void *hMain = dlopen(NULL, RTLD_LAZY|RTLD_NOLOAD),
@@ -152,7 +152,7 @@ static bool GetModulePath(char dest[MAXPATHLEN], const char* moduleName) {
 			if (hMain)
 				hFunc = dlsym(hMain, "NS_Alloc");
 			if (hFunc && dladdr(hFunc, &info) && info.dli_fname) {
-				// We found NS_Alloc; that's probably libxpcom
+				// We found NS_Alloc; that's probably libxul
 				strncpy(buf, info.dli_fname, MAXPATHLEN);
 				char* basename = strrchr(buf, '/');
 				if (basename) {
@@ -234,13 +234,13 @@ static bool EnsureXPCOM()
 	}
 
 	nsresult rv;
-	char libXPCOMPath[MAXPATHLEN] = {0};
-	if (!GetModulePath(libXPCOMPath, MOZ_DLL_PREFIX "xpcom" MOZ_DLL_SUFFIX)) {
-		DUMP("Failed to find " MOZ_DLL_PREFIX "xpcom" MOZ_DLL_SUFFIX "\n");
+	char libNSPRPath[MAXPATHLEN] = {0};
+	if (!GetModulePath(libNSPRPath, MOZ_DLL_PREFIX "nspr4" MOZ_DLL_SUFFIX)) {
+		DUMP("Failed to find " MOZ_DLL_PREFIX "nspr4" MOZ_DLL_SUFFIX "\n");
 		return false;
 	}
-	DUMP("Using libxpcom.so %s\n", libXPCOMPath);
-	rv = XPCOMGlueStartup(libXPCOMPath);
+	DUMP("Using nspr4 library: %s\n", libNSPRPath);
+	rv = XPCOMGlueStartup(libNSPRPath);
 	if (NS_FAILED(rv)) {
 		PyErr_SetString(PyExc_RuntimeError, "Failed to starting XPCOM glue");
 		return false;
@@ -308,10 +308,10 @@ static bool EnsureXPCOM()
 	#else
 		const char PATH_SEP = '/';
 	#endif
-	char* end = strrchr(libXPCOMPath, PATH_SEP);
+	char* end = strrchr(libNSPRPath, PATH_SEP);
 	*end = '\0';
-	DUMP("Using ns_bin_dir %s\n", libXPCOMPath);
-	rv = XRE_GetFileFromPath(libXPCOMPath, getter_AddRefs(ns_bin_dir));
+	DUMP("Using ns_bin_dir %s\n", libNSPRPath);
+	rv = XRE_GetFileFromPath(libNSPRPath, getter_AddRefs(ns_bin_dir));
 	if (NS_FAILED(rv)) {
 		PyErr_SetString(PyExc_RuntimeError, "Failed to get GRE directory");
 		return false;
