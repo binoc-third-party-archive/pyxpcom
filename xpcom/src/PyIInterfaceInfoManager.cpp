@@ -174,7 +174,7 @@ static PyObject *PyEnumerateInterfaces(PyObject *self, PyObject *args)
 	nsCOMPtr<nsIEnumerator> pRet;
 	nsresult r;
 	Py_BEGIN_ALLOW_THREADS;
-	r = pI->EnumerateInterfaces(getter_AddRefs(pRet));
+	r = pI->EnumerateInterfacesWhoseNamesStartWith("", getter_AddRefs(pRet));
 	Py_END_ALLOW_THREADS;
 	if ( NS_FAILED(r) )
 		return PyXPCOM_BuildPyException(r);
