@@ -971,20 +971,6 @@ MOZ_USER_DIR=".mozilla"
 HOST_AR='$(AR)'
 HOST_AR_FLAGS='$(AR_FLAGS)'
 
-MOZ_JS_LIBS='-L$(LIBXUL_DIST)/bin -lmozjs'
-DYNAMIC_XPCOM_LIBS='-L$(LIBXUL_DIST)/bin -lxul -lxpcom_core -lmozalloc'
-MOZ_FIX_LINK_PATHS='-Wl,-rpath-link,$(LIBXUL_DIST)/bin -Wl,-rpath-link,$(prefix)/lib'
-XPCOM_FROZEN_LDOPTS='-L$(LIBXUL_DIST)/bin -lxul -L$(LIBXUL_DIST)/bin -lmozalloc'
-LIBXUL_LIBS='$(XPCOM_FROZEN_LDOPTS) -lxul'
-XPCOM_GLUE_LDOPTS='$(LIBXUL_DIST)/lib/$(LIB_PREFIX)xpcomglue_s.$(LIB_SUFFIX) $(XPCOM_FROZEN_LDOPTS)'
-XPCOM_STANDALONE_GLUE_LDOPTS='$(LIBXUL_DIST)/lib/$(LIB_PREFIX)xpcomglue.$(LIB_SUFFIX)'
-
-MOZ_FS_LAYOUT=unix
-
-MOZ_COMPONENT_NSPR_LIBS='-L$(LIBXUL_DIST)/bin $(NSPR_LIBS)'
-
-USE_DEPENDENT_LIBS=1
-
 if test -n "$CROSS_COMPILE"; then
     OS_TARGET="${target_os}"
     OS_ARCH=`echo $target_os | sed -e 's|/|_|g'`
@@ -1010,6 +996,27 @@ OS_TEST="${target_cpu}"
 _COMPILER_PREFIX=
 
 HOST_OS_ARCH=`echo $host_os | sed -e 's|/|_|g'`
+
+MOZ_JS_LIBS='-L$(LIBXUL_DIST)/bin -lmozjs'
+MOZ_FIX_LINK_PATHS='-Wl,-rpath-link,$(LIBXUL_DIST)/bin -Wl,-rpath-link,$(prefix)/lib'
+if test "$OS_ARCH" = "Darwin"; then
+    DYNAMIC_XPCOM_LIBS='$(LIBXUL_DIST)/bin/XUL -L$(LIBXUL_DIST)/bin -lxpcom_core -lmozalloc'
+    XPCOM_FROZEN_LDOPTS='$(LIBXUL_DIST)/bin/XUL -L$(LIBXUL_DIST)/bin -L$(LIBXUL_DIST)/bin -lmozalloc'
+    LIBXUL_LIBS='$(XPCOM_FROZEN_LDOPTS)'
+else
+    DYNAMIC_XPCOM_LIBS='-L$(LIBXUL_DIST)/bin -lxul -lxpcom_core -lmozalloc'
+    XPCOM_FROZEN_LDOPTS='-L$(LIBXUL_DIST)/bin -lxul -L$(LIBXUL_DIST)/bin -lmozalloc'
+    LIBXUL_LIBS='$(XPCOM_FROZEN_LDOPTS)'
+fi
+XPCOM_GLUE_LDOPTS='$(LIBXUL_DIST)/lib/$(LIB_PREFIX)xpcomglue_s.$(LIB_SUFFIX) $(XPCOM_FROZEN_LDOPTS)'
+XPCOM_STANDALONE_GLUE_LDOPTS='$(LIBXUL_DIST)/lib/$(LIB_PREFIX)xpcomglue.$(LIB_SUFFIX)'
+
+MOZ_FS_LAYOUT=unix
+
+MOZ_COMPONENT_NSPR_LIBS='-L$(LIBXUL_DIST)/bin $(NSPR_LIBS)'
+
+USE_DEPENDENT_LIBS=1
+
 
 #######################################################################
 # Master "Core Components" macros for getting the OS target           #
