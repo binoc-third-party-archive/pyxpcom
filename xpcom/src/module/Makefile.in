@@ -88,7 +88,9 @@ else ifeq ($(OS_ARCH),WINNT)
                       $(NULL)
 else
   EXTRA_LIBS += $(XPCOM_STANDALONE_GLUE_LDOPTS) \
-                $(call EXPAND_LIBNAME_PATH,mozglue,$(LIBXUL_DIST)/lib) \
+                $(MKSHLIB_FORCE_ALL) \
+                    $(call EXPAND_LIBNAME_PATH,mozglue,$(LIBXUL_DIST)/lib) \
+                $(MKSHLIB_UNFORCE_ALL) \
                 $(NSPR_LIBS) \
                 $(MOZALLOC_LIB) \
                 $(NULL)

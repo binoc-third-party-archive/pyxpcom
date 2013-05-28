@@ -233,6 +233,36 @@ static bool EnsureXPCOM()
 		return true;
 	}
 
+	#if defined(XP_UNIX) && !defined(XP_MACOSX)
+		{
+			// On Linux only, re-open ourselves with RTLD_GLOBAL so we can export
+			// mozilla::HashBytes, so that libxul can use it.
+			// See https://bugzilla.mozilla.org/show_bug.cgi?id=763327
+			// (Python loads _xpcom.so without RTLD_GLOBAL, so the fact that we're
+			// exporting the symbol isn't enough for libxul to find it)
+			// Note that this is combined with MKSHLIB_FORCE_ALL in the makefile
+			// due to more symbols being missing this way
+			// (WebCore::Decimal::Decimal())
+			Dl_info hash_info;
+			if (!dladdr(reinterpret_cast<void*>(mozilla::HashBytes), &hash_info)) {
+				// well, we're buggered
+				PyErr_Format(PyExc_RuntimeError,
+				             "Failed to find _xpcom.so: %s", dlerror());
+				return false;
+			}
+			DUMP("Reloading %s\n", hash_info.dli_fname);
+			void *hlib_xpcom = dlopen(hash_info.dli_fname, RTLD_NOW | RTLD_GLOBAL | RTLD_NOLOAD);
+			if (!hlib_xpcom) {
+				PyErr_Format(PyExc_RuntimeError,
+				             "Failed to load %s: %s\n", hash_info.dli_fname, dlerror());
+				// Failed to reload _xpcom.so
+				return false;
+			}
+			// Python still has a handle on us, no worries about being closed
+			dlclose(hlib_xpcom);
+		}
+	#endif /* defined(XP_UNIX) && !defined(XP_MACOSX) */
+
 	nsresult rv;
 	char libNSPRPath[MAXPATHLEN] = {0};
 	if (!GetModulePath(libNSPRPath, MOZ_DLL_PREFIX "nspr4" MOZ_DLL_SUFFIX)) {
@@ -272,33 +302,6 @@ static bool EnsureXPCOM()
 	}
 
 	DUMP("Trying to init xpcom...\n");
-
-	#if defined(XP_UNIX) && !defined(XP_MACOSX)
-		{
-			// On Linux only, re-open ourselves with RTLD_GLOBAL so we can export
-			// mozilla::HashBytes, so that libxul can use it.
-			// See https://bugzilla.mozilla.org/show_bug.cgi?id=763327
-			// (Python loads _xpcom.so without RTLD_GLOBAL, so the fact that we're
-			// exporting the symbol isn't enough for libxul to find it)
-			Dl_info hash_info;
-			if (!dladdr(reinterpret_cast<void*>(mozilla::HashBytes), &hash_info)) {
-				// well, we're buggered
-				PyErr_Format(PyExc_RuntimeError,
-				             "Failed to find _xpcom.so: %s", dlerror());
-				return false;
-			}
-			DUMP("Reloading %s\n", hash_info.dli_fname);
-			void *hlib_xpcom = dlopen(hash_info.dli_fname, RTLD_NOW | RTLD_GLOBAL | RTLD_NOLOAD);
-			if (!hlib_xpcom) {
-				PyErr_Format(PyExc_RuntimeError,
-				             "Failed to load %s: %s\n", hash_info.dli_fname, dlerror());
-				// Failed to reload _xpcom.so
-				return false;
-			}
-			// Python still has a handle on us, no worries about being closed
-			dlclose(hlib_xpcom);
-		}
-	#endif /* defined(XP_UNIX) && !defined(XP_MACOSX) */
 
 	// not already initialized.
 	nsCOMPtr<nsIFile> ns_bin_dir;
