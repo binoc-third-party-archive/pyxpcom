@@ -72,7 +72,7 @@ def _GetNominatedInterfaces(obj):
     real_ret = set()
     ret = getattr(obj, "_com_interfaces_", None)
     if ret is None:
-        if type(obj) == types.FunctionType:
+        if callable(obj):
             # we got a function, try [function]s
             global _function_interfaces_
             if not _function_interfaces_:
@@ -297,16 +297,16 @@ class DefaultPolicy:
             else:
                 func(*params)
             return 0
-        elif callable(self._obj_):
+
+        func = getattr(self._obj_, name)
+        if not func and callable(self._obj_):
             if self._is_function_ is None:
                 iim = _xpcom.XPTI_GetInterfaceInfoManager()
                 interface_info = iim.GetInfoForIID(self._iid_)
                 self._is_function_ = interface_info.GetIsFunction()
             if self._is_function_:
                 return 0, self._obj_(*params)
-
         # A regular method.
-        func = getattr(self._obj_, name)
         return 0, func(*params)
 
     def _doHandleException(self, func_name, exc_info):
