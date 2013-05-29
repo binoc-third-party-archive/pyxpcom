@@ -298,14 +298,17 @@ class DefaultPolicy:
                 func(*params)
             return 0
 
-        func = getattr(self._obj_, name)
-        if not func and callable(self._obj_):
-            if self._is_function_ is None:
-                iim = _xpcom.XPTI_GetInterfaceInfoManager()
-                interface_info = iim.GetInfoForIID(self._iid_)
-                self._is_function_ = interface_info.GetIsFunction()
-            if self._is_function_:
-                return 0, self._obj_(*params)
+        try:
+            func = getattr(self._obj_, name)
+        except AttributeError:
+            if callable(self._obj_):
+                if self._is_function_ is None:
+                    iim = _xpcom.XPTI_GetInterfaceInfoManager()
+                    interface_info = iim.GetInfoForIID(self._iid_)
+                    self._is_function_ = interface_info.GetIsFunction()
+                if self._is_function_:
+                    return 0, self._obj_(*params)
+            raise # not a callable / not a [function] interface
         # A regular method.
         return 0, func(*params)
 
