@@ -234,8 +234,14 @@ static bool EnsureXPCOM()
 	}
 
 	#if defined(XP_UNIX) && !defined(XP_MACOSX)
-		{
-			// On Linux only, re-open ourselves with RTLD_GLOBAL so we can export
+		// Linux only:
+		// Check if XPCOM is already loaded and initialized. If we try
+		// to load it again, Komodo will crash. We do this check by
+		// seeing if the the XRE_main symbol is already exposed, if it
+		// is visible then Komodo has already loaded libxul and we don't
+		// need to do it again.
+		if (!dlsym(RTLD_DEFAULT, "XRE_main")) {
+			// Re-open ourselves with RTLD_GLOBAL so we can export
 			// mozilla::HashBytes, so that libxul can use it.
 			// See https://bugzilla.mozilla.org/show_bug.cgi?id=763327
 			// (Python loads _xpcom.so without RTLD_GLOBAL, so the fact that we're
