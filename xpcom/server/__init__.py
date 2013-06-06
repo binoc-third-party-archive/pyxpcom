@@ -39,6 +39,7 @@
 
 from policy import DefaultPolicy
 from xpcom import _xpcom
+from xpcom.client import Component
 
 # We define the concept of a single "tracer" object - similar to the single
 # Python "trace hook" for debugging.  Someone can set
@@ -65,8 +66,8 @@ def WrapObject(ob, iid, policy = None, bWrapClient = 1):
 
 # Unwrap a Python object back into the Python object
 def UnwrapObject(ob):
-    if ob is None:
-        return None
+    if not isinstance(ob, Component):
+        return ob
     ret = _xpcom.UnwrapObject(ob)._obj_
     if tracer_unwrap is not None:
         ret = tracer_unwrap(ret)
