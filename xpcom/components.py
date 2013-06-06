@@ -155,13 +155,9 @@ class _Interfaces(_ComponentCollection):
 
     def _build_dict(self):
         ret = {}
-        enum = interfaceInfoManager.EnumerateInterfaces()
-        while not enum.IsDone():
-            # Call the Python-specific FetchBlock, to keep the loop in C.
-            items = enum.FetchBlock(500, _xpcom.IID_nsIInterfaceInfo)
-            # This shouldnt be necessary, but appears to be so!
-            for item in items:
-                ret[item.GetName()] = _Interface(item.GetName(), item.GetIID())
+        name_to_iid_dict = interfaceInfoManager.GetScriptableInterfaces()
+        for name, iid in name_to_iid_dict.values():
+            ret[name] = _Interface(name, iid)
         return ret
 
 # And the actual object people use.

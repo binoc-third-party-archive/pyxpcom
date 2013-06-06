@@ -60,7 +60,7 @@ VARIANT_UNICODE_TYPES = xpcom_consts.VTYPE_WCHAR, xpcom_consts.VTYPE_DOMSTRING, 
                         xpcom_consts.VTYPE_ASTRING 
 
 _supports_primitives_map_ = {} # Filled on first use.
-_function_interfaces_ = [] # Filled on first use
+_function_interfaces_ = None # Filled on first use
 
 _interface_sequence_types_ = types.TupleType, types.ListType
 _string_types_ = types.StringType, types.UnicodeType
@@ -75,22 +75,9 @@ def _GetNominatedInterfaces(obj):
         if callable(obj):
             # we got a function, try [function]s
             global _function_interfaces_
-            if not _function_interfaces_:
-                enum = iim.enumerateInterfaces()
-                while not enum.IsDone():
-                    interface_info = enum.CurrentItem(xpcom._xpcom.IID_nsIInterfaceInfo)
-                    enum.Next()
-                    try:
-                        if interface_info.isFunction():
-                            real_ret.add(interface_info.GetIID())
-                            assert interface_info.GetParent().GetIID() == IID_nsISupports
-                    except COMException, e:
-                        # this can happen if the interface failed to resolve.
-                        if e.errno != nsError.NS_ERROR_UNEXPECTED:
-                            raise
-                        logger.warning("Warning: failed to inspect interface %s for [function] flag",
-                                       interface_info.name)
-                _function_interfaces_ = list(real_ret)
+            if _function_interfaces_ is None:
+                name_to_iid_dict = iim.GetFunctionInterfaces()
+                _function_interfaces_ = name_to_iid_dict.values()
             return _function_interfaces_
         return None
 

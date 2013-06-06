@@ -47,7 +47,11 @@
 // (c) 2000, ActiveState corp.
 
 #include "PyXPCOM_std.h"
+#include "nsCOMArray.h"
 #include <nsIInterfaceInfoManager.h>
+#include "mozilla/XPTInterfaceInfoManager.h"
+
+using namespace mozilla;
 
 static nsIInterfaceInfoManager *GetI(PyObject *self) {
 	nsIID iid = NS_GET_IID(nsIInterfaceInfoManager);
@@ -162,24 +166,111 @@ static PyObject *PyGetIIDForName(PyObject *self, PyObject *args)
 	return ret;
 }
 
-static PyObject *PyEnumerateInterfaces(PyObject *self, PyObject *args)
+static PyObject *GetScriptableInterfaces(PyObject *self, PyObject *args, bool fn_scripables_only)
 {
-	if (!PyArg_ParseTuple(args, ""))
-		return NULL;
-
 	nsIInterfaceInfoManager *pI = GetI(self);
 	if (pI==NULL)
 		return NULL;
 
-	nsCOMPtr<nsIEnumerator> pRet;
-	nsresult r;
-	Py_BEGIN_ALLOW_THREADS;
-	r = pI->EnumerateInterfacesWhoseNamesStartWith("", getter_AddRefs(pRet));
-	Py_END_ALLOW_THREADS;
-	if ( NS_FAILED(r) )
-		return PyXPCOM_BuildPyException(r);
+	nsCOMPtr<nsIEnumerator> interfaces_enum;
+	nsCOMPtr<nsIInterfaceInfo> iinfo;
+	nsCOMPtr<nsISupports> entry;
 
-	return Py_nsISupports::PyObjectFromInterface(pRet, NS_GET_IID(nsIEnumerator));
+	/**
+	 * nsIInterfaceInfoManager does not provide us a clean way to get at all
+	 * the interfaces (it used to, but has since been deleted), so we have
+	 * to hackily ask for all interfaces that begin with a certain prefix
+	 * (minimum length of 1 character), and then merge these results back
+	 * together.
+	 */
+
+	nsresult r;
+	int i;
+	bool isFunction;
+	char *alphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+	int len = strlen(alphabet);
+	char prefix[2];
+	const char *if_name = nullptr;
+	const nsIID *iid = nullptr;
+
+	PyObject *pyiid;
+	PyObject* pydict = PyDict_New();
+	if (!pydict) {
+		return NULL;
+	}
+
+	for (i=0; i < len; i++) {
+
+		// Request for the interfaces beginning with character prefix.
+		sprintf(prefix, "%c", *(alphabet+i));
+		r = pI->EnumerateInterfacesWhoseNamesStartWith(prefix, getter_AddRefs(interfaces_enum));
+		if (NS_FAILED(r)) {
+			return PyXPCOM_BuildPyException(r);
+		}
+
+		r = interfaces_enum->First();
+		if (NS_FAILED(r)) {
+			// Empty interface list, that's okay then.
+			continue;
+		}
+
+		// Add all returned interfaces to the python dict.
+		for ( ; interfaces_enum->IsDone() == static_cast<nsresult>(NS_ENUMERATOR_FALSE)
+		      ; interfaces_enum->Next())
+		{
+			// Get the interface values.
+			r = interfaces_enum->CurrentItem(getter_AddRefs(entry));
+			if (NS_FAILED(r)) {
+				return PyXPCOM_BuildPyException(r);
+			}
+			nsCOMPtr<nsIInterfaceInfo> iinfo(do_QueryInterface(entry));
+			if (fn_scripables_only) {
+				if (NS_FAILED(iinfo->IsFunction(&isFunction))) {
+					continue;
+				}
+				if (!isFunction) {
+					continue;
+				}
+			}
+			iinfo->GetNameShared(&if_name);
+			iinfo->GetIIDShared(&iid);
+
+			// Convert values to Python.
+			pyiid = Py_nsIID::PyObjectFromIID(*iid);
+			if (!pyiid) {
+				Py_XDECREF(pyiid);
+				Py_DECREF(pydict);
+				return NULL;
+			}
+
+			// Add results to the dictionary.
+			if (PyDict_SetItemString(pydict, if_name, pyiid) != 0) {
+				Py_DECREF(pyiid);
+				Py_DECREF(pydict);
+				return NULL;
+			}
+			Py_DECREF(pyiid);
+		}
+
+	}
+
+	return pydict;
+}
+
+static PyObject *PyGetScriptableInterfaces(PyObject *self, PyObject *args)
+{
+	if (!PyArg_ParseTuple(args, ""))
+		return NULL;
+
+	return GetScriptableInterfaces(self, args, false);
+}
+
+static PyObject *PyGetFunctionInterfaces(PyObject *self, PyObject *args)
+{
+	if (!PyArg_ParseTuple(args, ""))
+		return NULL;
+
+	return GetScriptableInterfaces(self, args, true);
 }
 
 // TODO:
@@ -196,7 +287,7 @@ PyMethods_IInterfaceInfoManager[] =
 	{ "getIIDForName", PyGetIIDForName, 1},
 	{ "GetNameForIID", PyGetNameForIID, 1},
 	{ "getNameForIID", PyGetNameForIID, 1},
-	{ "EnumerateInterfaces", PyEnumerateInterfaces, 1},
-	{ "enumerateInterfaces", PyEnumerateInterfaces, 1},
+	{ "GetScriptableInterfaces", PyGetScriptableInterfaces, 1, "Return dict (name, iid) of all scriptable interfaces"},
+	{ "GetFunctionInterfaces", PyGetFunctionInterfaces, 1, "Return dict (name, iid) of all scriptable function interfaces"},
 	{NULL}
 };
