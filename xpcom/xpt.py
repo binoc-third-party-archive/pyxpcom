@@ -76,7 +76,7 @@ from xpcom_consts import *
 class Interface:
     def __init__(self, iid):
         iim = xpcom._xpcom.XPTI_GetInterfaceInfoManager()
-        if hasattr(iid, "upper"): # Is it a stringy thing.
+        if isinstance(iid, basestring):
             item = iim.GetInfoForName(iid)
         else:
             item = iim.GetInfoForIID(iid)
