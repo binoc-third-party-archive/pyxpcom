@@ -38,6 +38,7 @@
 import os
 import new
 import logging
+import itertools
 from xpcom import xpt, COMException, nsError, logger
 
 # Suck in stuff from _xpcom we use regularly to prevent a module lookup
@@ -148,6 +149,7 @@ def BuildInterfaceInfo(iid):
         getters = {}
         setters = {}
         method_infos = {}
+        iid_from_name = {}
         
         interface = xpt.Interface(iid)
         for m in interface.methods:
@@ -166,7 +168,10 @@ def BuildInterfaceInfo(iid):
         constants = {}
         for c in interface.constants:
             constants[c.name] = c.value
-        ret = method_infos, getters, setters, constants
+        # Build name to iid dictionary.
+        for name in itertools.chain(method_infos, getters, setters, constants):
+            iid_from_name[name] = iid
+        ret = (method_infos, getters, setters, constants, iid_from_name)
         interface_cache[iid] = ret
     return ret
 
@@ -303,23 +308,21 @@ class Component(_XPCOMBase):
         # rebuild the world for each new object.
         iis = self.__dict__['_interface_infos_']
         assert not iis.has_key(iid), "Already remembered this interface!"
+        data = None
         try:
-            method_infos, getters, setters, constants = BuildInterfaceInfo(iid)
+            data = BuildInterfaceInfo(iid)
         except COMException, why:
             # Failing to build an interface info generally isn't a real
             # problem - its probably just that the interface is non-scriptable.
             logger.info("Failed to build interface info for %s: %s", iid, why)
-            # Remember the fact we failed.
-            iis[iid] = None
+
+        iis[iid] = data
+        if data is None:
             return
 
         # Remember all the names so we can delegate
-        iis[iid] = method_infos, getters, setters, constants
         names = self.__dict__['_name_to_interface_iid_']
-        for name in method_infos.keys(): names[name] = iid
-        for name in getters.keys(): names[name] = iid
-        for name in setters.keys(): names[name] = iid
-        for name in constants.keys():  names[name] = iid
+        names.update(data[-1])  # data[-1] is the "iid_from_name" dict
 
     def QueryInterface(self, iid):
         if self._interfaces_.has_key(iid):
@@ -338,7 +341,7 @@ class Component(_XPCOMBase):
 
         raw_iface = self._comobj_.QueryInterface(iid, 0)
 
-        method_infos, getters, setters, constants = iface_info
+        method_infos, getters, setters, constants, iid_from_name = iface_info
         new_interface = _Interface(raw_iface, iid, method_infos,
                                    getters, setters, constants)
         self._interfaces_[iid] = new_interface
