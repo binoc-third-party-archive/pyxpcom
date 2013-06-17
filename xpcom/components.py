@@ -156,7 +156,7 @@ class _Interfaces(_ComponentCollection):
     def _build_dict(self):
         ret = {}
         name_to_iid_dict = interfaceInfoManager.GetScriptableInterfaces()
-        for name, iid in name_to_iid_dict.values():
+        for name, iid in name_to_iid_dict.items():
             ret[name] = _Interface(name, iid)
         return ret
 
