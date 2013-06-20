@@ -34,14 +34,8 @@
 #
 # ***** END LICENSE BLOCK *****
 
-from xpcom import components
-from xpcom import ServerException, Exception
-from xpcom import nsError
-
-import factory
-
-import types
-import os
+from xpcom import components, ServerException, nsError
+from factory import Factory
 
 class Module:
     _com_interfaces_ = components.interfaces.nsIModule
@@ -50,7 +44,7 @@ class Module:
         c = self.components = {}
         for klass in comps:
             c[components.ID(klass._reg_clsid_)] = klass
-        self.klassFactory = factory.Factory
+        self.klassFactory = Factory
 
     def getClassObject(self, compMgr, clsid, iid):
         # Single retval result.
@@ -63,69 +57,12 @@ class Module:
         return self.klassFactory(klass)
 
     def registerSelf(self, compMgr, location, loaderStr, componentType):
-        # void function.
-        fname = os.path.basename(location.path)
-        for klass in self.components.values():
-            reg_contractid = klass._reg_contractid_
-            try:
-                print "Registering '%s' (%s)" % (reg_contractid, fname)
-            except IOError:
-                pass # stdout may not be valid for windows apps!
-            reg_desc = getattr(klass, "_reg_desc_", reg_contractid)
-            compMgr = compMgr.queryInterface(components.interfaces.nsIComponentRegistrar)
-            compMgr.registerFactoryLocation(klass._reg_clsid_,
-                                              reg_desc,
-                                              reg_contractid,
-                                              location,
-                                              loaderStr,
-                                              componentType)
-
-            reg_categories = getattr(klass, "_reg_categories_", None)
-            if reg_categories:
-                catman = components.classes["@mozilla.org/categorymanager;1"]\
-                                       .getService(components.interfaces.nsICategoryManager);
-                for cat_info in reg_categories:
-                    if len(cat_info) > 2 and cat_info[2] and cat_info[0] == "app-startup":
-                        name = "service,%s" % reg_contractid
-                    else:
-                        name = reg_contractid
-                    catman.addCategoryEntry(cat_info[0], cat_info[1], name, 1, 1)
-
-            # See if this class nominates custom register_self
-            extra_func = getattr(klass, "_reg_registrar_", (None,None))[0]
-            if extra_func is not None:
-                extra_func(klass, compMgr, location, loaderStr, componentType)
+        # No longer called by XPCOM.
+        raise RuntimeError("Module::registerSelf should never get called")
 
     def unregisterSelf(self, compMgr, location, loaderStr):
-        # void function.
-        for klass in self.components.values():
-            ok = 1
-            try:
-                compMgr.unregisterComponentSpec(klass._reg_clsid_, location)
-            except Exception:
-                ok = 0
-
-            reg_categories = getattr(klass, "_reg_categories_", None)
-            if reg_categories:
-                catman = components.classes["@mozilla.org/categorymanager;1"]\
-                                       .getService(components.interfaces.nsICategoryManager);
-                for cat_info in reg_categories:
-                    catman.deleteCategoryEntry(cat_info[0], cat_info[1], 1)
-
-            # Give the class a bash even if we failed!
-            extra_func = getattr(klass, "_reg_registrar_", (None,None))[1]
-            if extra_func is not None:
-                try:
-                    extra_func(klass, compMgr, location, loaderStr)
-                except Exception:
-                    ok = 0
-            try:
-                if ok:
-                    print "Successfully unregistered", klass.__name__
-                else:
-                    print "Unregistration of", klass.__name__, "failed (not previously registered?)"
-            except IOError:
-                pass
+        # No longer called by XPCOM.
+        raise RuntimeError("Module::unregisterSelf should never get called")
 
     def canUnload(self, compMgr):
         # single bool result
