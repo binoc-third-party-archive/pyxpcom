@@ -36,6 +36,7 @@
 # ***** END LICENSE BLOCK *****
 
 import xpcom
+import xpcom.nsError
 import xpcom.client
 import xpcom.server
 import xpcom._xpcom
@@ -228,6 +229,49 @@ class TestNonScriptable(unittest.TestCase):
         # a basic wrapper.
         ob = xpcom.components.classes["Python.TestComponent"].createInstance()
         ob = ob.queryInterface(xpcom._xpcom.IID_nsIInternalPython)
+
+class TestNoInterfaceCaching(unittest.TestCase):
+    """QueryInterface failure should not cause attributes to be mapped to the
+    failing interface"""
+
+    # A bug caused a QI failure to still map attributes to that interface (which
+    # the component is then known to not implement); this caused trying to use
+    # any attributes with the same name to then fail in the future
+
+    # both nsIChannel and nsILoadGruop have a .notificationCallbacks
+    class DummyComponent(object):
+        _com_interfaces_ = [xpcom.components.interfaces.nsIChannel]
+        notificationCallbacks = None
+
+    def testNoInterfaceCachingExplicitQI(self):
+        sip = xpcom.components.classes["@mozilla.org/supports-interface-pointer;1"]\
+                   .createInstance(xpcom.components.interfaces.nsISupportsInterfacePointer)
+        sip.data = TestNoInterfaceCaching.DummyComponent()
+        comp = sip.data
+        # Check that it's on nsIChannel... (It's already there via classinfo)
+        comp.QueryInterface(xpcom.components.interfaces.nsIChannel)
+        self.assertIsNone(comp.notificationCallbacks)
+        # QI to nsILoadGroup and fail
+        with self.assertRaises(xpcom.Exception) as cm:
+            comp.QueryInterface(xpcom.components.interfaces.nsILoadGroup)
+        self.assertEquals(cm.exception.errno, xpcom.nsError.NS_ERROR_NO_INTERFACE)
+        # Check that it's still on nsIChannel
+        # (the bug caused it to look on nsILoadGroup)
+        self.assertIsNone(comp.notificationCallbacks)
+
+    def testNoInterfaceCachingViaClassInfo(self):
+        sip = xpcom.components.classes["@mozilla.org/supports-interface-pointer;1"]\
+                   .createInstance(xpcom.components.interfaces.nsISupportsInterfacePointer)
+        sip.data = TestNoInterfaceCaching.DummyComponent()
+        comp = sip.data
+        # QI to nsILoadGroup and fail
+        with self.assertRaises(xpcom.Exception) as cm:
+            comp.QueryInterface(xpcom.components.interfaces.nsILoadGroup)
+        self.assertEquals(cm.exception.errno, xpcom.nsError.NS_ERROR_NO_INTERFACE)
+        # Check that it's still on nsIChannel
+        # (the bug caused it to look on nsILoadGroup)
+        self.assertIsNone(comp.notificationCallbacks)
+
 
 if __name__=='__main__':
     testmain()

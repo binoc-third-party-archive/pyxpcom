@@ -306,40 +306,56 @@ class Component(_XPCOMBase):
         # XXX - there is no good reason to cache this only in each instance
         # It should be cached at the module level, so we don't need to
         # rebuild the world for each new object.
-        iis = self.__dict__['_interface_infos_']
-        assert not iis.has_key(iid), "Already remembered this interface!"
-        data = None
         try:
             data = BuildInterfaceInfo(iid)
         except COMException, why:
             # Failing to build an interface info generally isn't a real
             # problem - its probably just that the interface is non-scriptable.
             logger.info("Failed to build interface info for %s: %s", iid, why)
+            data = None
 
-        iis[iid] = data
-        if data is None:
-            return
-
-        # Remember all the names so we can delegate
-        names = self.__dict__['_name_to_interface_iid_']
-        names.update(data[-1])  # data[-1] is the "iid_from_name" dict
+        self.__dict__['_interface_infos_'][iid] = data
+        if data is not None:
+            # Remember all the names so we can delegate
+            names = self.__dict__['_name_to_interface_iid_']
+            names.update(data[-1])  # data[-1] is the "iid_from_name" dict
+        return data
 
     def QueryInterface(self, iid):
-        if self._interfaces_.has_key(iid):
-            assert self._interface_names_.has_key(iid.name), "_interfaces_ has the key, but _interface_names_ does not!"
+        if iid in self._interfaces_:
+            # We have previously attempted to QI to this interface
+            assert iid.name in self._interface_names_, \
+                "_interfaces_ has the key, but _interface_names_ does not!"
+            if self._interfaces_[iid] is None:
+                # We have previously failed to QI to this interface
+                raise COMException(nsError.NS_ERROR_NO_INTERFACE,
+                                   "Component does not implement interface %s" %
+                                        getattr(iid, "name", iid))
+            # We have previously succeeded in QIing to this interface
             return self
+
         # Haven't seen this before - do a real QI.
-        if not self._interface_infos_.has_key(iid):
-            self._remember_interface_info(iid)
-        iface_info = self._interface_infos_[iid]
+        try:
+            raw_iface = self._comobj_.QueryInterface(iid, 0)
+        except COMException as ex:
+            if ex.errno == nsError.NS_ERROR_NO_INTERFACE:
+                self._interfaces_[iid] = None
+                self._interface_names_[iid.name] = None
+                raise COMException(nsError.NS_ERROR_NO_INTERFACE,
+                                   "Component does not implement interface %s" %
+                                        getattr(iid, "name", iid))
+            raise # some other error?
+
+        # We have successfully QIed to the interface; figure out what this
+        # interface does and reflect it on the Python object.
+        iface_info = self._remember_interface_info(iid)
+
         if iface_info is None:
             # We have tried, but failed, to get this interface info.  Its
             # unlikely to work later either - its probably non-scriptable.
             # That means our component wrappers are useless - so just return a
             # raw nsISupports object with no wrapper.            
-            return self._comobj_.QueryInterface(iid, 0)
-
-        raw_iface = self._comobj_.QueryInterface(iid, 0)
+            return raw_iface
 
         method_infos, getters, setters, constants, iid_from_name = iface_info
         new_interface = _Interface(raw_iface, iid, method_infos,
