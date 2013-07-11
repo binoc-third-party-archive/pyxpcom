@@ -385,4 +385,5 @@ class SupportsPrimitive:
 
 def _shutdown():
     class_info_cache.clear()
-    del _function_interfaces_[:]
+    global _function_interfaces_
+    del _function_interfaces_
