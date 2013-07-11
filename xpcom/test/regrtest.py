@@ -75,7 +75,7 @@ class CustomLoader(unittest.TestLoader):
         return suite()
 
 try:
-    unittest.TestProgram(testLoader=CustomLoader())(argv=sys.argv)
+    unittest.TestProgram(testLoader=CustomLoader(), module=None)(argv=sys.argv)
 finally:
     from xpcom import _xpcom
     _xpcom.NS_ShutdownXPCOM() # To get leak stats and otherwise ensure life is good.
