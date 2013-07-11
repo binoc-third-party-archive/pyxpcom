@@ -85,26 +85,14 @@ class TestDumpInterfaces(unittest.TestCase):
     
         if verbose_level:
             print "Dumping every interface I can find"
-        enum = iim.EnumerateInterfaces()
-        rc = enum.First()
-        num = 0
-        while rc==0:
-            item = enum.CurrentItem(xpcom._xpcom.IID_nsIInterfaceInfo)
-            try:
-                iid = item.GetIID()
-            except xpcom.COMException:
-                if verbose_level:
-                    print "Can't dump", item
-                continue # Dont bother dumping this.
-            interface = xpcom.xpt.Interface(iid)
-            num = num + 1
-            text = interface.Describe()
+        for num, iid in enumerate(iim.GetScriptableInterfaces().values()):
             if verbose_level:
-                print text
-    
-            rc = enum.Next()
+                iface = xpcom.xpt.Interface(iid)
+                print iface.Describe()
         if num < 200:
             print "Only found", num, "interfaces - this seems unusually low!"
+        elif verbose_level:
+            print "Found", num, "interfaces"
 
 class TestEnumContractIDs(unittest.TestCase):
     def testContractIDs(self):
