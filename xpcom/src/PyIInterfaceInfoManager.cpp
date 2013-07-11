@@ -185,11 +185,10 @@ static PyObject *GetScriptableInterfaces(PyObject *self, PyObject *args, bool fn
 	 */
 
 	nsresult r;
-	int i;
 	bool isFunction;
-	char *alphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+	const char *alphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
 	int len = strlen(alphabet);
-	char prefix[2];
+	char prefix[2] = {0, 0};
 	const char *if_name = nullptr;
 	const nsIID *iid = nullptr;
 
@@ -199,10 +198,10 @@ static PyObject *GetScriptableInterfaces(PyObject *self, PyObject *args, bool fn
 		return NULL;
 	}
 
-	for (i=0; i < len; i++) {
+	for (; *alphabet; ++alphabet) {
 
 		// Request for the interfaces beginning with character prefix.
-		sprintf(prefix, "%c", *(alphabet+i));
+		prefix[0] = *alphabet;
 		r = pI->EnumerateInterfacesWhoseNamesStartWith(prefix, getter_AddRefs(interfaces_enum));
 		if (NS_FAILED(r)) {
 			return PyXPCOM_BuildPyException(r);
