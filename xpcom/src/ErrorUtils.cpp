@@ -113,7 +113,9 @@ void DoLogMessage(const char *methodName, const char *pszMessageText)
 		PyObject *logger = mod ?
 		                   PyObject_CallMethod(mod, "getLogger", "s", "xpcom") :
 		                   NULL;
-		PyObject *handlers = PyObject_GetAttrString(logger, "handlers");
+		PyObject *handlers = logger ?
+		                     PyObject_GetAttrString(logger, "handlers") :
+		                     NULL;
 		if (handlers)
 			initializedForLogging = PySequence_Check(handlers) &&
 			                        PySequence_Length(handlers) > 0;
