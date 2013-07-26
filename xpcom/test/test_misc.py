@@ -272,6 +272,15 @@ class TestNoInterfaceCaching(unittest.TestCase):
         # (the bug caused it to look on nsILoadGroup)
         self.assertIsNone(comp.notificationCallbacks)
 
+class TestDirInterfaces(unittest.TestCase):
+    def testDirInterface(self):
+        self.assertIn("TYPE_INTERFACE_POINTER",
+                      dir(xpcom.components.interfaces.nsISupportsInterfacePointer))
+
+    def testDirComponent(self):
+        sip = xpcom.components.classes["@mozilla.org/supports-interface-pointer;1"]\
+                   .createInstance(xpcom.components.interfaces.nsISupportsInterfacePointer)
+        self.assertIn("dataIID", dir(sip))
 
 if __name__=='__main__':
     testmain()

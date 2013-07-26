@@ -129,19 +129,24 @@ class _Interface:
         raise TypeError, "components.interface objects are not subscriptable"
     def __setattr__(self, attr, value):
         raise AttributeError, "Can not set attributes on components.Interface objects"
-    def __getattr__(self, attr):
-        # Support constants as attributes.
-        c = _constants_by_iid_map.get(self._iidobj_)
-        if c is None:
+    def __get_constants(self):
+        try:
+            return _constants_by_iid_map[self._iidobj_]
+        except KeyError:
             c = {}
             i = xpt.Interface(self._iidobj_)
             for c_ob in i.constants:
                 c[c_ob.name] = c_ob.value
             _constants_by_iid_map[self._iidobj_] = c
-        if c.has_key(attr):
-            return c[attr]
-        raise AttributeError, "'%s' interfaces do not define a constant '%s'" % (self.name, attr)
-
+            return c
+    def __getattr__(self, attr):
+        # Support constants as attributes.
+        try:
+            return self.__get_constants()[attr]
+        except KeyError:
+            raise AttributeError, "'%s' interfaces do not define a constant '%s'" % (self.name, attr)
+    def __dir__(self):
+        return sorted(self.__get_constants().keys())
 
 class _Interfaces(_ComponentCollection):
     def _get_one(self, name):

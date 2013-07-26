@@ -447,6 +447,17 @@ class Component(_XPCOMBase):
         iface_desc = self._get_classinfo_repr_()
         return "<XPCOM component '%s' (%s)>" % (self._object_name_,iface_desc)
 
+    def __dir__(self):
+        if not self._tried_classinfo_:
+            try:
+                self._build_all_supported_interfaces_()
+            except:
+                # Error building the info - ignore the error, but ensure that
+                # we are flagged as *not* having built, so the error is seen
+                # by the first caller who actually *needs* this to work.
+                self.__dict__['_tried_classinfo_'] = 0
+        return sorted(self.__dict__['_name_to_interface_iid_'].keys())
+
 class _Interface(_XPCOMBase):
     def __init__(self, comobj, iid, method_infos, getters, setters, constants):
         self.__dict__['_comobj_'] = comobj
