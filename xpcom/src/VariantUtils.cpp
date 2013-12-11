@@ -525,10 +525,13 @@ bool FillSingleArray(void *array_ptr, PyObject *sequence_ob, PRUint32 sequence_s
 			  case TD_CSTRING:
 			  case TD_ASTRING:
 			  case TD_JSVAL:
-				// try and limp along in this case.
-				// leave rc TRUE
-				PyXPCOM_LogWarning("Converting Python object for an array element - The object type (0x%x) is unknown - leaving param alone!\n", array_type);
-				break;
+				// Bail out on cases we can't deal with
+				// This makes sure the Python side understands that there's a problem
+				PyErr_Format(PyExc_NotImplementedError,
+					     "Converting Python object for an array element - "
+						"The object type (0x%x) is unknown",
+					     array_type);
+				BREAK_FALSE;
 		}
 		Py_XDECREF(val_use);
 		Py_DECREF(val);
@@ -625,10 +628,10 @@ static PyObject *UnpackSingleArray(Py_nsISupports *parent, void *array_ptr,
 				break;
 				}
 			  default: {
-				char buf[128];
-				sprintf(buf, "Unknown XPCOM array type flags (0x%x)", array_type);
-				PyXPCOM_LogWarning("%s - returning a string object with this message!\n", buf);
-				val = PyString_FromString(buf);
+				PyErr_Format(PyExc_NotImplementedError,
+					     "Converting an array element to a Python array - "
+						"The object type (0x%x) is unknown",
+					     array_type);
 				break;
 				}
 		}
