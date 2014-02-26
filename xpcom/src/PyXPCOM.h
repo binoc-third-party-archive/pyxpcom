@@ -184,7 +184,7 @@ void PyXPCOM_LogDebug(const char *fmt, ...);
 PyObject *PyObject_FromNSString( const nsACString &s,
                                                 bool bAssumeUTF8 = false );
 PyObject *PyObject_FromNSString( const nsAString &s );
-PyObject *PyObject_FromNSString( const PRUnichar *s,
+PyObject *PyObject_FromNSString( const char16_t *s,
                                                 PRUint32 len = (PRUint32)-1);
 
 // PyObjects to moz strings.  As per the moz string guide, we pass a reference

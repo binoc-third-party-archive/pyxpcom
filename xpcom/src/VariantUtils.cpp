@@ -57,11 +57,11 @@ static mozilla::fallible_t fallible;
 // nsString utilities
 // ------------------------------------------------------------------------
 
-#define PyUnicode_FromPRUnichar(src, size) \
-	PyUnicode_DecodeUTF16((char*)(src),sizeof(PRUnichar)*(size),NULL,NULL)
+#define PyUnicode_Fromchar16_t(src, size) \
+	PyUnicode_DecodeUTF16((char*)(src),sizeof(char16_t)*(size),NULL,NULL)
 
 /**
- * Copy a Python unicode string to a zero-terminated PRUnichar buffer
+ * Copy a Python unicode string to a zero-terminated char16_t buffer
  * @param dest_out The resulting buffer.  Must not be null.  If the points to a
  * 		null pointer, memory will be allocated.  If this points to a block of
  * 		memory, it will be used instead.
@@ -73,19 +73,19 @@ static mozilla::fallible_t fallible;
  * @returns 0 on success, -1 on failure (and set a Python exception).
  */
 static int
-PyUnicode_AsPRUnichar(PyObject *obj, PRUnichar **dest_out, PRUint32 *size_out)
+PyUnicode_Aschar16_t(PyObject *obj, char16_t **dest_out, PRUint32 *size_out)
 {
 	PRUint32 size;
 	PyObject *s;
-	PRUnichar *dest;
+	char16_t *dest;
 
 	MOZ_ASSERT(PyGILState_GetThisThreadState());
-	MOZ_ASSERT(dest_out, "PyUnicode_AsPRUnichar: dest_out was null");
+	MOZ_ASSERT(dest_out, "PyUnicode_Aschar16_t: dest_out was null");
 
 	s = PyUnicode_AsUTF16String(obj);
 	if (!s)
 		return -1;
-	size = (PyString_GET_SIZE(s) - 2) / sizeof(PRUnichar); // remove BOM
+	size = (PyString_GET_SIZE(s) - 2) / sizeof(char16_t); // remove BOM
 	if (*dest_out) {
 		MOZ_ASSERT(size_out, "Can't have preallocated buffer of unknown size");
 		uint32_t buffer_size = *size_out;
@@ -97,7 +97,7 @@ PyUnicode_AsPRUnichar(PyObject *obj, PRUnichar **dest_out, PRUint32 *size_out)
 		}
 		dest = *dest_out;
 	} else {
-		dest = reinterpret_cast<PRUnichar *>(moz_malloc(sizeof(PRUnichar) * (size + 1)));
+		dest = reinterpret_cast<char16_t *>(moz_malloc(sizeof(char16_t) * (size + 1)));
 		if (!dest) {
 			PyErr_NoMemory();
 			Py_DECREF(s);
@@ -107,7 +107,7 @@ PyUnicode_AsPRUnichar(PyObject *obj, PRUnichar **dest_out, PRUint32 *size_out)
 	// Drop the UTF-16 byte order mark at the beginning of
 	// the string.  (See the docs on PyUnicode_AsUTF16String.)
 	// Some Mozilla libraries don't like the mark.
-	memcpy(dest, PyString_AS_STRING(s) + 2, sizeof(PRUnichar) * size);
+	memcpy(dest, PyString_AS_STRING(s) + 2, sizeof(char16_t) * size);
 	Py_DECREF(s);
 	dest[size] = 0;
 	*dest_out = dest;
@@ -130,7 +130,7 @@ PyObject_FromNSString( const nsACString &s, bool bAssumeUTF8 /*= false */)
 			ret = PyUnicode_DecodeUTF8(temp.get(), temp.Length(), NULL);
 		} else {
 			NS_ConvertASCIItoUTF16 temp(s);
-			ret = PyUnicode_FromPRUnichar(temp.get(), temp.Length());
+			ret = PyUnicode_Fromchar16_t(temp.get(), temp.Length());
 		}
 	}
 	return ret;
@@ -163,17 +163,17 @@ PyObject_FromNSString( const nsAString &s )
 		Py_INCREF(Py_None);
 	} else {
 		const nsString temp(s);
-		ret = PyUnicode_FromPRUnichar(temp.get(), temp.Length());
+		ret = PyUnicode_Fromchar16_t(temp.get(), temp.Length());
 	}
 	return ret;
 }
 
 PyObject *
-PyObject_FromNSString( const PRUnichar *s,
+PyObject_FromNSString( const char16_t *s,
                        PRUint32 len /* = (PRUint32)-1*/)
 {
 	MOZ_ASSERT(PyGILState_GetThisThreadState());
-	return PyUnicode_FromPRUnichar(s,
+	return PyUnicode_Fromchar16_t(s,
 	           len==((PRUint32)-1)? NS_strlen(s) : len);
 }
 
@@ -202,9 +202,9 @@ PyObject_AsNSString( PyObject *val, nsAString &aStr)
 			return false;
 		}
 		// Skip the BOM at the start of the string
-		// (see PyUnicode_AsPRUnichar)
-		aStr.Assign(reinterpret_cast<PRUnichar*>(PyString_AS_STRING(s)) + 1,
-			    (PyString_GET_SIZE(s) / sizeof(PRUnichar)) - 1);
+		// (see PyUnicode_Aschar16_t)
+		aStr.Assign(reinterpret_cast<char16_t*>(PyString_AS_STRING(s)) + 1,
+			    (PyString_GET_SIZE(s) / sizeof(char16_t)) - 1);
 		Py_DECREF(s);
 	}
 	Py_DECREF(val_use);
@@ -246,7 +246,7 @@ static PRUint32 GetArrayElementSize(XPTTypeDescriptorTags t)
 			ret = sizeof(char); 
 			break;
 		case nsXPTType::T_WCHAR:
-			ret = sizeof(PRUnichar); 
+			ret = sizeof(char16_t); 
 			break;
 		case nsXPTType::T_IID:
 		case nsXPTType::T_CHAR_STR:
@@ -428,9 +428,9 @@ bool FillSingleArray(void *array_ptr, PyObject *sequence_ob, PRUint32 sequence_s
 				MOZ_ASSERT(PyUnicode_Check(val_use), "PyUnicode_FromObject didnt return a Unicode object!");
 				MOZ_ASSERT(PyUnicode_GET_SIZE(val_use) == 1, "String too long");
 				// Lossy!
-				FILL_SIMPLE_POINTER(PRUnichar, *PyUnicode_AS_UNICODE(val_use));
+				FILL_SIMPLE_POINTER(char16_t, *PyUnicode_AS_UNICODE(val_use));
 				MOZ_ASSERT(*PyUnicode_AS_UNICODE(val_use) <= 0xFFFF,
-						   "Lossy cast of Unicode value to PRUnichar");
+						   "Lossy cast of Unicode value to char16_t");
 				break;
 
 			  case TD_PNSIID: {
@@ -484,7 +484,7 @@ bool FillSingleArray(void *array_ptr, PyObject *sequence_ob, PRUint32 sequence_s
 				}
 			  case TD_PWSTRING: {
 				// If it is an existing string, free it.
-				PRUnichar **pp = (PRUnichar **)pthis;
+				char16_t **pp = (char16_t **)pthis;
 				if (*pp)
 					nsMemory::Free(*pp);
 				*pp = nullptr;
@@ -497,7 +497,7 @@ bool FillSingleArray(void *array_ptr, PyObject *sequence_ob, PRUint32 sequence_s
 				if ((val_use = PyUnicode_FromObject(val))==NULL)
 					BREAK_FALSE;
 				NS_ABORT_IF_FALSE(PyUnicode_Check(val_use), "PyUnicode_FromObject didnt return a Unicode object!");
-				if (PyUnicode_AsPRUnichar(val_use, pp, NULL) < 0)
+				if (PyUnicode_Aschar16_t(val_use, pp, NULL) < 0)
 					BREAK_FALSE;
 				break;
 				}
@@ -604,12 +604,12 @@ static PyObject *UnpackSingleArray(Py_nsISupports *parent, void *array_ptr,
 				break;
 				}
 			  case nsXPTType::T_WCHAR_STR: {
-				PRUnichar **pp = (PRUnichar **)pthis;
+				char16_t **pp = (char16_t **)pthis;
 				if (*pp==NULL) {
 					Py_INCREF(Py_None);
 					val = Py_None;
 				} else {
-					val = PyUnicode_FromPRUnichar( *pp, NS_strlen(*pp) );
+					val = PyUnicode_Fromchar16_t( *pp, NS_strlen(*pp) );
 				}
 				break;
 				}
@@ -737,12 +737,12 @@ PyObject_AsVariant( PyObject *ob, nsIVariant **aRet)
 			break;
 		case nsIDataType::VTYPE_WSTRING_SIZE_IS:
 			if (PyUnicode_GetSize(ob) == 0) {
-				nr = v->SetAsWStringWithSize(0, (PRUnichar*)NULL);
+				nr = v->SetAsWStringWithSize(0, (char16_t*)NULL);
 			}
 			else {
 				PRUint32 nch;
-				PRUnichar *p = nullptr;
-				if (PyUnicode_AsPRUnichar(ob, &p, &nch) < 0) {
+				char16_t *p = nullptr;
+				if (PyUnicode_Aschar16_t(ob, &p, &nch) < 0) {
 					PyXPCOM_LogWarning("Failed to convert object to unicode", ob->ob_type->tp_name);
 					nr = NS_ERROR_UNEXPECTED;
 					break;
@@ -1698,9 +1698,9 @@ bool PyXPCOM_InterfaceVariantHelper::FillInVariant(const PythonTypeDescriptor &t
 		if ((val_use = PyUnicode_FromObject(val))==NULL)
 			BREAK_FALSE;
 		MOZ_ASSERT(PyUnicode_Check(val_use), "PyUnicode_FromObject didnt return a Unicode object!");
-		PRUnichar *sv = nullptr;
+		char16_t *sv = nullptr;
 		PRUint32 nch;
-		if (PyUnicode_AsPRUnichar(val_use, &sv, &nch) < 0)
+		if (PyUnicode_Aschar16_t(val_use, &sv, &nch) < 0)
 			BREAK_FALSE;
 		ns_v.val.p = sv;
 		ns_v.SetValNeedsCleanup();
@@ -1791,9 +1791,9 @@ bool PyXPCOM_InterfaceVariantHelper::FillInVariant(const PythonTypeDescriptor &t
 			BREAK_FALSE;
 		// Sanity check should PyObject_Str() ever loosen its semantics wrt Unicode!
 		NS_ABORT_IF_FALSE(PyUnicode_Check(val_use), "PyObject_Unicode didnt return a unicode object!");
-		PRUnichar *sv = nullptr;
+		char16_t *sv = nullptr;
 		PRUint32 nch;
-		if (PyUnicode_AsPRUnichar(val_use, &sv, &nch) < 0)
+		if (PyUnicode_Aschar16_t(val_use, &sv, &nch) < 0)
 			BREAK_FALSE;
 		ns_v.val.p = sv;
 		ns_v.SetValNeedsCleanup();
@@ -1953,7 +1953,7 @@ bool PyXPCOM_InterfaceVariantHelper::PrepareOutVariant(const PythonTypeDescripto
 		break;
 	  case nsXPTType::T_WCHAR:
 		if (!td.IsIn()) {
-			ns_v.val.wc = PRUnichar('\0');
+			ns_v.val.wc = char16_t('\0');
 		}
 		break;
 	  case nsXPTType::T_VOID:
@@ -2133,7 +2133,7 @@ PyObject *PyXPCOM_InterfaceVariantHelper::MakeSinglePythonResult(int index)
 		break;
 
 	  case nsXPTType::T_WCHAR:
-		ret = PyUnicode_FromPRUnichar( ((PRUnichar *)ns_v.ptr), 1 );
+		ret = PyUnicode_Fromchar16_t( ((char16_t *)ns_v.ptr), 1 );
 		break;
 	  case nsXPTType::T_VOID:
 		// we really can't do anything useful with this; just pass it to
@@ -2179,12 +2179,12 @@ PyObject *PyXPCOM_InterfaceVariantHelper::MakeSinglePythonResult(int index)
 	    }
 
 	  case nsXPTType::T_WCHAR_STR: {
-		PRUnichar *us = *reinterpret_cast<PRUnichar**>(ns_v.ptr);
+		char16_t *us = *reinterpret_cast<char16_t**>(ns_v.ptr);
 		if (us == nullptr) {
 			ret = Py_None;
 			Py_INCREF(Py_None);
 		} else {
-			ret = PyUnicode_FromPRUnichar(us, NS_strlen(us));
+			ret = PyUnicode_Fromchar16_t(us, NS_strlen(us));
 		}
 		break;
 		}
@@ -2271,13 +2271,13 @@ PyObject *PyXPCOM_InterfaceVariantHelper::MakeSinglePythonResult(int index)
 	    }
 
 	  case nsXPTType::T_PWSTRING_SIZE_IS: {
-		PRUnichar *str = *reinterpret_cast<PRUnichar**>(ns_v.ptr);
+		char16_t *str = *reinterpret_cast<char16_t**>(ns_v.ptr);
 		if (str == NULL) {
 			ret = Py_None;
 			Py_INCREF(Py_None);
 		} else {
 			uint32_t string_size = GetSizeIs(index);
-			ret = PyUnicode_FromPRUnichar( str, string_size );
+			ret = PyUnicode_Fromchar16_t( str, string_size );
 		}
 		break;
 		}
@@ -2627,8 +2627,8 @@ PyObject *PyXPCOM_GatewayVariantHelper::MakeSingleParam(int index, PythonTypeDes
 		break;
 		}
 	  case nsXPTType::T_WCHAR: {
-		PRUnichar temp = (PRUnichar)DEREF_IN_OR_OUT(ns_v.val.wc, PRUnichar);
-		ret = PyUnicode_FromPRUnichar(&temp, 1);
+		char16_t temp = (char16_t)DEREF_IN_OR_OUT(ns_v.val.wc, char16_t);
+		ret = PyUnicode_Fromchar16_t(&temp, 1);
 		break;
 		}
 //	  case nsXPTType::T_VOID:
@@ -2668,12 +2668,12 @@ PyObject *PyXPCOM_GatewayVariantHelper::MakeSingleParam(int index, PythonTypeDes
 		}
 
 	  case nsXPTType::T_WCHAR_STR: {
-		PRUnichar *us = DEREF_IN_OR_OUT(ns_v.val.p, PRUnichar *);
+		char16_t *us = DEREF_IN_OR_OUT(ns_v.val.p, char16_t *);
 		if (us==NULL) {
 			ret = Py_None;
 			Py_INCREF(Py_None);
 		} else {
-			ret = PyUnicode_FromPRUnichar( us, NS_strlen(us));
+			ret = PyUnicode_Fromchar16_t( us, NS_strlen(us));
 		}
 		break;
 		}
@@ -2730,13 +2730,13 @@ PyObject *PyXPCOM_GatewayVariantHelper::MakeSingleParam(int index, PythonTypeDes
 		break;
 		}
 	  case nsXPTType::T_PWSTRING_SIZE_IS: {
-		PRUnichar *t = DEREF_IN_OR_OUT(ns_v.val.p, PRUnichar *);
+		char16_t *t = DEREF_IN_OR_OUT(ns_v.val.p, char16_t *);
 		uint32_t string_size = GetSizeIs(index);
 		if (t==NULL) {
 			ret = Py_None;
 			Py_INCREF(Py_None);
 		} else {
-			ret = PyUnicode_FromPRUnichar(t, string_size);
+			ret = PyUnicode_Fromchar16_t(t, string_size);
 		}
 		break;
 		}
@@ -2931,7 +2931,7 @@ nsresult PyXPCOM_GatewayVariantHelper::BackFillVariant( PyObject *val, int index
 			BREAK_FALSE;
 		NS_ABORT_IF_FALSE(PyUnicode_Check(val_use), "PyUnicode_FromObject didnt return a Unicode object!");
 		// Lossy!
-		FILL_SIMPLE_POINTER( PRUnichar, *PyUnicode_AS_UNICODE(val_use) );
+		FILL_SIMPLE_POINTER( char16_t, *PyUnicode_AS_UNICODE(val_use) );
 		break;
 
 //	  case nsXPTType::T_VOID:
@@ -3030,7 +3030,7 @@ nsresult PyXPCOM_GatewayVariantHelper::BackFillVariant( PyObject *val, int index
 		}
 	  case nsXPTType::T_WCHAR_STR: {
 		// If it is an existing string, free it.
-		PRUnichar **pp = (PRUnichar **)ns_v.val.p;
+		char16_t **pp = (char16_t **)ns_v.val.p;
 		if (*pp && pi.IsIn())
 			nsMemory::Free(*pp);
 		*pp = nullptr;
@@ -3042,7 +3042,7 @@ nsresult PyXPCOM_GatewayVariantHelper::BackFillVariant( PyObject *val, int index
 		}
 		val_use = PyUnicode_FromObject(val);
 		NS_ABORT_IF_FALSE(PyUnicode_Check(val_use), "PyUnicode_FromObject didnt return a Unicode object!");
-		if (PyUnicode_AsPRUnichar(val_use, pp, NULL) < 0)
+		if (PyUnicode_Aschar16_t(val_use, pp, NULL) < 0)
 			BREAK_FALSE;
 		break;
 		}
@@ -3166,7 +3166,7 @@ nsresult PyXPCOM_GatewayVariantHelper::BackFillVariant( PyObject *val, int index
 		}
 
 	  case nsXPTType::T_PWSTRING_SIZE_IS: {
-		PRUnichar *sz = nullptr;
+		char16_t *sz = nullptr;
 		uint32_t nch = 0;
 		size_t nbytes = 0;
 
@@ -3177,9 +3177,9 @@ nsresult PyXPCOM_GatewayVariantHelper::BackFillVariant( PyObject *val, int index
 			}
 			val_use = PyUnicode_FromObject(val);
 			NS_ABORT_IF_FALSE(PyUnicode_Check(val_use), "PyUnicode_FromObject didnt return a Unicode object!");
-			if (PyUnicode_AsPRUnichar(val_use, &sz, &nch) < 0)
+			if (PyUnicode_Aschar16_t(val_use, &sz, &nch) < 0)
 				BREAK_FALSE;
-			nbytes = sizeof(PRUnichar) * nch;
+			nbytes = sizeof(char16_t) * nch;
 		}
 		bool bBackFill = false;
 		bool bCanSetSizeIs = CanSetSizeIs(index);
@@ -3197,10 +3197,10 @@ nsresult PyXPCOM_GatewayVariantHelper::BackFillVariant( PyObject *val, int index
 			bBackFill = pi.IsIn();
 		}
 		if (bBackFill) {
-			memcpy(*(PRUnichar **)ns_v.val.p, sz, nbytes);
+			memcpy(*(char16_t **)ns_v.val.p, sz, nbytes);
 		} else {
 			// If it is an existing string, free it.
-			PRUnichar **pp = (PRUnichar **)ns_v.val.p;
+			char16_t **pp = (char16_t **)ns_v.val.p;
 			if (*pp && pi.IsIn())
 				nsMemory::Free(*pp);
 			*pp = sz;

@@ -165,7 +165,7 @@ Py_nsISupports::getattr(const char *name)
 	// Support for __unicode__ until we get a tp_unicode slot.
 	if (strcmp(name, "__unicode__")==0) {
 		nsresult rv;
-		PRUnichar *val = NULL;
+		char16_t *val = NULL;
 		Py_BEGIN_ALLOW_THREADS;
 		{ // scope to kill pointer while thread-lock released.
 		nsCOMPtr<nsISupportsString> ss( do_QueryInterface(m_obj, &rv ));
