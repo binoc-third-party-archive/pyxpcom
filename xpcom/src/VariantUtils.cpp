@@ -49,6 +49,8 @@
 // (c) 2000, ActiveState corp.
 
 #include "PyXPCOM_std.h"
+#include "mozilla/Assertions.h"
+
 static mozilla::fallible_t fallible;
 
 // ------------------------------------------------------------------------
@@ -263,7 +265,7 @@ static PRUint32 GetArrayElementSize(XPTTypeDescriptorTags t)
 		case nsXPTType::T_VOID:
 		case nsXPTType::T_ARRAY:
 		case nsXPTType::T_JSVAL:
-			MOZ_NOT_REACHED("Unknown array type code!");
+			MOZ_CRASH("Unknown array type code!");
 			ret = 0;
 			break;
 	}
@@ -801,7 +803,7 @@ PyObject_AsVariant( PyObject *ob, nsIVariant **aRet)
 			PyXPCOM_LogWarning("Objects of type '%s' can not be converted to an nsIVariant", ob->ob_type->tp_name);
 			nr = NS_ERROR_UNEXPECTED;
 		default:
-			MOZ_NOT_REACHED("BestVariantTypeForPyObject() returned a variant type not handled here!");
+			MOZ_CRASH("BestVariantTypeForPyObject() returned a variant type not handled here!");
 			PyXPCOM_LogWarning("Objects of type '%s' can not be converted to an nsIVariant", ob->ob_type->tp_name);
 			nr = NS_ERROR_UNEXPECTED;
 	}
@@ -2061,7 +2063,7 @@ bool PyXPCOM_InterfaceVariantHelper::PrepareOutVariant(const PythonTypeDescripto
 		return false;
 		break;
 	  default:
-		MOZ_NOT_REACHED("Unknown type - don't know how to prepare the output value");
+		MOZ_CRASH("Unknown type - don't know how to prepare the output value");
 		break; // Nothing to do!
 	}
 	return true;
@@ -2384,7 +2386,7 @@ void PyXPCOM_InterfaceVariantHelper::CleanupParam(void* p, nsXPTType& type)
 			Free(p);
 			break;
         case TD_ARRAY:
-			MOZ_NOT_REACHED("CleanupParam doesn't support arrays");
+			MOZ_CRASH("CleanupParam doesn't support arrays");
 			break;
         case TD_JSVAL:
 			MOZ_ASSERT(false, "PyXPCOM shouldn't be playing with jsvals");
@@ -2412,7 +2414,7 @@ void PyXPCOM_InterfaceVariantHelper::CleanupParam(void* p, nsXPTType& type)
 			// These don't need to be freed
 			break;
 		default:
-			MOZ_NOT_REACHED("Unkown tag");
+			MOZ_CRASH("Unkown tag");
 			break;
 	}
 }
@@ -2446,6 +2448,7 @@ PyObject *PyXPCOM_GatewayVariantHelper::MakePyArgs()
 {
 	MOZ_STATIC_ASSERT(sizeof(XPTParamDescriptor) == sizeof(nsXPTParamInfo),
 	                  "We depend on nsXPTParamInfo being a wrapper over the XPTParamDescriptor struct");
+
 	// Setup our array of Python typedescs, and determine the number of objects we
 	// pass to Python.
 	mPyTypeDesc.SetLength(m_info->num_args);
