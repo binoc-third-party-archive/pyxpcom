@@ -2446,8 +2446,13 @@ PyXPCOM_GatewayVariantHelper::~PyXPCOM_GatewayVariantHelper()
 
 PyObject *PyXPCOM_GatewayVariantHelper::MakePyArgs()
 {
+#ifdef __cplusplus
+	static_assert(sizeof(XPTParamDescriptor) == sizeof(nsXPTParamInfo),
+	              "We depend on nsXPTParamInfo being a wrapper over the XPTParamDescriptor struct");
+#else
 	MOZ_STATIC_ASSERT(sizeof(XPTParamDescriptor) == sizeof(nsXPTParamInfo),
 	                  "We depend on nsXPTParamInfo being a wrapper over the XPTParamDescriptor struct");
+#endif
 
 	// Setup our array of Python typedescs, and determine the number of objects we
 	// pass to Python.
