@@ -52,7 +52,7 @@
 class nsPythonModuleLoader : public mozilla::ModuleLoader
 {
  public:
-    NS_DECL_ISUPPORTS
+    NS_DECL_THREADSAFE_ISUPPORTS
 
     nsPythonModuleLoader();
     virtual ~nsPythonModuleLoader();
