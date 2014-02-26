@@ -52,11 +52,14 @@
 #include "mozilla/mozalloc.h"
 #include "nsIAllocator.h"
 #include "nsIWeakReference.h"
+#include "nsIInterfaceInfo.h"
 #include "nsIInterfaceInfoManager.h"
 #include "nsIClassInfo.h"
 #include "nsIComponentManager.h"
 #include "nsComponentManagerUtils.h" // do_CreateInstance
 #include "nsIServiceManager.h"
+#include "nsIEnumerator.h"
+#include "nsISimpleEnumerator.h"
 #include "nsIInputStream.h"
 #include "nsIVariant.h"
 #include "nsIModule.h"
@@ -619,7 +622,7 @@ NS_DEFINE_STATIC_IID_ACCESSOR(nsIInternalPython, NS_IINTERNALPYTHON_IID)
 class PyG_Base : public nsIInternalPython, public nsISupportsWeakReference
 {
 public:
-	NS_DECL_ISUPPORTS
+	NS_DECL_THREADSAFE_ISUPPORTS
 	NS_DECL_NSISUPPORTSWEAKREFERENCE
 	PyObject *UnwrapPythonObject(void);
 
@@ -733,7 +736,7 @@ class PyXPCOM_GatewayWeakReference : public nsIWeakReference {
 public:
 	PyXPCOM_GatewayWeakReference(PyG_Base *base);
 	virtual ~PyXPCOM_GatewayWeakReference();
-	NS_DECL_ISUPPORTS
+	NS_DECL_THREADSAFE_ISUPPORTS
 	NS_DECL_NSIWEAKREFERENCE
 	PyG_Base *m_pBase; // NO REF COUNT!!!
 #ifdef NS_BUILD_REFCNT_LOGGING

@@ -70,9 +70,7 @@ PyXPCOM_GatewayWeakReference::~PyXPCOM_GatewayWeakReference()
 	m_pBase = NULL;
 }
 
-NS_IMPL_THREADSAFE_ADDREF(PyXPCOM_GatewayWeakReference)
-NS_IMPL_THREADSAFE_RELEASE(PyXPCOM_GatewayWeakReference)
-NS_IMPL_THREADSAFE_QUERY_INTERFACE1(PyXPCOM_GatewayWeakReference, nsIWeakReference)
+NS_IMPL_ISUPPORTS1(PyXPCOM_GatewayWeakReference, nsIWeakReference)
 
 NS_IMETHODIMP
 PyXPCOM_GatewayWeakReference::QueryReferent(REFNSIID iid, void * *ret)

@@ -54,8 +54,10 @@
 #include "prlog.h"
 #include "prinit.h"
 #include "prerror.h"
+#include "pratom.h"
 
 #include "PyXPCOM_std.h"
+
 #include <nsIModule.h>
 #include <nsIInputStream.h>
 #include <nsIWeakReferenceUtils.h>
@@ -105,7 +107,7 @@ PyG_Base::CreateNew(PyObject *pPyInstance, const nsIID &iid, void **ppResult)
 PyG_Base::PyG_Base(PyObject *instance, const nsIID &iid)
 {
 	// Note that "instance" is the _policy_ instance!!
-	PR_AtomicIncrement(&cGateways);
+	PR_ATOMIC_INCREMENT(&cGateways);
 	m_pBaseObject = GetDefaultGateway(instance);
 	// m_pWeakRef is an nsCOMPtr and needs no init.
 
@@ -213,7 +215,7 @@ PyG_Base::PyG_Base(PyObject *instance, const nsIID &iid)
 
 PyG_Base::~PyG_Base()
 {
-	PR_AtomicDecrement(&cGateways);
+	PR_ATOMIC_DECREMENT(&cGateways);
 #ifdef DEBUG_LIFETIMES
 	PYXPCOM_LOG_DEBUG("PyG_Base: deleted %p", this);
 #endif
@@ -248,7 +250,7 @@ PyG_Base::~PyG_Base()
 	}
 }
 
-NS_IMPL_THREADSAFE_ADDREF(PyG_Base)
+NS_IMPL_ADDREF(PyG_Base)
 
 nsrefcnt
 PyG_Base::Release(void)
@@ -258,7 +260,7 @@ PyG_Base::Release(void)
 		// Temp scope for lock. Ensures some other thread isn't doing a
 		// QueryReferent on our weak reference at the same time.
 		CEnterLeaveXPCOMFramework _celf;
-		cnt = (nsrefcnt) PR_AtomicDecrement((PRInt32*)&mRefCnt);
+		cnt = (nsrefcnt) PR_ATOMIC_DECREMENT((PRInt32*)&mRefCnt);
 		if ( cnt == 0 && m_pWeakRef ) {
 			// We must null out the WeakReference now, otherwise
 			// another thread may come along and try to use it, i.e.

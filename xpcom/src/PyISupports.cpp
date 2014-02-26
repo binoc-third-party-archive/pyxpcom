@@ -46,6 +46,7 @@
 // (c) 2000, ActiveState corp.
 
 #include "PyXPCOM_std.h"
+#include "pratom.h"
 #include "nsISupportsPrimitives.h"
 #include "nsThreadUtils.h"
 #include "nsProxyRelease.h"
@@ -74,7 +75,7 @@ Py_nsISupports::Py_nsISupports(nsISupports *punk, const nsIID &iid, PyTypeObject
 	m_obj = punk;
 	m_iid = iid;
 	// refcnt of object managed by caller.
-	PR_AtomicIncrement(&cInterfaces);
+	PR_ATOMIC_INCREMENT(&cInterfaces);
 	_Py_NewReference(this);
 
 	#if PYXPCOM_DEBUG_INTERFACE_COUNT
@@ -118,7 +119,7 @@ Py_nsISupports::~Py_nsISupports()
 	#endif /* PYXPCOM_DEBUG_INTERFACE_COUNT */
 
 	SafeRelease(this);
-	PR_AtomicDecrement(&cInterfaces);
+	PR_ATOMIC_DECREMENT(&cInterfaces);
 }
 
 /*static*/ nsISupports *
