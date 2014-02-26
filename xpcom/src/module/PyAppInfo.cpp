@@ -227,6 +227,55 @@ PyAppInfo::GetProcessType(uint32_t *aProcessType)
     return NS_OK;
 }
 
+/* readonly attribute boolean browserTabsRemote; */
+NS_IMETHODIMP
+PyAppInfo::GetBrowserTabsRemote(bool* aResult)
+{
+    // We don't support remote browser tabs (multiprocess browsers).
+    *aResult = false;
+    return NS_OK;
+}
+
+/* readonly attribute boolean isReleaseBuild; */
+NS_IMETHODIMP
+PyAppInfo::GetIsReleaseBuild(bool* aResult)
+{
+#ifdef RELEASE_BUILD
+    *aResult = true;
+#else
+    *aResult = false;
+#endif
+    return NS_OK;
+}
+
+/* readonly attribute boolean isOfficialBranding; */
+NS_IMETHODIMP
+PyAppInfo::GetIsOfficialBranding(bool* aResult)
+{
+#ifdef MOZ_OFFICIAL_BRANDING
+  *aResult = true;
+#else
+  *aResult = false;
+#endif
+  return NS_OK;
+}
+
+/* readonly attribute AUTF8String defaultUpdateChannel; */
+NS_IMETHODIMP
+PyAppInfo::GetDefaultUpdateChannel(nsACString& aResult)
+{
+  aResult.AssignLiteral(NS_STRINGIFY(MOZ_UPDATE_CHANNEL));
+  return NS_OK;
+}
+
+/* readonly attribute AUTF8String distributionID; */
+NS_IMETHODIMP
+PyAppInfo::GetDistributionID(nsACString& aResult)
+{
+  aResult.AssignLiteral(MOZ_DISTRIBUTION_ID);
+  return NS_OK;
+}
+
 /* void invalidateCachesOnRestart (); */
 NS_IMETHODIMP
 PyAppInfo::InvalidateCachesOnRestart()
