@@ -403,34 +403,34 @@ protected:
 			: file(aFile), line(aLine) {}
 	};
 	nsClassHashtable<nsPtrHashKey<void>, LineRef> mAllocations;
-	template<typename T> MOZ_INLINE
+	template<typename T> MOZ_ALWAYS_INLINE
 	T* Alloc(T*& dest, size_t count, const char* file, const unsigned line);
-	MOZ_INLINE void* Alloc(size_t size, size_t count, const char* file, const unsigned line);
-	MOZ_INLINE void MarkAlloc(void* buf, const char* file, const unsigned line);
-	template<typename T> MOZ_INLINE void Free(T* buf);
-	MOZ_INLINE void Free(void* buf);
-	MOZ_INLINE void MarkFree(void* buf);
+	MOZ_ALWAYS_INLINE void* Alloc(size_t size, size_t count, const char* file, const unsigned line);
+	MOZ_ALWAYS_INLINE void MarkAlloc(void* buf, const char* file, const unsigned line);
+	template<typename T> MOZ_ALWAYS_INLINE void Free(T* buf);
+	MOZ_ALWAYS_INLINE void Free(void* buf);
+	MOZ_ALWAYS_INLINE void MarkFree(void* buf);
 	static PLDHashOperator ReadAllocation(void* key, LineRef* value, void* userData);
 	#else
 	template<typename T>
-	MOZ_INLINE T* Alloc(T*& dest, size_t count, const char*, const unsigned) {
+	MOZ_ALWAYS_INLINE T* Alloc(T*& dest, size_t count, const char*, const unsigned) {
 		dest = reinterpret_cast<T*>(moz_calloc(sizeof(T), count));
 		for (size_t i = 0; i < count; ++i)
 			new (&dest[i]) T();
 		return dest;
 	}
-	MOZ_INLINE void* Alloc(size_t size, size_t count, const char*, const unsigned) {
+	MOZ_ALWAYS_INLINE void* Alloc(size_t size, size_t count, const char*, const unsigned) {
 		return moz_calloc(size, count);
 	}
-	MOZ_INLINE void MarkAlloc(void*, const char*, const unsigned) {}
+	MOZ_ALWAYS_INLINE void MarkAlloc(void*, const char*, const unsigned) {}
 	template<typename T>
-	MOZ_INLINE void Free(T* buf) {
+	MOZ_ALWAYS_INLINE void Free(T* buf) {
 		delete[] buf;
 	}
-	MOZ_INLINE void Free(void* buf) {
+	MOZ_ALWAYS_INLINE void Free(void* buf) {
 		moz_free(buf);
 	}
-	MOZ_INLINE void MarkFree(void* buf) {}
+	MOZ_ALWAYS_INLINE void MarkFree(void* buf) {}
 	#endif
 };
 
@@ -497,20 +497,20 @@ public:
 
 	// NOTE: these are deprecated and should only be used in assertions
 	// (See Mozilla bug 692342)
-	MOZ_INLINE bool IsPointer()   const { return 0 != (XPT_TDP_IS_POINTER(type_flags)); }
-	MOZ_INLINE bool IsReference() const { return 0 != (XPT_TDP_IS_REFERENCE(type_flags)); }
+	MOZ_ALWAYS_INLINE bool IsPointer()   const { return 0 != (XPT_TDP_IS_POINTER(type_flags)); }
+	MOZ_ALWAYS_INLINE bool IsReference() const { return 0 != (XPT_TDP_IS_REFERENCE(type_flags)); }
 
-	MOZ_INLINE bool IsIn()        const { return 0 != (XPT_PD_IS_IN(param_flags)) ; }
-	MOZ_INLINE bool IsOut()       const { return 0 != (XPT_PD_IS_OUT(param_flags)) ; }
-	MOZ_INLINE bool IsRetval()    const { return 0 != (XPT_PD_IS_RETVAL(param_flags)) ; }
-	MOZ_INLINE bool IsShared()    const { return 0 != (XPT_PD_IS_SHARED(param_flags)) ; }
-	MOZ_INLINE bool IsDipper()    const { return 0 != (XPT_PD_IS_DIPPER(param_flags)) ; }
-	MOZ_INLINE bool IsOptional()  const { return 0 != (XPT_PD_IS_OPTIONAL(param_flags)) ; }
+	MOZ_ALWAYS_INLINE bool IsIn()        const { return 0 != (XPT_PD_IS_IN(param_flags)) ; }
+	MOZ_ALWAYS_INLINE bool IsOut()       const { return 0 != (XPT_PD_IS_OUT(param_flags)) ; }
+	MOZ_ALWAYS_INLINE bool IsRetval()    const { return 0 != (XPT_PD_IS_RETVAL(param_flags)) ; }
+	MOZ_ALWAYS_INLINE bool IsShared()    const { return 0 != (XPT_PD_IS_SHARED(param_flags)) ; }
+	MOZ_ALWAYS_INLINE bool IsDipper()    const { return 0 != (XPT_PD_IS_DIPPER(param_flags)) ; }
+	MOZ_ALWAYS_INLINE bool IsOptional()  const { return 0 != (XPT_PD_IS_OPTIONAL(param_flags)) ; }
 
 	// These are just to match the style
-	MOZ_INLINE bool IsAutoIn()    const { return is_auto_in; }
-	MOZ_INLINE bool IsAutoOut()   const { return is_auto_out; }
-	MOZ_INLINE bool IsAutoSet()   const { return have_set_auto; }
+	MOZ_ALWAYS_INLINE bool IsAutoIn()    const { return is_auto_in; }
+	MOZ_ALWAYS_INLINE bool IsAutoOut()   const { return is_auto_out; }
+	MOZ_ALWAYS_INLINE bool IsAutoSet()   const { return have_set_auto; }
 
 	#if DEBUG
 	bool IsDipperType() const {
@@ -563,16 +563,16 @@ protected:
 	bool PrepareOutVariant(const PythonTypeDescriptor &td, int value_index);
 	bool SetSizeOrLengthIs(int var_index, bool is_size, uint32_t new_size);
 	uint32_t GetSizeOrLengthIs(int var_index, bool is_size);
-	MOZ_INLINE bool SetSizeIs(int var_index, uint32_t new_size) {
+	MOZ_ALWAYS_INLINE bool SetSizeIs(int var_index, uint32_t new_size) {
 		return SetSizeOrLengthIs(var_index, true, new_size);
 	}
-	MOZ_INLINE bool SetLengthIs(int var_index, uint32_t new_size) {
+	MOZ_ALWAYS_INLINE bool SetLengthIs(int var_index, uint32_t new_size) {
 		return SetSizeOrLengthIs(var_index, false, new_size);
 	}
-	MOZ_INLINE uint32_t GetSizeIs(int var_index) {
+	MOZ_ALWAYS_INLINE uint32_t GetSizeIs(int var_index) {
 		return GetSizeOrLengthIs(var_index, true);
 	}
-	MOZ_INLINE uint32_t GetLengthIs(int var_index) {
+	MOZ_ALWAYS_INLINE uint32_t GetLengthIs(int var_index) {
 		return GetSizeOrLengthIs(var_index, false);
 	}
 
@@ -763,24 +763,24 @@ private:
 	bool GetIIDForINTERFACE_ID(int index, const nsIID **ppret);
 	nsresult GetArrayType(PRUint8 index, XPTTypeDescriptorTags *ret, nsIID *ppiid);
 	PRUint32 GetSizeOrLengthIs( int var_index, bool is_size);
-	MOZ_INLINE uint32_t GetSizeIs(int var_index) {
+	MOZ_ALWAYS_INLINE uint32_t GetSizeIs(int var_index) {
 		return GetSizeOrLengthIs(var_index, true);
 	}
-	MOZ_INLINE uint32_t GetLengthIs(int var_index) {
+	MOZ_ALWAYS_INLINE uint32_t GetLengthIs(int var_index) {
 		return GetSizeOrLengthIs(var_index, false);
 	}
 	bool SetSizeOrLengthIs(int var_index, bool is_size, uint32_t new_size);
-	MOZ_INLINE bool SetSizeIs(int var_index, uint32_t new_size) {
+	MOZ_ALWAYS_INLINE bool SetSizeIs(int var_index, uint32_t new_size) {
 		return SetSizeOrLengthIs(var_index, true, new_size);
 	}
-	MOZ_INLINE bool SetLengthIs(int var_index, uint32_t new_size) {
+	MOZ_ALWAYS_INLINE bool SetLengthIs(int var_index, uint32_t new_size) {
 		return SetSizeOrLengthIs(var_index, false, new_size);
 	}
 	bool CanSetSizeOrLengthIs(int var_index, bool is_size);
-	MOZ_INLINE bool CanSetSizeIs(int var_index) {
+	MOZ_ALWAYS_INLINE bool CanSetSizeIs(int var_index) {
 		return CanSetSizeOrLengthIs(var_index, true);
 	}
-	MOZ_INLINE bool CanSetLengthIs(int var_index) {
+	MOZ_ALWAYS_INLINE bool CanSetLengthIs(int var_index) {
 		return CanSetSizeOrLengthIs(var_index, false);
 	}
 	nsIInterfaceInfo *GetInterfaceInfo(); // NOTE: no ref count on result.
