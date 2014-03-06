@@ -66,7 +66,6 @@
 #include "nsXULAppAPI.h"
 
 #include "nsILocalFile.h"
-#include "nsTraceRefcntImpl.h"
 
 #ifdef XP_WIN
 #ifndef WIN32_LEAN_AND_MEAN
