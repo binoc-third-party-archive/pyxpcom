@@ -5,6 +5,14 @@
 #include "nsStringGlue.h"
 #include "nsXULAppAPI.h"
 
+#ifdef XP_UNIX
+#include <unistd.h>
+#endif
+
+#ifdef XP_WIN
+#include <process.h>
+#endif
+
 // This leaks. But we can't do much about that.
 static PyAppInfo* gAppInfo = nullptr;
 
@@ -225,6 +233,18 @@ PyAppInfo::GetProcessType(uint32_t *aProcessType)
     NS_ENSURE_TRUE(EnsureXULFuncs(), NS_ERROR_NOT_INITIALIZED);
     *aProcessType = XRE_GetProcessType();
     return NS_OK;
+}
+
+/* readonly attribute unsigned long processID; */
+NS_IMETHODIMP
+PyAppInfo::GetProcessID(uint32_t* aResult)
+{
+#ifdef XP_WIN
+  *aResult = GetCurrentProcessId();
+#else
+  *aResult = getpid();
+#endif
+  return NS_OK;
 }
 
 /* readonly attribute boolean browserTabsRemote; */
