@@ -185,13 +185,17 @@ nsPythonModuleLoader::PythonModule::GetFactory(const mozilla::Module& module,
     PyObject *obFactory = NULL;
     PyObject *obFnName = NULL;
     PyObject *obClsId = Py_nsIID::PyObjectFromIID(*(entry.cid));
+    nsCOMPtr<nsISupports> pSupports;
     nsCOMPtr<nsIFactory> f;
     const PythonModule& pyMod = static_cast<const PythonModule&>(module);
 
     obFnName = PyString_FromString("getClassObject");
     obFactory = PyObject_CallMethodObjArgs(pyMod.mPyObjModule, obFnName, Py_None, obClsId, Py_None, NULL);
     if (obFactory!=NULL) {
-        Py_nsISupports::InterfaceFromPyObject(obFactory, NS_GET_IID(nsIFactory), getter_AddRefs(f), false);
+        Py_nsISupports::InterfaceFromPyObject(obFactory, NS_GET_IID(nsIFactory), getter_AddRefs(pSupports), false);
+        if (pSupports) {
+            nsCOMPtr<nsIFactory> f = do_QueryInterface(pSupports);
+        }
     }
 
     if (PyErr_Occurred()) {

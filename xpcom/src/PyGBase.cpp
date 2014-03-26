@@ -759,14 +759,17 @@ PyG_Base *GetDefaultGateway(PyObject *policy)
 	Py_DECREF(instance);
 	if (ob_existing_weak != NULL) {
 		bool ok = true;
-		nsCOMPtr<nsIWeakReference> pWeakRef;
+		nsCOMPtr<nsISupports> pSupports;
 		ok = Py_nsISupports::InterfaceFromPyObject(ob_existing_weak,
 		                                       NS_GET_IID(nsIWeakReference), 
-		                                       getter_AddRefs(pWeakRef),
+		                                       getter_AddRefs(pSupports),
 		                                       false);
 		Py_DECREF(ob_existing_weak);
 		nsISupports *pip;
 		if (ok) {
+			nsCOMPtr<nsIWeakReference> pWeakRef = do_QueryInterface(pSupports);
+			if (!pWeakRef)
+				return nullptr;
 			nsresult nr = pWeakRef->QueryReferent( NS_GET_IID(nsIInternalPython), (void **)&pip);
 			if (NS_FAILED(nr))
 				return nullptr;
@@ -789,16 +792,21 @@ bool CheckDefaultGateway(PyObject *real_inst, REFNSIID iid, nsISupports **ret_ga
 		// We have an existing default, but as it is a weak reference, it
 		// may no longer be valid.  Check it.
 		bool ok = true;
-		nsCOMPtr<nsIWeakReference> pWeakRef;
+		nsCOMPtr<nsISupports> pSupports;
 		ok = Py_nsISupports::InterfaceFromPyObject(ob_existing_weak,
 		                                       NS_GET_IID(nsIWeakReference), 
-		                                       getter_AddRefs(pWeakRef), 
+		                                       getter_AddRefs(pSupports), 
 		                                       false);
 		Py_DECREF(ob_existing_weak);
 		if (ok) {
-			Py_BEGIN_ALLOW_THREADS;
-			ok = NS_SUCCEEDED(pWeakRef->QueryReferent( iid, (void **)(ret_gateway)));
-			Py_END_ALLOW_THREADS;
+			nsCOMPtr<nsIWeakReference> pWeakRef = do_QueryInterface(pSupports);
+			if (!pWeakRef) {
+				ok = false;
+			} else {
+				Py_BEGIN_ALLOW_THREADS;
+				ok = NS_SUCCEEDED(pWeakRef->QueryReferent( iid, (void **)(ret_gateway)));
+				Py_END_ALLOW_THREADS;
+			}
 		}
 		if (!ok) {
 			// We have the attribute, but not valid - wipe it
@@ -822,7 +830,7 @@ void AddDefaultGateway(PyObject *instance, nsISupports *gateway)
 	bool hasValidDefaultGateway = false;
 	PyObject *ob_old_weak = PyObject_GetAttrString(real_inst, PyXPCOM_szDefaultGatewayAttributeName);
 	if (ob_old_weak) {
-		nsCOMPtr<nsIWeakReference> pOldWeakReference;
+		nsCOMPtr<nsISupports> pOldWeakReference;
 		bool success = Py_nsISupports::InterfaceFromPyObject(ob_old_weak,
 								       NS_GET_IID(nsIWeakReference),
 								       getter_AddRefs(pOldWeakReference),
@@ -830,13 +838,10 @@ void AddDefaultGateway(PyObject *instance, nsISupports *gateway)
 								       false);
 		Py_DECREF(ob_old_weak);
 		if (success) {
-			nsCOMPtr<nsISupports> supports = do_QueryReferent(pOldWeakReference);
-			if (supports) {
-				// the old weak reference is fine
-				NS_ASSERTION(SameCOMIdentity(supports, gateway),
-					     "A Python object has a duplicate gateway!");
-				hasValidDefaultGateway = true;
-			}
+			// the old weak reference is fine
+			NS_ASSERTION(SameCOMIdentity(supports, gateway),
+				     "A Python object has a duplicate gateway!");
+			hasValidDefaultGateway = true;
 		}
 	} else
 		PyErr_Clear();
