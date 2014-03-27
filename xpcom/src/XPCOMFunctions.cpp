@@ -340,7 +340,7 @@ PyXPCOMMethod_GetVariantValue(PyObject *self, PyObject *args)
 				getter_AddRefs(pSupports),
 				false))
 		return PyErr_Format(PyExc_ValueError,
-				    "Object is not an nsIVariant (got %s)",
+				    "Object is not an nsISupports (got %s)",
 				    ob->ob_type->tp_name);
 
 	Py_nsISupports *parent = nullptr;
@@ -353,10 +353,12 @@ PyXPCOMMethod_GetVariantValue(PyObject *self, PyObject *args)
 		parent = (Py_nsISupports *)obParent;
 	}
 	nsCOMPtr<nsIVariant> var = do_QueryInterface(pSupports);
-	if (var) {
-		return PyObject_FromVariant(parent, var);
+	if (!var) {
+		return PyErr_Format(PyExc_ValueError,
+				    "Object is not an nsIVariant (got %s)",
+				    ob->ob_type->tp_name);
 	}
-	return NULL;
+	return PyObject_FromVariant(parent, var);
 }
 
 PyObject *PyGetSpecialDirectory(PyObject *self, PyObject *args)
