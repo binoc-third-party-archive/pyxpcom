@@ -830,18 +830,24 @@ void AddDefaultGateway(PyObject *instance, nsISupports *gateway)
 	bool hasValidDefaultGateway = false;
 	PyObject *ob_old_weak = PyObject_GetAttrString(real_inst, PyXPCOM_szDefaultGatewayAttributeName);
 	if (ob_old_weak) {
-		nsCOMPtr<nsISupports> pOldWeakReference;
+		nsCOMPtr<nsISupports> pSupports;
 		bool success = Py_nsISupports::InterfaceFromPyObject(ob_old_weak,
 								       NS_GET_IID(nsIWeakReference),
-								       getter_AddRefs(pOldWeakReference),
+								       getter_AddRefs(pSupports),
 								       false,
 								       false);
 		Py_DECREF(ob_old_weak);
 		if (success) {
-			// the old weak reference is fine
-			NS_ASSERTION(SameCOMIdentity(supports, gateway),
-				     "A Python object has a duplicate gateway!");
-			hasValidDefaultGateway = true;
+			nsCOMPtr<nsIWeakReference> pWeakRef = do_QueryInterface(pSupports);
+			if (pWeakRef) {
+				nsCOMPtr<nsISupports> pSupports2 = do_QueryReferent(pWeakRef);
+				if (pSupports2) {
+					// the old weak reference is fine
+					NS_ASSERTION(SameCOMIdentity(pSupports2, gateway),
+						"A Python object has a duplicate gateway!");
+					hasValidDefaultGateway = true;
+				}
+			}
 		}
 	} else
 		PyErr_Clear();
