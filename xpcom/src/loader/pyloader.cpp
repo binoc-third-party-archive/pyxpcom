@@ -194,7 +194,7 @@ nsPythonModuleLoader::PythonModule::GetFactory(const mozilla::Module& module,
     if (obFactory!=NULL) {
         Py_nsISupports::InterfaceFromPyObject(obFactory, NS_GET_IID(nsIFactory), getter_AddRefs(pSupports), false);
         if (pSupports) {
-            nsCOMPtr<nsIFactory> f = do_QueryInterface(pSupports);
+            f = do_QueryInterface(pSupports);
         }
     }
 
