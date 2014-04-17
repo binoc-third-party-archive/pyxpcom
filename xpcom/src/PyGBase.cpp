@@ -252,7 +252,7 @@ PyG_Base::~PyG_Base()
 
 NS_IMPL_ADDREF(PyG_Base)
 
-nsrefcnt
+MozExternalRefCountType
 PyG_Base::Release(void)
 {
 	nsrefcnt cnt;

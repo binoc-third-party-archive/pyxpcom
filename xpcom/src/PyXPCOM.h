@@ -687,8 +687,8 @@ friend class PyG_Base;
 public:
 	NS_IMETHOD QueryInterface(REFNSIID aIID, void** aInstancePtr)
 		{return PyG_Base::QueryInterface(aIID, aInstancePtr);}
-	NS_IMETHOD_(nsrefcnt) AddRef(void) {return PyG_Base::AddRef();}
-	NS_IMETHOD_(nsrefcnt) Release(void) {return PyG_Base::Release();}
+	NS_IMETHOD_(MozExternalRefCountType) AddRef(void) {return PyG_Base::AddRef();}
+	NS_IMETHOD_(MozExternalRefCountType) Release(void) {return PyG_Base::Release();}
 
 	// call this method and return result
 	NS_IMETHOD CallMethod(PRUint16 methodIndex,
@@ -710,8 +710,8 @@ private:
 #define PYGATEWAY_BASE_SUPPORT(INTERFACE, GATEWAY_BASE)                    \
 	NS_IMETHOD QueryInterface(REFNSIID aIID, void** aInstancePtr)      \
 		{return PyG_Base::QueryInterface(aIID, aInstancePtr);}     \
-	NS_IMETHOD_(nsrefcnt) AddRef(void) {return PyG_Base::AddRef();}    \
-	NS_IMETHOD_(nsrefcnt) Release(void) {return PyG_Base::Release();}  \
+	NS_IMETHOD_(MozExternalRefCountType) AddRef(void) {return PyG_Base::AddRef();}    \
+	NS_IMETHOD_(MozExternalRefCountType) Release(void) {return PyG_Base::Release();}  \
 	virtual void *ThisAsIID(const nsIID &iid) {                        \
 		if (iid.Equals(NS_GET_IID(INTERFACE))) return (INTERFACE *)this; \
 		return GATEWAY_BASE::ThisAsIID(iid);                       \
