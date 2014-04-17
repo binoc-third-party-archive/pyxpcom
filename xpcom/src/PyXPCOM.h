@@ -50,7 +50,7 @@
 #define __PYXPCOM_H__
 
 #include "mozilla/mozalloc.h"
-#include "nsIAllocator.h"
+#include "nsMemory.h"
 #include "nsIWeakReference.h"
 #include "nsIInterfaceInfo.h"
 #include "nsIInterfaceInfoManager.h"
