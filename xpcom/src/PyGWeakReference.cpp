@@ -70,7 +70,7 @@ PyXPCOM_GatewayWeakReference::~PyXPCOM_GatewayWeakReference()
 	m_pBase = NULL;
 }
 
-NS_IMPL_ISUPPORTS1(PyXPCOM_GatewayWeakReference, nsIWeakReference)
+NS_IMPL_ISUPPORTS(PyXPCOM_GatewayWeakReference, nsIWeakReference)
 
 NS_IMETHODIMP
 PyXPCOM_GatewayWeakReference::QueryReferent(REFNSIID iid, void * *ret)
