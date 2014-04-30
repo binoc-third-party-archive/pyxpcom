@@ -17,10 +17,10 @@
 // This leaks. But we can't do much about that.
 static PyAppInfo* gAppInfo = nullptr;
 
-NS_IMPL_ISUPPORTS3(PyAppInfo,
-                   nsIXULAppInfo,
-                   nsIXULRuntime,
-                   nsIFactory)
+NS_IMPL_ISUPPORTS(PyAppInfo,
+                  nsIXULAppInfo,
+                  nsIXULRuntime,
+                  nsIFactory)
 
 PyAppInfo::PyAppInfo(nsIFile* aAppDir) :
     mLogConsoleErrors(false),
