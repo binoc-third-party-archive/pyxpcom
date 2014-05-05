@@ -446,11 +446,11 @@ done:
 NS_IMETHODIMP
 PyG_Base::QueryInterface(REFNSIID iid, void** ppv)
 {
-	if (PR_LOG_TEST(nsPyxpcomLog, PR_LOG_DEBUG)) {
-		char idstr[NSID_LENGTH];
-		iid.ToProvidedString(idstr);
-		LOG(PR_LOG_DEBUG, ("PyGatewayBase::QueryInterface: %s", idstr));
-	}
+	//if (PR_LOG_TEST(nsPyxpcomLog, PR_LOG_DEBUG)) {
+	//	char idstr[NSID_LENGTH];
+	//	iid.ToProvidedString(idstr);
+	//	LOG(PR_LOG_DEBUG, ("PyGatewayBase::QueryInterface: %s", idstr));
+	//}
 
 	NS_PRECONDITION(ppv, "NULL pointer");
 	if (ppv==nullptr)
