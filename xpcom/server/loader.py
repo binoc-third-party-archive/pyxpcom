@@ -235,7 +235,7 @@ class ModuleLoader:
         for extDir in extDirs:
             for pylibName in ("pylib" + pyverstr, "pylib"):
                 pylibPath = join(extDir, pylibName)
-                if exists(pylibPath) and pylibPath not in sys.path:
+                if pylibPath not in sys.path and exists(pylibPath):
                     if verbose:
                         print "pyXPCOMExtensionHelper:: Adding pylib to sys.path:" \
                               " %r" % (pylibPath, )
@@ -245,7 +245,7 @@ class ModuleLoader:
                 if exists(platformPylibPath):
                     for platform_name in self._getPossiblePlatformNames():
                         pylibPath = join(platformPylibPath, platform_name, pylibName)
-                        if exists(pylibPath) and pylibPath not in sys.path:
+                        if pylibPath not in sys.path and exists(pylibPath):
                             if verbose:
                                 print "pyXPCOMExtensionHelper:: Adding pylib to sys.path:" \
                                       " %r" % (pylibPath, )
