@@ -233,6 +233,7 @@ class ModuleLoader:
             extDirs = []
         pyverstr = "%d%d" % (sys.version_info.major, sys.version_info.minor)
         for extDir in extDirs:
+            check_platform_dir = True
             for pylibName in ("pylib" + pyverstr, "pylib"):
                 pylibPath = join(extDir, pylibName)
                 if pylibPath not in sys.path and exists(pylibPath):
@@ -242,7 +243,7 @@ class ModuleLoader:
                     sys.path.append(pylibPath)
 
                 platformPylibPath = join(extDir, "platform")
-                if exists(platformPylibPath):
+                if check_platform_dir and exists(platformPylibPath):
                     for platform_name in self._getPossiblePlatformNames():
                         pylibPath = join(platformPylibPath, platform_name, pylibName)
                         if pylibPath not in sys.path and exists(pylibPath):
@@ -250,3 +251,6 @@ class ModuleLoader:
                                 print "pyXPCOMExtensionHelper:: Adding pylib to sys.path:" \
                                       " %r" % (pylibPath, )
                             sys.path.append(pylibPath)
+                else:
+                    # Don't bother checking platform next loop.
+                    check_platform_dir = False
