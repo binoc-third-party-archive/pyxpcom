@@ -58,6 +58,7 @@
 #include "nsXPCOM.h"
 #include "nsISupportsPrimitives.h"
 #include "nsIFile.h"
+#include "nsICategoryManager.h"
 #include "nsIComponentRegistrar.h"
 #include "nsIConsoleService.h"
 #include "nsDirectoryServiceDefs.h"
@@ -361,6 +362,63 @@ PyXPCOMMethod_GetVariantValue(PyObject *self, PyObject *args)
 	return PyObject_FromVariant(parent, var);
 }
 
+/**
+ * Returns a list of registered category entries matching the given category.
+ * The entries returned are space separated - e.g. "DATA CID".
+ */
+static PyObject *
+PyXPCOMMethod_GetCategoryEntries(PyObject *self, PyObject *args)
+{
+	char *category;
+	if (!PyArg_ParseTuple(args, "s:GetCategoryEntries", &category))
+		return NULL;
+
+	nsresult rv;
+
+	nsCOMPtr<nsICategoryManager> categoryManager =
+			do_GetService(NS_CATEGORYMANAGER_CONTRACTID, &rv);
+	if (NS_FAILED(rv)) {
+		return PyErr_Format(PyExc_RuntimeError,
+				    "Unable to instantiate category manager");
+	}
+
+	nsCOMPtr<nsISimpleEnumerator> enumerator;
+	rv = categoryManager->EnumerateCategory(category, getter_AddRefs(enumerator));
+	if (NS_FAILED(rv)) {
+		return PyErr_Format(PyExc_RuntimeError,
+				    "Unable to enumerate category %s", category);
+	}
+
+	PyObject *ret = PyList_New(0);
+	if (!ret) {
+		return PyErr_Format(PyExc_RuntimeError,
+				    "Unable to create category list");
+	}
+
+	PyObject *item;
+	nsAutoCString fullString;
+	nsAutoCString categoryEntry;
+	nsCOMPtr<nsISupports> entry;
+	while (NS_SUCCEEDED(enumerator->GetNext(getter_AddRefs(entry)))) {
+	    nsCOMPtr<nsISupportsCString> categoryEntryCString = do_QueryInterface(entry, &rv);
+	    if (NS_SUCCEEDED(rv)) {
+		rv = categoryEntryCString->GetData(categoryEntry);
+		fullString.Assign(categoryEntry);
+		fullString += NS_LITERAL_CSTRING(" ");
+		nsAutoCString contractId;
+		categoryManager->GetCategoryEntry(category, 
+						  categoryEntry.get(),
+						  getter_Copies(contractId));
+		fullString += contractId;
+		item = PyObject_FromNSString(fullString);
+		PyList_Append(ret, item);
+		Py_XDECREF(item);
+	    }
+	}
+
+	return ret;
+}
+
 PyObject *PyGetSpecialDirectory(PyObject *self, PyObject *args)
 {
 	char *dirname;
@@ -452,6 +510,7 @@ static struct PyMethodDef xpcom_methods[]=
 	{"LogConsoleMessage", LogConsoleMessage, 1, "Write a message to the xpcom console service"},
 	{"MakeVariant", PyXPCOMMethod_MakeVariant, 1},
 	{"GetVariantValue", PyXPCOMMethod_GetVariantValue, 1},
+	{"GetCategoryEntries", PyXPCOMMethod_GetCategoryEntries, 1},
 	#if DEBUG
 		{"_Break", PyXPCOMMethod__Break, 1, "Break into the C++ debugger"},
 	#endif
