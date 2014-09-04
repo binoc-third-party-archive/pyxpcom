@@ -494,6 +494,8 @@ case "$target" in
 
         _MOZ_RTTI_FLAGS_ON='-GR'
         _MOZ_RTTI_FLAGS_OFF='-GR-'
+        _MOZ_EXCEPTIONS_FLAGS_ON='-EHsc'
+        _MOZ_EXCEPTIONS_FLAGS_OFF=''
 
         if test -n "$WIN32_REDIST_DIR"; then
             WIN32_REDIST_DIR=`cd "$WIN32_REDIST_DIR" && pwd`
@@ -1296,6 +1298,8 @@ if test "$GNU_CC"; then
     ASFLAGS="$ASFLAGS -fPIC"
     _MOZ_RTTI_FLAGS_ON=${_COMPILER_PREFIX}-frtti
     _MOZ_RTTI_FLAGS_OFF=${_COMPILER_PREFIX}-fno-rtti
+    _MOZ_EXCEPTIONS_FLAGS_ON='-fhandle-exceptions'
+    _MOZ_EXCEPTIONS_FLAGS_OFF='-fno-handle-exceptions'
 
     # Turn on GNU specific features
     # -Wall - turn on all warnings
@@ -1777,6 +1781,8 @@ case "$target" in
     DSO_LDOPTS='-elf -shared'
     MKSHLIB='$(CCC) $(CXXFLAGS) $(DSO_PIC_CFLAGS) $(DSO_LDOPTS) -o $@'
     MKCSHLIB='$(CC) $(CFLAGS) $(DSO_PIC_CFLAGS) $(DSO_LDOPTS) -o $@'
+    _MOZ_EXCEPTIONS_FLAGS_OFF="-LANG:exceptions=OFF"
+    _MOZ_EXCEPTIONS_FLAGS_ON="-LANG:exceptions=ON"
     if test "$GNU_CC"; then
        MKSHLIB_FORCE_ALL='-Wl,-all'
        MKSHLIB_UNFORCE_ALL='-Wl,-none'
@@ -3170,6 +3176,33 @@ EOF
 	    ;;
 esac
 
+dnl ===================================================================
+dnl ========================================================
+dnl By default, turn rtti and exceptions off on g++/egcs
+dnl ========================================================
+if test "$GNU_CXX"; then
+
+  AC_MSG_CHECKING(for C++ exceptions flag)
+
+  dnl They changed -f[no-]handle-exceptions to -f[no-]exceptions in g++ 2.8
+  AC_CACHE_VAL(ac_cv_cxx_exceptions_flags,
+  [echo "int main() { return 0; }" | cat > conftest.C
+
+  ${CXX-g++} ${CXXFLAGS} -c -fno-handle-exceptions conftest.C > conftest.out 2>&1
+
+  if egrep "warning.*renamed" conftest.out >/dev/null; then
+    ac_cv_cxx_exceptions_flags=${_COMPILER_PREFIX}-fno-exceptions
+  else
+    ac_cv_cxx_exceptions_flags=${_COMPILER_PREFIX}-fno-handle-exceptions
+  fi
+
+  rm -f conftest*])
+
+  AC_MSG_RESULT($ac_cv_cxx_exceptions_flags)
+  _MOZ_EXCEPTIONS_FLAGS_OFF=$ac_cv_cxx_exceptions_flags
+  _MOZ_EXCEPTIONS_FLAGS_ON=`echo $ac_cv_cxx_exceptions_flags | sed 's|no-||'`
+fi
+
 dnl ========================================================
 dnl Put your C++ language/feature checks below
 dnl ========================================================
@@ -4129,6 +4162,32 @@ dnl Note that we assume that mac & win32 have short wchar (see nscore.h)
         CXXFLAGS=$_SAVE_CXXFLAGS
     fi
 fi
+
+dnl ========================================================
+dnl C++ exceptions (g++/egcs only - for now)
+dnl Should be smarter and check that the compiler does indeed have exceptions
+dnl ========================================================
+MOZ_ARG_ENABLE_BOOL(cpp-exceptions,
+[  --enable-cpp-exceptions Enable C++ exceptions ],
+[ _MOZ_CPP_EXCEPTIONS=1 ],
+[ _MOZ_CPP_EXCEPTIONS= ])
+
+if test "$_MOZ_CPP_EXCEPTIONS"; then
+    _MOZ_EXCEPTIONS_FLAGS=$_MOZ_EXCEPTIONS_FLAGS_ON
+else
+    _MOZ_EXCEPTIONS_FLAGS=$_MOZ_EXCEPTIONS_FLAGS_OFF
+fi
+
+AC_SUBST(_MOZ_EXCEPTIONS_FLAGS_ON)
+
+# Irix & OSF native compilers do not like exception declarations 
+# when exceptions are disabled
+if test -n "$MIPSPRO_CXX" -o -n "$COMPAQ_CXX" -o -n "$VACPP"; then
+    AC_DEFINE(CPP_THROW_NEW, [])
+else
+    AC_DEFINE(CPP_THROW_NEW, [throw()])
+fi
+AC_LANG_C
 
 dnl ========================================================
 dnl =
