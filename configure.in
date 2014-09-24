@@ -1282,7 +1282,8 @@ dnl GNU specific defaults
 dnl ========================================================
 if test "$GNU_CC"; then
     # FIXME: Let us build with strict aliasing. bug 414641.
-    CFLAGS="$CFLAGS -fno-exceptions -fno-strict-aliasing"
+    CFLAGS="$CFLAGS -fno-strict-aliasing"
+    CXXFLAGS="$CXXFLAGS -fno-exceptions"
     MKSHLIB='$(CXX) $(CXXFLAGS) $(DSO_PIC_CFLAGS) $(DSO_LDOPTS) -Wl,-h,$@ -o $@'
     MKCSHLIB='$(CC) $(CFLAGS) $(DSO_PIC_CFLAGS) $(DSO_LDOPTS) -Wl,-h,$@ -o $@'
     DSO_LDOPTS='-shared'
