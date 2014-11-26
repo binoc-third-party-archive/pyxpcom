@@ -733,13 +733,15 @@ extern PRInt32 _PyXPCOM_GetInterfaceCount(void);
 class PyXPCOM_GatewayWeakReference : public nsIWeakReference {
 public:
 	PyXPCOM_GatewayWeakReference(PyG_Base *base);
-	virtual ~PyXPCOM_GatewayWeakReference();
 	NS_DECL_THREADSAFE_ISUPPORTS
 	NS_DECL_NSIWEAKREFERENCE
+	virtual size_t SizeOfOnlyThis(mozilla::MallocSizeOf aMallocSizeOf) const;
 	PyG_Base *m_pBase; // NO REF COUNT!!!
 #ifdef NS_BUILD_REFCNT_LOGGING
 	char refcntLogRepr[41];
 #endif
+private:
+	virtual ~PyXPCOM_GatewayWeakReference();
 };
 
 
