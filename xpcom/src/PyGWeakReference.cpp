@@ -90,3 +90,9 @@ PyXPCOM_GatewayWeakReference::QueryReferent(REFNSIID iid, void * *ret)
 	m_pBase->Release();
 	return nr;
 }
+
+size_t
+PyXPCOM_GatewayWeakReference::SizeOfOnlyThis(mozilla::MallocSizeOf aMallocSizeOf) const
+{
+  return aMallocSizeOf(this);
+}
