@@ -602,8 +602,6 @@ protected:
 #define NS_IINTERNALPYTHON_IID \
 	{ 0xac7459fc, 0xe8ab, 0x4f2e, { 0x9c, 0x4f, 0xad, 0xdc, 0x53, 0x39, 0x3a, 0x20 } }
 
-class PyXPCOM_GatewayWeakReference;
-
 // This interface is needed primarily to give us a known vtable base.
 // If we QI a Python object for this interface, we can safely cast the result
 // to a PyG_Base.  Any other interface, we do now know which vtable we will get.
