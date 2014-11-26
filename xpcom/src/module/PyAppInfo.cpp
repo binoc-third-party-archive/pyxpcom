@@ -248,11 +248,29 @@ PyAppInfo::GetProcessID(uint32_t* aResult)
   return NS_OK;
 }
 
-/* readonly attribute boolean browserTabsRemote; */
+/* readonly attribute boolean browserTabsRemoteAutostart; */
 NS_IMETHODIMP
-PyAppInfo::GetBrowserTabsRemote(bool* aResult)
+PyAppInfo::GetBrowserTabsRemoteAutostart(bool* aResult)
 {
     // We don't support remote browser tabs (multiprocess browsers).
+    *aResult = false;
+    return NS_OK;
+}
+
+/* readonly attribute boolean accessibilityEnabled; */
+NS_IMETHODIMP
+PyAppInfo::GetAccessibilityEnabled(bool* aResult)
+{
+    // We don't support accessibility
+    *aResult = false;
+    return NS_OK;
+}
+
+/* readonly attribute boolean keyboardMayHaveIME; */
+NS_IMETHODIMP
+PyAppInfo::GetKeyboardMayHaveIME(bool* aResult)
+{
+    // We don't support it
     *aResult = false;
     return NS_OK;
 }
@@ -274,6 +292,18 @@ NS_IMETHODIMP
 PyAppInfo::GetIsOfficialBranding(bool* aResult)
 {
 #ifdef MOZ_OFFICIAL_BRANDING
+  *aResult = true;
+#else
+  *aResult = false;
+#endif
+  return NS_OK;
+}
+
+/* readonly attribute boolean isOfficial; */
+NS_IMETHODIMP
+PyAppInfo::GetIsOfficial(bool* aResult)
+{
+#ifdef MOZ_OFFICIAL
   *aResult = true;
 #else
   *aResult = false;
