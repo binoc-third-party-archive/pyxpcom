@@ -118,11 +118,11 @@ static bool GetModulePath(char dest[MAXPATHLEN], const char* moduleName) {
 		// on, and assume it lives in that bin dir.  Different
 		// moz build types (eg, xulrunner, suite) package
 		// XPCOM itself differently - but all appear to require
-		// nspr4.dll - so this is what we use.
+		// mozalloc.dll - so this is what we use.
 		wchar_t landmark[MAXPATHLEN];
-		HMODULE hmod = GetModuleHandle("nspr4.dll");
+		HMODULE hmod = GetModuleHandle("mozalloc.dll");
 		if (!hmod) {
-			PyErr_SetString(PyExc_RuntimeError, "We dont appear to be linked against nspr4.dll.");
+			PyErr_SetString(PyExc_RuntimeError, "We dont appear to be linked against mozalloc.dll.");
 			return false;
 		}
 		GetModuleFileNameW(hmod, landmark, sizeof(landmark)/sizeof(landmark[0]));
@@ -270,13 +270,13 @@ static bool EnsureXPCOM()
 	#endif /* defined(XP_UNIX) && !defined(XP_MACOSX) */
 
 	nsresult rv;
-	char libNSPRPath[MAXPATHLEN] = {0};
-	if (!GetModulePath(libNSPRPath, MOZ_DLL_PREFIX "nspr4" MOZ_DLL_SUFFIX)) {
-		DUMP("Failed to find " MOZ_DLL_PREFIX "nspr4" MOZ_DLL_SUFFIX "\n");
+	char libMozallocPath[MAXPATHLEN] = {0};
+	if (!GetModulePath(libMozallocPath, MOZ_DLL_PREFIX "mozalloc" MOZ_DLL_SUFFIX)) {
+		DUMP("Failed to find " MOZ_DLL_PREFIX "mozalloc" MOZ_DLL_SUFFIX "\n");
 		return false;
 	}
-	DUMP("Using nspr4 library: %s\n", libNSPRPath);
-	rv = XPCOMGlueStartup(libNSPRPath);
+	DUMP("Using mozalloc library: %s\n", libMozallocPath);
+	rv = XPCOMGlueStartup(libMozallocPath);
 	if (NS_FAILED(rv)) {
 		PyErr_SetString(PyExc_RuntimeError, "Failed to starting XPCOM glue");
 		return false;
@@ -317,10 +317,10 @@ static bool EnsureXPCOM()
 	#else
 		const char PATH_SEP = '/';
 	#endif
-	char* end = strrchr(libNSPRPath, PATH_SEP);
+	char* end = strrchr(libMozallocPath, PATH_SEP);
 	*end = '\0';
-	DUMP("Using ns_bin_dir %s\n", libNSPRPath);
-	rv = XRE_GetFileFromPath(libNSPRPath, getter_AddRefs(ns_bin_dir));
+	DUMP("Using ns_bin_dir %s\n", libMozallocPath);
+	rv = XRE_GetFileFromPath(libMozallocPath, getter_AddRefs(ns_bin_dir));
 	if (NS_FAILED(rv)) {
 		PyErr_SetString(PyExc_RuntimeError, "Failed to get GRE directory");
 		return false;
