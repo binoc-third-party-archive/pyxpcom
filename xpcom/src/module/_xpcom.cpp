@@ -118,12 +118,17 @@ static bool GetModulePath(char dest[MAXPATHLEN], const char* moduleName) {
 		// on, and assume it lives in that bin dir.  Different
 		// moz build types (eg, xulrunner, suite) package
 		// XPCOM itself differently - but all appear to require
-		// mozalloc.dll - so this is what we use.
+		// mozalloc.dll or nss3.dll - so this is what we use.
 		wchar_t landmark[MAXPATHLEN];
 		HMODULE hmod = GetModuleHandle("mozalloc.dll");
 		if (!hmod) {
-			PyErr_SetString(PyExc_RuntimeError, "We dont appear to be linked against mozalloc.dll.");
-			return false;
+			DUMP("no malloc, trying for nss3.dll\n");
+			// Try for nss3 then.
+			hmod = GetModuleHandle("nss3.dll");
+			if (!hmod) {
+				PyErr_SetString(PyExc_RuntimeError, "We dont appear to be linked against mozalloc.dll.");
+				return false;
+			}
 		}
 		GetModuleFileNameW(hmod, landmark, sizeof(landmark)/sizeof(landmark[0]));
 		landmark[sizeof(landmark)/sizeof(landmark[0]) - 1] = L'\0';
